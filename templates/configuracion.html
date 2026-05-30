@@ -1,0 +1,616 @@
+{% extends "base.html" %}
+{% block title %}Configuración — PARAGUASMJ{% endblock %}
+{% block extra_css %}
+<style>
+.cfg-card{border-radius:10px;margin-bottom:20px;}
+.cfg-label{font-size:12px;font-weight:600;color:#475569;margin-bottom:3px;}
+.cfg-input{font-size:13px;}
+.cat-header{background:linear-gradient(135deg,#1E3A8A,#2563eb);color:#fff;
+  border-radius:10px 10px 0 0;padding:10px 16px;font-weight:700;}
+.cat-icon{font-size:16px;margin-right:8px;}
+.logo-preview{max-height:70px;max-width:160px;object-fit:contain;
+  border:1px solid #e2e8f0;border-radius:8px;padding:4px;background:#fff;}
+.color-swatch{width:36px;height:36px;border-radius:6px;border:1px solid #e2e8f0;
+  display:inline-block;vertical-align:middle;margin-left:6px;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h5 class="mb-0"><i class="bi bi-gear-fill me-2 text-primary"></i>Configuración del Sistema</h5>
+    <small class="text-muted">PARAGUASMJ — Todos los campos son editables por el administrador</small>
+  </div>
+  <span class="badge bg-success">Admin</span>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat,msg in messages %}
+  <div class="alert alert-{{ cat }} alert-dismissible fade show">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+{% endwith %}
+
+<!-- ═══ TABS ═══ -->
+<ul class="nav nav-tabs mb-4" id="cfg-tabs">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-institucional">🏢 Institucional</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-visual">🎨 Visual</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-tecnica">⚙️ Técnica</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-modulos">📦 Módulos</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-notif">📧 Notificaciones</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-firmas">✍️ Firmas</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-tipos">📄 Tipos Doc.</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-autorizadores">👥 Autorizadores</a></li>
+</ul>
+
+<div class="tab-content">
+
+<!-- ═══ TAB 1: INSTITUCIONAL ═══ -->
+<div class="tab-pane fade show active" id="tab-institucional">
+  <form method="POST">
+    <input type="hidden" name="categoria" value="Institucional">
+    <div class="card cfg-card border-0 shadow-sm">
+      <div class="cat-header"><span class="cat-icon">🏢</span>Datos Institucionales del Acueducto</div>
+      <div class="card-body">
+        <div class="row g-3">
+          {% for cfg in categorias %}
+            {% if cfg.categoria == 'Institucional' %}
+              {% for c in cfg.configs %}
+              <div class="col-md-6">
+                <label class="cfg-label">{{ c.descripcion or c.clave }}</label>
+                {% if c.tipo_dato == 'textarea' %}
+                <textarea name="{{ c.clave }}" class="form-control cfg-input" rows="2">{{ c.valor or '' }}</textarea>
+                {% elif c.tipo_dato == 'boolean' %}
+                <select name="{{ c.clave }}" class="form-select cfg-input">
+                  <option value="1" {% if c.valor=='1' %}selected{% endif %}>Sí / Activo</option>
+                  <option value="0" {% if c.valor=='0' %}selected{% endif %}>No / Inactivo</option>
+                </select>
+                {% else %}
+                <input type="text" name="{{ c.clave }}" value="{{ c.valor or '' }}"
+                       class="form-control cfg-input"
+                       placeholder="{{ c.descripcion or c.clave }}">
+                {% endif %}
+              </div>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary fw-bold px-4">💾 Guardar datos institucionales</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ═══ TAB 2: VISUAL ═══ -->
+<div class="tab-pane fade" id="tab-visual">
+  <!-- Logo -->
+  <div class="card cfg-card border-0 shadow-sm mb-3">
+    <div class="cat-header"><span class="cat-icon">🖼️</span>Logo Institucional</div>
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-4 mb-3">
+        <div>
+          <div id="logo-preview-container">
+            {% if logo_actual %}
+            <img src="{{ logo_actual }}" class="logo-preview" id="logo-preview-img" alt="Logo actual">
+            {% else %}
+            <div class="logo-preview d-flex align-items-center justify-content-center text-muted small" id="logo-preview-img">
+              Sin logo
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div>
+          <p class="small text-muted mb-2">
+            El logo aparece en: encabezados de documentos, PDF, reportes, navbar.<br>
+            <strong>Formatos:</strong> PNG, JPG, WEBP | <strong>Recomendado:</strong> fondo transparente, 300×120px
+          </p>
+          <form method="POST" action="/logo/subir" enctype="multipart/form-data">
+            <div class="d-flex gap-2">
+              <input type="file" name="logo" id="inp-logo" class="form-control form-control-sm"
+                     accept="image/png,image/jpeg,image/jpg,image/webp" style="max-width:300px;"
+                     onchange="previewLogo(this)">
+              <button type="submit" class="btn btn-primary btn-sm fw-bold">📤 Subir logo</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Colores -->
+  <form method="POST">
+    <input type="hidden" name="categoria" value="General">
+    <div class="card cfg-card border-0 shadow-sm">
+      <div class="cat-header"><span class="cat-icon">🎨</span>Colores del Sistema</div>
+      <div class="card-body">
+        <div class="row g-3">
+          {% for cfg in categorias %}
+            {% if cfg.categoria == 'General' %}
+              {% for c in cfg.configs %}
+                {% if 'color' in c.clave %}
+                <div class="col-md-4">
+                  <label class="cfg-label">{{ c.descripcion or c.clave }}</label>
+                  <div class="d-flex align-items-center gap-2">
+                    <input type="color" name="{{ c.clave }}" value="{{ c.valor or '#1E3A8A' }}"
+                           class="form-control form-control-color cfg-input" style="width:60px;height:38px;"
+                           title="{{ c.descripcion }}">
+                    <input type="text" id="txt_{{ c.clave }}" value="{{ c.valor or '#1E3A8A' }}"
+                           class="form-control cfg-input" style="max-width:120px;"
+                           oninput="document.querySelector('[name={{ c.clave }}]').value=this.value"
+                           placeholder="#1E3A8A">
+                  </div>
+                </div>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary fw-bold px-4">💾 Guardar colores</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ═══ TAB 3: TÉCNICA ═══ -->
+<div class="tab-pane fade" id="tab-tecnica">
+  <form method="POST">
+    <input type="hidden" name="categoria" value="Tecnica">
+    <div class="card cfg-card border-0 shadow-sm">
+      <div class="cat-header"><span class="cat-icon">⚙️</span>Parámetros Técnicos del Acueducto</div>
+      <div class="card-body">
+        <div class="alert alert-info small mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Estos parámetros se usan para calcular indicadores normativos (IANC, IPUF, continuidad, etc.)
+          Ingréselos según la caracterización del acueducto.
+        </div>
+        <div class="row g-3">
+          {% for cfg in categorias %}
+            {% if cfg.categoria == 'Tecnica' %}
+              {% for c in cfg.configs %}
+              <div class="col-md-4">
+                <label class="cfg-label">{{ c.descripcion or c.clave }}</label>
+                <input type="{{ 'number' if c.tipo_dato in ('int','float','number') else 'text' }}"
+                       name="{{ c.clave }}" value="{{ c.valor or '' }}"
+                       class="form-control cfg-input"
+                       placeholder="{{ c.descripcion or c.clave }}"
+                       step="{{ '0.01' if c.tipo_dato=='float' else '1' }}">
+              </div>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary fw-bold px-4">💾 Guardar parámetros técnicos</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ═══ TAB 4: MÓDULOS ═══ -->
+<div class="tab-pane fade" id="tab-modulos">
+  <form method="POST">
+    <input type="hidden" name="categoria" value="Modulos">
+    <div class="card cfg-card border-0 shadow-sm">
+      <div class="cat-header"><span class="cat-icon">📦</span>Activar / Desactivar Módulos</div>
+      <div class="card-body">
+        <div class="alert alert-warning small mb-3">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          Desactivar un módulo lo oculta del menú pero no elimina sus datos.
+        </div>
+        <div class="row g-3">
+          {% for cfg in categorias %}
+            {% if cfg.categoria == 'Modulos' %}
+              {% for c in cfg.configs %}
+              <div class="col-md-4">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="{{ c.clave }}"
+                         id="mod_{{ c.clave }}" value="1"
+                         {% if c.valor == '1' %}checked{% endif %}
+                         style="width:44px;height:22px;">
+                  <label class="form-check-label fw-semibold ms-2" for="mod_{{ c.clave }}">
+                    {{ c.descripcion or c.clave }}
+                  </label>
+                </div>
+              </div>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary fw-bold px-4">💾 Guardar configuración de módulos</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ═══ TAB 5: NOTIFICACIONES ═══ -->
+<div class="tab-pane fade" id="tab-notif">
+  <form method="POST">
+    <input type="hidden" name="categoria" value="Notificaciones">
+    <div class="card cfg-card border-0 shadow-sm">
+      <div class="cat-header"><span class="cat-icon">📧</span>Correo Electrónico y WhatsApp</div>
+      <div class="card-body">
+        <div class="alert alert-info small mb-3">
+          Para Gmail: active "Contraseñas de aplicación" en la cuenta y use esa contraseña aquí.
+          No use su contraseña personal de Gmail.
+        </div>
+        <div class="row g-3">
+          {% for cfg in categorias %}
+            {% if cfg.categoria == 'Notificaciones' %}
+              {% for c in cfg.configs %}
+              <div class="col-md-6">
+                <label class="cfg-label">{{ c.descripcion or c.clave }}</label>
+                {% if 'password' in c.clave or 'key' in c.clave %}
+                <input type="password" name="{{ c.clave }}" value="{{ c.valor or '' }}"
+                       class="form-control cfg-input" placeholder="(no visible)">
+                {% elif c.tipo_dato == 'boolean' %}
+                <select name="{{ c.clave }}" class="form-select cfg-input">
+                  <option value="1" {% if c.valor=='1' %}selected{% endif %}>Activado</option>
+                  <option value="0" {% if c.valor=='0' %}selected{% endif %}>Desactivado</option>
+                </select>
+                {% else %}
+                <input type="text" name="{{ c.clave }}" value="{{ c.valor or '' }}"
+                       class="form-control cfg-input"
+                       placeholder="{{ c.descripcion or c.clave }}">
+                {% endif %}
+              </div>
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary fw-bold px-4">💾 Guardar notificaciones</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- ═══ TAB 6: FIRMAS DIGITALES ═══ -->
+<div class="tab-pane fade" id="tab-firmas">
+
+  <!-- Aprobador de formatos -->
+  <div class="card cfg-card border-0 shadow-sm mb-3">
+    <div class="cat-header"><span class="cat-icon">✅</span>Persona que Aprueba los Formatos
+      <small class="fw-normal ms-2">(aparece en el encabezado de todos los documentos)</small>
+    </div>
+    <div class="card-body">
+      <div class="row g-2">
+        <div class="col-md-5">
+          <label class="cfg-label">Nombre completo</label>
+          <input type="text" id="aprov-nombre" class="form-control"
+                 placeholder="Quien aprobó el diseño de los formatos">
+        </div>
+        <div class="col-md-4">
+          <label class="cfg-label">Cargo</label>
+          <input type="text" id="aprov-cargo" class="form-control"
+                 placeholder="Ej: Representante Legal">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btn btn-success w-100" onclick="guardarAprobador()">💾 Guardar</button>
+        </div>
+      </div>
+      <div id="aprov-actual" class="mt-2 small text-muted"></div>
+    </div>
+  </div>
+
+  <!-- Firmas digitales -->
+  <div class="card cfg-card border-0 shadow-sm">
+    <div class="cat-header d-flex justify-content-between align-items-center">
+      <span><span class="cat-icon">✍️</span>Firmas Digitales</span>
+      <button class="btn btn-sm btn-light" onclick="mostrarFormFirma()">+ Agregar firma</button>
+    </div>
+    <div class="card-body p-0">
+      <div id="lista-firmas" class="p-3">
+        <div class="text-center text-muted small py-2">Cargando...</div>
+      </div>
+    </div>
+    <div id="form-firma" style="display:none;" class="card-footer bg-light">
+      <div class="row g-2">
+        <div class="col-md-3">
+          <label class="cfg-label">Nombre *</label>
+          <input type="text" id="firma-nombre" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="cfg-label">Cargo *</label>
+          <input type="text" id="firma-cargo" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-4">
+          <label class="cfg-label">Imagen firma (PNG transparente)</label>
+          <input type="file" id="firma-img" class="form-control form-control-sm"
+                 accept="image/png,image/jpeg">
+        </div>
+        <div class="col-md-2 d-flex align-items-end gap-1">
+          <button class="btn btn-success btn-sm" onclick="guardarFirma()">✅</button>
+          <button class="btn btn-secondary btn-sm"
+                  onclick="document.getElementById('form-firma').style.display='none'">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 7: TIPOS DE DOCUMENTO ═══ -->
+<div class="tab-pane fade" id="tab-tipos">
+  <div class="card cfg-card border-0 shadow-sm">
+    <div class="cat-header d-flex justify-content-between align-items-center">
+      <span><span class="cat-icon">📄</span>Tipos de Documento</span>
+      <button class="btn btn-sm btn-light" onclick="mostrarFormTipo()">+ Agregar tipo</button>
+    </div>
+    <div class="card-body p-0">
+      <div id="lista-tipos" style="max-height:500px;overflow-y:auto;">
+        <div class="text-center text-muted py-2">Cargando...</div>
+      </div>
+    </div>
+    <div id="form-tipo" style="display:none;" class="card-footer bg-light">
+      <div class="row g-2">
+        <div class="col-md-2">
+          <label class="cfg-label">Código (sigla) *</label>
+          <input type="text" id="tipo-codigo" class="form-control form-control-sm text-uppercase"
+                 maxlength="10" placeholder="Ej: CONV">
+        </div>
+        <div class="col-md-6">
+          <label class="cfg-label">Nombre descriptivo *</label>
+          <input type="text" id="tipo-nombre" class="form-control form-control-sm"
+                 placeholder="Ej: Convocatoria">
+        </div>
+        <div class="col-md-4 d-flex align-items-end gap-1">
+          <button class="btn btn-warning btn-sm text-dark fw-bold" onclick="guardarTipo()">✅ Guardar</button>
+          <button class="btn btn-secondary btn-sm"
+                  onclick="document.getElementById('form-tipo').style.display='none'">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 8: AUTORIZADORES ═══ -->
+<div class="tab-pane fade" id="tab-autorizadores">
+  <div class="card cfg-card border-0 shadow-sm">
+    <div class="cat-header d-flex justify-content-between align-items-center">
+      <span><span class="cat-icon">👥</span>Personas Autorizadoras (Junta Directiva)</span>
+      <button class="btn btn-sm btn-light" onclick="mostrarFormAutorizador()">+ Agregar</button>
+    </div>
+    <div class="card-body p-0">
+      <div id="lista-autorizadores" class="p-3">
+        <div class="text-center text-muted py-3 small">Cargando...</div>
+      </div>
+    </div>
+    <div id="form-autorizador" style="display:none;" class="card-footer bg-light">
+      <div class="row g-2">
+        <div class="col-md-3">
+          <label class="cfg-label">Nombre *</label>
+          <input type="text" id="aut-nombre" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="cfg-label">Cargo *</label>
+          <input type="text" id="aut-cargo" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+          <label class="cfg-label">Teléfono</label>
+          <input type="text" id="aut-telefono" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="cfg-label">Email</label>
+          <input type="email" id="aut-email" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-1 d-flex align-items-end gap-1">
+          <button class="btn btn-success btn-sm" onclick="guardarAutorizador()">✅</button>
+          <button class="btn btn-secondary btn-sm"
+                  onclick="document.getElementById('form-autorizador').style.display='none'">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- tab-content -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewLogo(input) {
+  if (input.files && input.files[0]) {
+    const r = new FileReader();
+    r.onload = e => {
+      const el = document.getElementById('logo-preview-img');
+      if (el.tagName === 'IMG') el.src = e.target.result;
+      else el.innerHTML = `<img src="${e.target.result}" class="logo-preview" id="logo-preview-img">`;
+    };
+    r.readAsDataURL(input.files[0]);
+  }
+}
+
+// ── Aprobador ─────────────────────────────────────────────────────
+async function cargarAprobador() {
+  const r = await fetch('/configuracion/api/aprobador_formato').then(r=>r.json()).catch(()=>({}));
+  if (r.nombre) {
+    document.getElementById('aprov-nombre').value = r.nombre || '';
+    document.getElementById('aprov-cargo').value  = r.cargo  || '';
+    document.getElementById('aprov-actual').textContent =
+      `Aprobador actual: ${r.nombre} — ${r.cargo}`;
+  }
+}
+async function guardarAprobador() {
+  const nombre = document.getElementById('aprov-nombre').value.trim();
+  const cargo  = document.getElementById('aprov-cargo').value.trim();
+  if (!nombre || !cargo) { alert('Nombre y cargo son obligatorios'); return; }
+  const r = await fetch('/configuracion/api/aprobador_formato',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({nombre, cargo})
+  }).then(r=>r.json());
+  if (r.ok) {
+    document.getElementById('aprov-actual').innerHTML =
+      `<span class="text-success fw-bold">✅ Guardado:</span> ${nombre} — ${cargo}`;
+  }
+}
+
+// ── Firmas ────────────────────────────────────────────────────────
+async function cargarFirmas() {
+  const rows = await fetch('/configuracion/api/firmas').then(r=>r.json()).catch(()=>[]);
+  const div = document.getElementById('lista-firmas');
+  if (!rows.length) {
+    div.innerHTML = '<div class="text-muted small text-center py-3">Sin firmas registradas. Agregue la imagen de firma de cada directivo.</div>';
+    return;
+  }
+  div.innerHTML = `<div class="d-flex flex-wrap gap-3 p-2">
+    ${rows.map(f=>`<div class="card text-center p-2" style="width:170px;">
+      <div id="fi-${f.id}" style="height:55px;display:flex;align-items:center;justify-content:center;">
+        <span class="text-muted small">Cargando...</span>
+      </div>
+      <div class="fw-semibold small mt-1">${f.nombre}</div>
+      <div class="text-muted" style="font-size:10px;">${f.cargo}</div>
+      <span class="badge mt-1 ${f.activo?'bg-success':'bg-secondary'}">${f.activo?'Activa':'Inactiva'}</span>
+      <button class="btn btn-ghost btn-sm mt-1 small" onclick="toggleFirmaActiva(${f.id},${f.activo})">
+        ${f.activo?'🔴 Desactivar':'🟢 Activar'}
+      </button>
+    </div>`).join('')}
+  </div>`;
+  rows.forEach(f=>{
+    fetch(`/configuracion/api/firmas/${f.id}/imagen`).then(r=>r.json()).then(d=>{
+      if(d.ok) document.getElementById(`fi-${f.id}`).innerHTML =
+        `<img src="${d.base64}" style="max-height:55px;max-width:155px;object-fit:contain;">`;
+    }).catch(()=>{});
+  });
+}
+function mostrarFormFirma(){
+  const f=document.getElementById('form-firma');
+  f.style.display=f.style.display==='none'?'block':'none';
+}
+async function guardarFirma(){
+  const nombre=document.getElementById('firma-nombre').value.trim();
+  const cargo=document.getElementById('firma-cargo').value.trim();
+  if(!nombre||!cargo){alert('Nombre y cargo son obligatorios');return;}
+  const fd=new FormData();
+  fd.append('nombre',nombre);fd.append('cargo',cargo);
+  const img=document.getElementById('firma-img').files[0];
+  if(img) fd.append('firma_img',img);
+  const r=await fetch('/configuracion/api/firmas',{method:'POST',body:fd}).then(r=>r.json());
+  if(r.ok){
+    document.getElementById('firma-nombre').value='';
+    document.getElementById('firma-cargo').value='';
+    document.getElementById('form-firma').style.display='none';
+    await cargarFirmas();
+  }
+}
+async function toggleFirmaActiva(id,activo){
+  await fetch(`/configuracion/api/firmas/${id}`,{method:'PUT',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({activo:activo?0:1})});
+  cargarFirmas();
+}
+
+// ── Tipos de documento ────────────────────────────────────────────
+async function cargarTiposConfig(){
+  const rows=await fetch('/configuracion/api/tipos_documento').then(r=>r.json()).catch(()=>[]);
+  const div=document.getElementById('lista-tipos');
+  if(!rows.length){div.innerHTML='<div class="text-muted text-center p-2">Sin tipos</div>';return;}
+  div.innerHTML=`<table class="table table-sm mb-0">
+    <thead class="table-dark"><tr><th style="width:110px">Código</th><th>Nombre</th><th style="width:100px">Estado</th><th style="width:120px">Acciones</th></tr></thead>
+    <tbody>
+    ${rows.map(t=>`<tr>
+      <td><code class="fw-bold">${t.codigo}</code></td>
+      <td>${t.nombre}</td>
+      <td><span class="badge ${t.activo?'bg-success':'bg-secondary'}">${t.activo?'Activo':'Inactivo'}</span></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="toggleTipo(${t.id},${t.activo})">
+          ${t.activo?'🔴':'🟢'}
+        </button>
+        <button class="btn btn-ghost btn-sm text-danger" onclick="eliminarTipo(${t.id},'${t.nombre}')">🗑</button>
+      </td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+function mostrarFormTipo(){
+  const f=document.getElementById('form-tipo');
+  f.style.display=f.style.display==='none'?'block':'none';
+}
+async function guardarTipo(){
+  const codigo=document.getElementById('tipo-codigo').value.trim().toUpperCase();
+  const nombre=document.getElementById('tipo-nombre').value.trim();
+  if(!codigo||!nombre){alert('Código y nombre requeridos');return;}
+  const r=await fetch('/configuracion/api/tipos_documento',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({codigo,nombre})}).then(r=>r.json());
+  if(r.ok){
+    document.getElementById('tipo-codigo').value='';
+    document.getElementById('tipo-nombre').value='';
+    document.getElementById('form-tipo').style.display='none';
+    await cargarTiposConfig();
+  } else alert(r.error||'Error al guardar');
+}
+async function toggleTipo(id,activo){
+  await fetch(`/configuracion/api/tipos_documento/${id}`,{method:'PUT',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({activo:activo?0:1})});
+  cargarTiposConfig();
+}
+async function eliminarTipo(id,nombre){
+  if(!confirm(`¿Eliminar el tipo "${nombre}"?`)) return;
+  const r=await fetch(`/configuracion/api/tipos_documento/${id}`,{method:'DELETE'}).then(r=>r.json());
+  if(r.ok) cargarTiposConfig(); else alert(r.error||'No se puede eliminar');
+}
+
+// ── Autorizadores ─────────────────────────────────────────────────
+async function cargarAutorizadores(){
+  const r=await fetch('/configuracion/api/autorizadores').then(r=>r.json()).catch(()=>[]);
+  const lista=document.getElementById('lista-autorizadores');
+  if(!r.length){
+    lista.innerHTML='<div class="text-muted small text-center py-2">Sin autorizadores.</div>';return;
+  }
+  lista.innerHTML=`<table class="table table-sm mb-0">
+    <thead class="table-dark"><tr><th>Nombre</th><th>Cargo</th><th>Teléfono</th><th>Email</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+    ${r.map(a=>`<tr>
+      <td class="fw-semibold">${a.nombre}</td>
+      <td><span class="badge bg-secondary">${a.cargo}</span></td>
+      <td>${a.telefono||'—'}</td>
+      <td>${a.email||'—'}</td>
+      <td><span class="badge ${a.activo?'bg-success':'bg-secondary'}">${a.activo?'Activo':'Inactivo'}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="toggleAutorizador(${a.id},${a.activo})">
+        ${a.activo?'Desactivar':'Activar'}</button></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+function mostrarFormAutorizador(){
+  const f=document.getElementById('form-autorizador');
+  f.style.display=f.style.display==='none'?'block':'none';
+}
+async function guardarAutorizador(){
+  const nombre=document.getElementById('aut-nombre').value.trim();
+  const cargo=document.getElementById('aut-cargo').value.trim();
+  if(!nombre||!cargo){alert('Nombre y cargo son obligatorios');return;}
+  const r=await fetch('/configuracion/api/autorizadores',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nombre,cargo,telefono:document.getElementById('aut-telefono').value,
+      email:document.getElementById('aut-email').value})}).then(r=>r.json());
+  if(r.ok){
+    ['aut-nombre','aut-cargo','aut-telefono','aut-email'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('form-autorizador').style.display='none';
+    await cargarAutorizadores();
+  }
+}
+async function toggleAutorizador(id,activo){
+  await fetch(`/configuracion/api/autorizadores/${id}`,{method:'PUT',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({activo:activo?0:1})});
+  cargarAutorizadores();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  cargarAprobador();
+  cargarFirmas();
+  cargarTiposConfig();
+  cargarAutorizadores();
+  // Sincronizar inputs de color
+  document.querySelectorAll('input[type="color"]').forEach(inp=>{
+    const txt=document.getElementById('txt_'+inp.name);
+    if(txt){ inp.addEventListener('input',()=>txt.value=inp.value); }
+  });
+});
+</script>
+{% endblock %}

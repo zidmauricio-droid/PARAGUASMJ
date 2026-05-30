@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Reportes Tecnicos — ASUACAP{% endblock %}
+{% block content %}
+<h5 class="mb-4"><i class="bi bi-bar-chart me-2 text-primary"></i>Panel de Reportes Tecnicos CAR / SSPD</h5>
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-file-excel me-2"></i>Exportar Reporte Trimestral
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Genera el reporte Excel institucional con: Balance Hidrico (CAR/PUEAA), Fallas Georreferenciadas y PQRS.</p>
+                <form method="POST" action="{{ url_for('exportar_excel_trimestral') }}">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Ano</label>
+                            <select name="anio" class="form-select">
+                                {% for a in range(2024, anio_actual+1) %}
+                                <option value="{{ a }}" {% if a==anio_actual %}selected{% endif %}>{{ a }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Trimestre</label>
+                            <select name="trimestre" class="form-select">
+                                <option value="1">1er Trimestre (Ene-Mar)</option>
+                                <option value="2" selected>2do Trimestre (Abr-Jun)</option>
+                                <option value="3">3er Trimestre (Jul-Sep)</option>
+                                <option value="4">4to Trimestre (Oct-Dic)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success fw-bold">
+                        <i class="bi bi-download me-1"></i>Descargar Excel
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-hdd me-2"></i>Respaldo de Datos
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Crea una copia de seguridad de la base de datos. Se mantienen los ultimos 10 respaldos automaticamente.</p>
+                <a href="{{ url_for('crear_backup_manual') }}" class="btn btn-primary fw-bold">
+                    <i class="bi bi-shield-check me-1"></i>Crear Backup Ahora
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

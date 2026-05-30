@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Reportes Normativos — ASUACAP{% endblock %}
+{% block content %}
+<h5 class="mb-4"><i class="bi bi-bar-chart-fill me-2 text-primary"></i>Panel de Reportes Normativos — CAR / SSPD / CRA</h5>
+
+<!-- IUS Dashboard -->
+{% if ius and ius.indicadores %}
+{% set ind = ius.indicadores %}
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header" style="background:#1E3A8A;color:#fff;">
+        <i class="bi bi-speedometer2 me-2"></i>Indicadores IUS {{ anio }} (CRA Res. 906/2019)
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-2 text-center border-end">
+            {% set ianc_v = ind.IANC or 0 %}
+            <div class="fs-3 fw-bold {% if ianc_v <= 15 %}text-success{% elif ianc_v <= 25 %}text-warning{% else %}text-danger{% endif %}">
+              {{ "%.1f"|format(ianc_v) }}%
+            </div>
+            <div class="text-muted small">IANC</div>
+            <div class="progress mt-1" style="height:4px;">
+              <div class="progress-bar {% if ianc_v <= 15 %}bg-success{% elif ianc_v <= 25 %}bg-warning{% else %}bg-danger{% endif %}"
+                   style="width:{{ [ianc_v,100]|min }}%"></div>
+            </div>
+          </div>
+          <div class="col-md-2 text-center border-end">
+            <div class="fs-3 fw-bold text-success">{{ "%.1f"|format((ind.continuidad or 0)*100) }}%</div>
+            <div class="text-muted small">Continuidad</div>
+          </div>
+          <div class="col-md-2 text-center border-end">
+            <div class="fs-3 fw-bold text-info">{{ "%.1f"|format((ind.cobertura or 0)*100) }}%</div>
+            <div class="text-muted small">Cobertura</div>
+          </div>
+          <div class="col-md-2 text-center border-end">
+            <div class="fs-3 fw-bold text-primary">{{ "%.1f"|format((ind.IRAC or 0)*100) }}%</div>
+            <div class="text-muted small">Micromedición</div>
+          </div>
+          <div class="col-md-2 text-center border-end">
+            <div class="fs-3 fw-bold text-warning">{{ ind.fallas_anio or 0 }}</div>
+            <div class="text-muted small">Fallas / año</div>
+          </div>
+          <div class="col-md-2 text-center">
+            {% set ius_v = ind.IUS or 0 %}
+            <div class="fs-3 fw-bold {% if ius_v >= 70 %}text-success{% elif ius_v >= 50 %}text-warning{% else %}text-danger{% endif %}">
+              {{ "%.1f"|format(ius_v) }}
+            </div>
+            <div class="text-muted small">IUS Compuesto</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <!-- FC15 SSPD -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header" style="background:#0F6E56;color:#fff;">
+        <i class="bi bi-file-excel me-2"></i>FC15 — IUS para XBRL Express (SSPD)
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">Genera la hoja FC15 con todas las variables del Índice de Uso Sostenible lista para importar en el XBRL Express de la SSPD.</p>
+        <form method="POST" action="{{ url_for('reportes_normativos.descargar_fc15') }}">
+          <select name="anio" class="form-select form-select-sm mb-2">
+            {% for a in range(2022, anio+1) %}<option value="{{ a }}" {% if a==anio %}selected{% endif %}>{{ a }}</option>{% endfor %}
+          </select>
+          <button type="submit" class="btn btn-success w-100 fw-bold">
+            <i class="bi bi-download me-1"></i>Descargar FC15
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hoja IUS completa -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header" style="background:#1E3A8A;color:#fff;">
+        <i class="bi bi-file-spreadsheet me-2"></i>Hoja IUS Completa (INFORMACION IUS)
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">Hoja IUS mensual con IANC, suscriptores, fallas — mismo formato del archivo INFORMACION IUS 2024.xlsx.</p>
+        <form method="POST" action="{{ url_for('reportes_normativos.descargar_hoja_ius') }}">
+          <select name="anio" class="form-select form-select-sm mb-2">
+            {% for a in range(2022, anio+1) %}<option value="{{ a }}" {% if a==anio %}selected{% endif %}>{{ a }}</option>{% endfor %}
+          </select>
+          <button type="submit" class="btn btn-primary w-100 fw-bold">
+            <i class="bi bi-download me-1"></i>Hoja IUS Excel
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Balance CAR -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-warning text-dark">
+        <i class="bi bi-water me-2"></i>Balance Hídrico CAR / PUEAA
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">Balance hídrico trimestral para reporte a la CAR Cundinamarca — Oficina Regional Gualivá.</p>
+        <form method="POST" action="{{ url_for('reportes_normativos.descargar_balance_car') }}">
+          <div class="row g-1 mb-2">
+            <div class="col-6"><select name="anio" class="form-select form-select-sm">
+              {% for a in range(2022,anio+1) %}<option value="{{ a }}" {% if a==anio %}selected{% endif %}>{{ a }}</option>{% endfor %}
+            </select></div>
+            <div class="col-6"><select name="trimestre" class="form-select form-select-sm">
+              <option value="1">T1 (Ene-Mar)</option>
+              <option value="2">T2 (Abr-Jun)</option>
+              <option value="3">T3 (Jul-Sep)</option>
+              <option value="4">T4 (Oct-Dic)</option>
+            </select></div>
+          </div>
+          <button type="submit" class="btn btn-warning w-100 fw-bold">
+            <i class="bi bi-download me-1"></i>Balance CAR
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reporte trimestral completo -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-info text-dark">
+        <i class="bi bi-file-earmark-excel me-2"></i>Reporte Trimestral CAR+SSPD (3 hojas)
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">Balance Hídrico + Fallas en Red + PQRS. El más completo para auditorías.</p>
+        <form method="POST" action="{{ url_for('reportes_normativos.descargar_trimestral') }}">
+          <div class="row g-1 mb-2">
+            <div class="col-6"><select name="anio" class="form-select form-select-sm">
+              {% for a in range(2022,anio+1) %}<option value="{{ a }}" {% if a==anio %}selected{% endif %}>{{ a }}</option>{% endfor %}
+            </select></div>
+            <div class="col-6"><select name="trimestre" class="form-select form-select-sm">
+              <option value="1">T1</option><option value="2" selected>T2</option>
+              <option value="3">T3</option><option value="4">T4</option>
+            </select></div>
+          </div>
+          <button type="submit" class="btn btn-info w-100 fw-bold">
+            <i class="bi bi-download me-1"></i>Reporte Completo
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enviar PUEAA a CAR -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-danger text-white">
+        <i class="bi bi-envelope me-2"></i>Enviar PUEAA a la CAR por Correo
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">Envía el PDF del PUEAA a sau@car.gov.co con el asunto y cuerpo institucional correcto.</p>
+        <form method="POST" action="{{ url_for('reportes_normativos.enviar_pueaa') }}">
+          <input type="text" name="correo_car" class="form-control form-control-sm mb-2"
+                 value="sau@car.gov.co" placeholder="Correo destino CAR">
+          <input type="text" name="pdf_path" class="form-control form-control-sm mb-2"
+                 placeholder="Ruta del PDF generado...">
+          <button type="submit" class="btn btn-danger w-100 fw-bold">
+            <i class="bi bi-send me-1"></i>Enviar a CAR
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backup -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-dark text-white">
+        <i class="bi bi-shield-check me-2"></i>Respaldo de Datos
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">Crea un backup inmediato de la base de datos. Se conservan los últimos 10 backups automáticamente.</p>
+        <a href="{{ url_for('reportes_normativos.hacer_backup') }}" class="btn btn-dark w-100 fw-bold">
+          <i class="bi bi-hdd me-1"></i>Crear Backup Ahora
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

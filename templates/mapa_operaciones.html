@@ -1,0 +1,669 @@
+{% extends "base.html" %}
+{% block title %}Mapa GIS — ASUACAP{% endblock %}
+
+{% block extra_css %}
+{# Leaflet: usa copia local si existe, sino CDN #}
+<link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}"
+      onerror="this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'">
+<style>
+  #mapa_asuacap { width: 100%; height: calc(100vh - 200px); min-height: 480px; border-radius: 10px; }
+
+  /* Panel lateral */
+  .map-panel {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .map-panel-header {
+    background: #1E3A8A; color: #fff;
+    padding: 10px 14px; font-size: 13px; font-weight: 700;
+  }
+
+  /* Leyenda Leaflet personalizada */
+  .legend {
+    background: rgba(255,255,255,.93);
+    backdrop-filter: blur(6px);
+    border-radius: 10px;
+    padding: 10px 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    font-size: 12px; line-height: 1.7;
+    border: 1px solid rgba(0,0,0,.08);
+    min-width: 190px;
+  }
+  .legend h6 { font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #1e293b; }
+  .legend-row { display: flex; align-items: center; gap: 7px; }
+  .legend-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(0,0,0,.2); }
+
+  /* Badge contador de capa */
+  .layer-count {
+    display: inline-block;
+    background: #1E3A8A; color: #fff;
+    border-radius: 10px; font-size: 10px;
+    font-weight: 700; padding: 1px 6px; margin-left: 4px;
+  }
+
+  /* Popup mejorado */
+  .popup-title   { font-weight: 700; font-size: 13px; margin-bottom: 4px; color: #1E3A8A; }
+  .popup-row     { font-size: 12px; display: flex; gap: 6px; margin-top: 2px; }
+  .popup-label   { color: #64748b; min-width: 70px; }
+  .popup-val     { font-weight: 600; color: #1e293b; }
+  .popup-badge   {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 700;
+  }
+
+  /* Alerta de geolocalización */
+  .geo-alert {
+    position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: #1E3A8A; color: #fff;
+    padding: 8px 18px; border-radius: 8px;
+    font-size: 12px; z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">
+    <i class="bi bi-map me-2 text-primary"></i>
+    Sistema de Información Geográfica — ASUACAP
+  </h5>
+  <div class="d-flex gap-2">
+    <button class="btn btn-sm btn-outline-primary" id="btn-mi-ubicacion">
+      <i class="bi bi-crosshair me-1"></i>Mi ubicación
+    </button>
+    <button class="btn btn-sm btn-outline-danger" id="btn-modo-falla" title="Activar para reportar falla con clic">
+      <i class="bi bi-exclamation-triangle me-1"></i>Reportar falla
+    </button>
+    <a href="{{ url_for('gis.mapa') }}" class="btn btn-sm btn-ghost" title="Recargar mapa">
+      <i class="bi bi-arrow-clockwise"></i>
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Mapa principal -->
+  <div class="col-lg-9">
+    <div style="position:relative;">
+      <div id="mapa_asuacap"></div>
+      <div class="geo-alert" id="geo-alert">📍 Obteniendo ubicación del dispositivo…</div>
+    </div>
+  </div>
+
+  <!-- Panel lateral -->
+  <div class="col-lg-3 d-flex flex-column gap-3">
+
+    <!-- Buscador suscriptor -->
+    <div class="map-panel">
+      <div class="map-panel-header"><i class="bi bi-search me-1"></i>Buscar suscriptor</div>
+      <div class="p-3">
+        <input type="text" id="buscador-suscriptor" class="form-control form-control-sm"
+               placeholder="Nombre o medidor…">
+        <div id="resultado-busqueda" class="mt-2" style="font-size:12px;"></div>
+      </div>
+    </div>
+
+    <!-- Estadísticas de capas -->
+    <div class="map-panel">
+      <div class="map-panel-header"><i class="bi bi-layers me-1"></i>Capas activas</div>
+      <div class="p-3">
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span style="font-size:12px;"><span style="color:#3b82f6;">●</span> Infraestructura</span>
+          <span class="layer-count" id="cnt-infra">0</span>
+        </div>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span style="font-size:12px;"><span style="color:#10b981;">●</span> Suscriptores</span>
+          <span class="layer-count" id="cnt-subs">0</span>
+        </div>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span style="font-size:12px;"><span style="color:#c084fc;">●</span> Fallas</span>
+          <span class="layer-count" id="cnt-fallas">0</span>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span style="font-size:12px;"><span style="color:#f59e0b;">●</span> Mi ubicación</span>
+          <span id="cnt-geo" class="layer-count" style="background:#f59e0b;color:#000;">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zonas de prestación -->
+    <div class="map-panel">
+      <div class="map-panel-header"><i class="bi bi-pin-map me-1"></i>Zonas de prestación</div>
+      <div id="lista-zonas" style="font-size:12px;">
+        <div class="p-3 text-muted">Cargando…</div>
+      </div>
+    </div>
+
+    <!-- Info seleccionado -->
+    <div class="map-panel" id="panel-info" style="display:none;">
+      <div class="map-panel-header" id="panel-info-title">Información</div>
+      <div class="p-3" id="panel-info-body" style="font-size:12px;"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal Reportar Falla -->
+<div class="modal fade" id="modalFalla" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title fs-6"><i class="bi bi-exclamation-triangle me-2"></i>Reportar Falla</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label fw-semibold" style="font-size:12px;">Descripción</label>
+          <input type="text" id="falla-desc" class="form-control form-control-sm"
+                 placeholder="Ej: Rotura tubería 2 pulgadas…">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold" style="font-size:12px;">Severidad</label>
+          <select id="falla-sev" class="form-select form-select-sm">
+            <option value="Baja">Baja — Sin corte de servicio</option>
+            <option value="Media" selected>Media — Servicio reducido</option>
+            <option value="Alta_Corte_Servicio">Alta — CORTE TOTAL</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold" style="font-size:12px;">Zona afectada</label>
+          <select id="falla-zona" class="form-select form-select-sm">
+            <option value="">— Sin zona específica —</option>
+          </select>
+        </div>
+        <div id="falla-coords" class="alert alert-light py-1 px-2 mt-2"
+             style="font-size:11px;font-family:monospace;display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-sm btn-danger fw-bold" id="btn-confirmar-falla">
+          <i class="bi bi-send me-1"></i>Reportar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# Leaflet JS: local si existe, si no CDN #}
+<script>
+(function(){
+  var s=document.createElement('script');
+  s.src="{{ url_for('static', filename='leaflet/leaflet.js') }}";
+  s.onerror=function(){
+    var fb=document.createElement('script');
+    fb.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    document.head.appendChild(fb);
+  };
+  document.head.appendChild(s);
+})();
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// PARAGUASMJ — Mapa GIS Mejorado
+// - Mapa siempre visible (tile OSM + fallback color)
+// - Geolocalización como punto de pérdida de agua
+// - Marcador de oficina desde configuración BD
+// - Capas dinámicas con contadores
+// - Modo reportar falla con clic
+// ═══════════════════════════════════════════════════════════════
+
+// Espera a que Leaflet cargue
+function esperarLeaflet(cb, n) {
+  n = n || 0;
+  if (typeof L !== 'undefined') { cb(); }
+  else if (n < 50) { setTimeout(function(){ esperarLeaflet(cb, n+1); }, 100); }
+  else { document.getElementById('mapa_asuacap').innerHTML =
+    '<div class="alert alert-warning m-3">⚠️ Leaflet no pudo cargarse. Verifique conexión a internet o copie Leaflet en /static/leaflet/</div>'; }
+}
+
+esperarLeaflet(function() {
+
+// ── Variables globales ──────────────────────────────────────────
+var modoFalla    = false;
+var fallaLat     = 0, fallaLon = 0;
+var marcadorGeo  = null;
+var circleGeo    = null;
+var marcadorOfic = null;
+var datosSubs    = [];   // cache para buscador
+var configMapa   = { lat: 5.0135, lon: -74.4700, zoom: 15,
+                     nombre: "ASUACAP", direccion: "", telefono: "" };
+
+// ── Crear mapa ──────────────────────────────────────────────────
+var map = L.map('mapa_asuacap', { zoomControl: true });
+
+// Tile principal: OpenStreetMap
+var tileOSM = L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { maxZoom: 19, attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>' }
+);
+
+// Tile satelite (ESRI)
+var tileSat = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { maxZoom: 19, attribution: '© Esri' }
+);
+
+// Tile local (si existe) — sin error 404 visible
+var tileLocal = L.tileLayer(
+  "{{ url_for('static', filename='map-tiles/{z}/{x}/{y}.png') }}",
+  { maxZoom: 18, errorTileUrl: '' }
+);
+
+tileOSM.addTo(map);
+
+// Control de capas base
+var baseMaps = {
+  "🗺️ Mapa estándar": tileOSM,
+  "🛰️ Satélite": tileSat
+};
+
+// ── Capas de datos ──────────────────────────────────────────────
+var capaInfra       = L.layerGroup().addTo(map);
+var capaSuscriptores= L.layerGroup().addTo(map);
+var capaFallas      = L.layerGroup().addTo(map);
+var capaOficina     = L.layerGroup().addTo(map);
+var capaGeo         = L.layerGroup().addTo(map);
+
+var overlayMaps = {
+  "🏭 Infraestructura": capaInfra,
+  "👥 Suscriptores":    capaSuscriptores,
+  "⚠️ Fallas":          capaFallas,
+  "🏢 Oficina ASUACAP": capaOficina,
+  "📍 Mi ubicación":    capaGeo
+};
+
+L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
+
+// ── Leyenda ─────────────────────────────────────────────────────
+var leyenda = L.control({ position: 'bottomleft' });
+leyenda.onAdd = function() {
+  var d = L.DomUtil.create('div','legend');
+  d.innerHTML = `
+    <h6>Convenciones</h6>
+    <div class="legend-row"><div class="legend-dot" style="background:#3b82f6;"></div>Infra. operativa</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#ef4444;"></div>Infra. en falla</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#10b981;"></div>Suscriptor activo</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#f59e0b;"></div>Suscriptor suspendido</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#c084fc;"></div>Daño reportado</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#1E3A8A;border:2px solid #0ea5e9;"></div>Oficina ASUACAP</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#f59e0b;border:2px solid #92400e;"></div>Tu ubicación (pérdida)</div>
+  `;
+  return d;
+};
+leyenda.addTo(map);
+
+// ── Íconos personalizados ────────────────────────────────────────
+function colorCircle(color, size, borderColor) {
+  return L.divIcon({
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;
+                background:${color};border:2px solid ${borderColor || 'rgba(255,255,255,.8)'};
+                box-shadow:0 0 6px rgba(0,0,0,.3);"></div>`,
+    className: '',
+    iconSize: [size, size],
+    iconAnchor: [size/2, size/2]
+  });
+}
+
+function iconoOficina() {
+  return L.divIcon({
+    html: `<div style="background:#1E3A8A;color:#fff;border:3px solid #0ea5e9;
+                border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+                width:28px;height:28px;display:flex;align-items:center;justify-content:center;">
+             <span style="transform:rotate(45deg);font-size:13px;">🏢</span>
+           </div>`,
+    className: '',
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -28]
+  });
+}
+
+function iconoGeo() {
+  return L.divIcon({
+    html: `<div style="background:#f59e0b;border:3px solid #92400e;
+                border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+                width:26px;height:26px;display:flex;align-items:center;justify-content:center;">
+             <span style="transform:rotate(45deg);font-size:12px;">📍</span>
+           </div>`,
+    className: '',
+    iconSize: [26, 26],
+    iconAnchor: [13, 26],
+    popupAnchor: [0, -26]
+  });
+}
+
+// ── 1. Cargar configuración del mapa (lat/lon oficina) ──────────
+fetch('/gis/api/config')
+.then(r => r.json())
+.then(function(cfg) {
+  configMapa = cfg;
+  map.setView([cfg.lat, cfg.lon], cfg.zoom);
+
+  // Marcador de la oficina ASUACAP
+  marcadorOfic = L.marker([cfg.lat, cfg.lon], { icon: iconoOficina(), zIndexOffset: 1000 });
+  marcadorOfic.bindPopup(`
+    <div class="popup-title">🏢 ${cfg.nombre}</div>
+    <div class="popup-row"><span class="popup-label">Dirección:</span><span class="popup-val">${cfg.direccion || 'No configurada'}</span></div>
+    <div class="popup-row"><span class="popup-label">Teléfono:</span><span class="popup-val">${cfg.telefono || '—'}</span></div>
+    <div class="popup-row"><span class="popup-label">Lat/Lon:</span><span class="popup-val">${cfg.lat.toFixed(5)}, ${cfg.lon.toFixed(5)}</span></div>
+    <div style="margin-top:6px;font-size:11px;color:#64748b;">
+      <a href="https://maps.google.com/?q=${cfg.lat},${cfg.lon}" target="_blank">
+        📌 Ver en Google Maps
+      </a>
+    </div>
+  `);
+  marcadorOfic.addTo(capaOficina);
+
+  // Cargar zonas en el panel lateral
+  cargarZonas();
+})
+.catch(function() {
+  // Si falla la config, centrar en coordenadas por defecto de El Puente
+  map.setView([5.0135, -74.4700], 15);
+  cargarZonas();
+});
+
+// ── 2. Cargar infraestructura ────────────────────────────────────
+fetch('/gis/api/infraestructura')
+.then(r => r.json())
+.then(function(data) {
+  document.getElementById('cnt-infra').textContent = data.features.length;
+  L.geoJSON(data, {
+    pointToLayer: function(f, ll) {
+      var color = f.properties.estado === 'Falla Critica' ? '#ef4444' : '#3b82f6';
+      return L.circleMarker(ll, {
+        radius: 10, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.88
+      });
+    },
+    onEachFeature: function(f, layer) {
+      var p = f.properties;
+      var badgeColor = p.estado === 'Falla Critica' ? 'background:#fee2e2;color:#991b1b' : 'background:#dbeafe;color:#1e40af';
+      layer.bindPopup(`
+        <div class="popup-title">${p.nombre}</div>
+        <div class="popup-row"><span class="popup-label">Tipo:</span><span class="popup-val">${p.tipo}</span></div>
+        <div class="popup-row"><span class="popup-label">Estado:</span>
+          <span class="popup-badge" style="${badgeColor}">${p.estado}</span></div>
+        ${p.observaciones ? '<div class="popup-row"><span class="popup-label">Nota:</span><span class="popup-val">' + p.observaciones + '</span></div>' : ''}
+      `);
+      layer.on('click', function() { mostrarPanelInfo('🏭 ' + p.nombre, p); });
+    }
+  }).addTo(capaInfra);
+}).catch(function(e){ console.warn('Infra:', e); });
+
+// ── 3. Cargar suscriptores ───────────────────────────────────────
+fetch('/gis/api/suscriptores')
+.then(r => r.json())
+.then(function(data) {
+  datosSubs = data.features;
+  document.getElementById('cnt-subs').textContent = data.features.length;
+  L.geoJSON(data, {
+    pointToLayer: function(f, ll) {
+      var color = f.properties.estado === 'Activo' ? '#10b981' : '#f59e0b';
+      return L.circleMarker(ll, {
+        radius: 6, fillColor: color, color: '#fff', weight: 1.5, fillOpacity: 0.85
+      });
+    },
+    onEachFeature: function(f, layer) {
+      var p = f.properties;
+      layer.bindPopup(`
+        <div class="popup-title">${p.nombre}</div>
+        <div class="popup-row"><span class="popup-label">Medidor:</span><span class="popup-val">${p.medidor}</span></div>
+        <div class="popup-row"><span class="popup-label">Zona:</span><span class="popup-val">${p.zona}</span></div>
+        <div class="popup-row"><span class="popup-label">Estado:</span>
+          <span class="popup-badge" style="${p.estado==='Activo'?'background:#d1fae5;color:#065f46':'background:#fef3c7;color:#92400e'}">${p.estado}</span>
+        </div>
+      `);
+    }
+  }).addTo(capaSuscriptores);
+}).catch(function(e){ console.warn('Suscriptores:', e); });
+
+// ── 4. Cargar fallas ─────────────────────────────────────────────
+fetch('/gis/api/fallas')
+.then(r => r.json())
+.then(function(data) {
+  document.getElementById('cnt-fallas').textContent = data.features.length;
+  L.geoJSON(data, {
+    pointToLayer: function(f, ll) {
+      var color = f.properties.severidad === 'Alta_Corte_Servicio' ? '#ef4444' : '#c084fc';
+      return L.circleMarker(ll, {
+        radius: 8, fillColor: color, color: '#8b5cf6', weight: 2, fillOpacity: 0.9
+      });
+    },
+    onEachFeature: function(f, layer) {
+      var p = f.properties;
+      layer.bindPopup(`
+        <div class="popup-title" style="color:#7c3aed;">⚠️ Falla reportada</div>
+        <div class="popup-row"><span class="popup-label">Descripción:</span><span class="popup-val">${p.descripcion}</span></div>
+        <div class="popup-row"><span class="popup-label">Severidad:</span>
+          <span class="popup-badge" style="${p.severidad==='Alta_Corte_Servicio'?'background:#fee2e2;color:#991b1b':'background:#ede9fe;color:#5b21b6'}">${p.severidad}</span>
+        </div>
+        <div class="popup-row"><span class="popup-label">Estado:</span><span class="popup-val">${p.estado}</span></div>
+        <div class="popup-row"><span class="popup-label">Fecha:</span><span class="popup-val" style="font-size:11px;">${(p.fecha||'').substring(0,16)}</span></div>
+      `);
+    }
+  }).addTo(capaFallas);
+}).catch(function(e){ console.warn('Fallas:', e); });
+
+// ── 5. Geolocalización del dispositivo ──────────────────────────
+document.getElementById('btn-mi-ubicacion').addEventListener('click', function() {
+  var alerta = document.getElementById('geo-alert');
+  alerta.style.display = 'block';
+  if (!navigator.geolocation) {
+    alerta.textContent = '❌ Este dispositivo no soporta geolocalización.';
+    setTimeout(function(){ alerta.style.display='none'; }, 3000);
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      alerta.style.display = 'none';
+      var lat = pos.coords.latitude;
+      var lon = pos.coords.longitude;
+      var acc = Math.round(pos.coords.accuracy);
+
+      // Eliminar marcador anterior si existe
+      capaGeo.clearLayers();
+
+      // Marcador de posición (punto de pérdida de agua)
+      var mkr = L.marker([lat, lon], { icon: iconoGeo(), zIndexOffset: 2000 });
+      mkr.bindPopup(`
+        <div class="popup-title" style="color:#92400e;">📍 Tu ubicación actual</div>
+        <div class="popup-row"><span class="popup-label">Latitud:</span><span class="popup-val">${lat.toFixed(6)}</span></div>
+        <div class="popup-row"><span class="popup-label">Longitud:</span><span class="popup-val">${lon.toFixed(6)}</span></div>
+        <div class="popup-row"><span class="popup-label">Precisión:</span><span class="popup-val">±${acc} m</span></div>
+        <div style="margin-top:8px;padding:6px;background:#fffbeb;border-radius:6px;font-size:11px;color:#92400e;">
+          💧 <strong>Punto de pérdida de agua</strong><br>
+          Usa este punto para reportar fugas o daños cercanos.
+        </div>
+        <button onclick="abrirFallaDesdeGeo(${lat},${lon})"
+                class="btn btn-sm btn-danger w-100 mt-2" style="font-size:11px;">
+          ⚠️ Reportar falla aquí
+        </button>
+      `);
+      mkr.addTo(capaGeo);
+
+      // Círculo de precisión
+      L.circle([lat, lon], {
+        radius: acc, color: '#f59e0b', fillColor: '#fef3c7',
+        fillOpacity: 0.15, weight: 1.5
+      }).addTo(capaGeo);
+
+      // Centrar mapa en la ubicación
+      map.flyTo([lat, lon], Math.max(map.getZoom(), 16), { duration: 1.2 });
+      document.getElementById('cnt-geo').textContent = '±' + acc + 'm';
+      mkr.openPopup();
+    },
+    function(err) {
+      alerta.style.display = 'none';
+      var msg = {
+        1: 'Permiso denegado. Active la ubicación en su navegador.',
+        2: 'Posición no disponible. Intente nuevamente.',
+        3: 'Tiempo de espera agotado.'
+      };
+      alert('📍 ' + (msg[err.code] || 'Error de geolocalización.'));
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+});
+
+// Abrir modal de falla desde popup de geolocalización
+window.abrirFallaDesdeGeo = function(lat, lon) {
+  fallaLat = lat;
+  fallaLon = lon;
+  document.getElementById('falla-coords').style.display = 'block';
+  document.getElementById('falla-coords').textContent = lat.toFixed(6) + ', ' + lon.toFixed(6);
+  new bootstrap.Modal(document.getElementById('modalFalla')).show();
+};
+
+// ── 6. Modo reportar falla ───────────────────────────────────────
+var btnFalla = document.getElementById('btn-modo-falla');
+btnFalla.addEventListener('click', function() {
+  modoFalla = !modoFalla;
+  if (modoFalla) {
+    btnFalla.classList.replace('btn-outline-danger','btn-danger');
+    btnFalla.innerHTML = '<i class="bi bi-x-circle me-1"></i>Cancelar reporte';
+    map.getContainer().style.cursor = 'crosshair';
+  } else {
+    btnFalla.classList.replace('btn-danger','btn-outline-danger');
+    btnFalla.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Reportar falla';
+    map.getContainer().style.cursor = '';
+  }
+});
+
+// Clic en el mapa para reportar falla (modo activado o clic derecho)
+map.on('click', function(e) {
+  if (!modoFalla) return;
+  fallaLat = e.latlng.lat;
+  fallaLon = e.latlng.lng;
+  document.getElementById('falla-coords').style.display = 'block';
+  document.getElementById('falla-coords').textContent = fallaLat.toFixed(6) + ', ' + fallaLon.toFixed(6);
+  new bootstrap.Modal(document.getElementById('modalFalla')).show();
+});
+
+map.on('contextmenu', function(e) {
+  fallaLat = e.latlng.lat;
+  fallaLon = e.latlng.lng;
+  document.getElementById('falla-coords').style.display = 'block';
+  document.getElementById('falla-coords').textContent = fallaLat.toFixed(6) + ', ' + fallaLon.toFixed(6);
+  new bootstrap.Modal(document.getElementById('modalFalla')).show();
+});
+
+// Confirmar reporte de falla
+document.getElementById('btn-confirmar-falla').addEventListener('click', function() {
+  var desc = document.getElementById('falla-desc').value.trim();
+  var sev  = document.getElementById('falla-sev').value;
+  var zona = document.getElementById('falla-zona').value || null;
+  if (!desc) { alert('Ingrese una descripción de la falla.'); return; }
+
+  fetch('/gis/api/fallas/nueva', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat: fallaLat, lon: fallaLon, descripcion: desc, severidad: sev, zona_id: zona })
+  })
+  .then(r => r.json())
+  .then(function(d) {
+    if (d.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('modalFalla')).hide();
+      document.getElementById('falla-desc').value = '';
+      // Agregar marcador inmediatamente sin recargar
+      var color = sev === 'Alta_Corte_Servicio' ? '#ef4444' : '#c084fc';
+      var mkr = L.circleMarker([fallaLat, fallaLon], {
+        radius: 8, fillColor: color, color: '#8b5cf6', weight: 2, fillOpacity: 0.9
+      });
+      mkr.bindPopup(`<div class="popup-title" style="color:#7c3aed;">⚠️ ${desc}</div>
+        <div class="popup-row"><span class="popup-label">Severidad:</span><span class="popup-val">${sev}</span></div>
+        <div class="popup-row"><span class="popup-label">Estado:</span><span class="popup-val">Pendiente</span></div>`);
+      mkr.addTo(capaFallas);
+      var cnt = parseInt(document.getElementById('cnt-fallas').textContent||0) + 1;
+      document.getElementById('cnt-fallas').textContent = cnt;
+      // Desactivar modo falla
+      modoFalla = false;
+      btnFalla.classList.replace('btn-danger','btn-outline-danger');
+      btnFalla.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Reportar falla';
+      map.getContainer().style.cursor = '';
+    } else {
+      alert('Error: ' + d.error);
+    }
+  })
+  .catch(function(e){ alert('Error de conexión: ' + e); });
+});
+
+// ── 7. Cargar zonas en panel lateral ────────────────────────────
+function cargarZonas() {
+  fetch('/gis/api/zonas')
+  .then(r => r.json())
+  .then(function(zonas) {
+    // Rellenar selector del modal
+    var sel = document.getElementById('falla-zona');
+    zonas.forEach(function(z) {
+      var opt = document.createElement('option');
+      opt.value = z.pk_zona_id; opt.textContent = z.nombre_zona;
+      sel.appendChild(opt);
+    });
+    // Panel lateral
+    var lista = document.getElementById('lista-zonas');
+    lista.innerHTML = zonas.map(function(z) {
+      return `<div style="padding:8px 14px;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;align-items:center;">
+        <span style="background:#1E3A8A;color:#fff;width:20px;height:20px;border-radius:50%;
+              display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">
+          ${z.pk_zona_id}
+        </span>
+        <span style="font-size:12px;">${z.nombre_zona}</span>
+      </div>`;
+    }).join('');
+  })
+  .catch(function(){ document.getElementById('lista-zonas').innerHTML='<div class="p-3 text-muted" style="font-size:12px;">No disponible</div>'; });
+}
+
+// ── 8. Buscador de suscriptor ────────────────────────────────────
+document.getElementById('buscador-suscriptor').addEventListener('input', function() {
+  var q = this.value.toLowerCase().trim();
+  var res = document.getElementById('resultado-busqueda');
+  if (!q || q.length < 2) { res.innerHTML = ''; return; }
+  var matches = datosSubs.filter(function(f) {
+    return f.properties.nombre.toLowerCase().includes(q) ||
+           (f.properties.medidor||'').toLowerCase().includes(q);
+  }).slice(0, 6);
+  if (!matches.length) { res.innerHTML = '<span style="color:#94a3b8;">Sin resultados</span>'; return; }
+  res.innerHTML = matches.map(function(f) {
+    var p = f.properties;
+    var color = p.estado === 'Activo' ? '#10b981' : '#f59e0b';
+    return `<div onclick="irASuscriptor(${f.geometry.coordinates[1]},${f.geometry.coordinates[0]},'${p.nombre.replace(/'/g,"\\'")}',${f.properties.id})"
+                 style="padding:6px 8px;border-radius:6px;cursor:pointer;background:#f8fafc;margin-bottom:3px;border:1px solid #e2e8f0;">
+               <div style="font-weight:600;">${p.nombre}</div>
+               <div style="color:#64748b;font-size:11px;">
+                 Medidor: ${p.medidor} &nbsp;
+                 <span style="color:${color};">●</span> ${p.estado}
+               </div>
+             </div>`;
+  }).join('');
+});
+
+window.irASuscriptor = function(lat, lon, nombre, id) {
+  map.flyTo([lat, lon], 18, { duration: 1 });
+  document.getElementById('buscador-suscriptor').value = nombre;
+  document.getElementById('resultado-busqueda').innerHTML = '';
+};
+
+// ── 9. Panel info lateral ────────────────────────────────────────
+function mostrarPanelInfo(titulo, datos) {
+  document.getElementById('panel-info').style.display = '';
+  document.getElementById('panel-info-title').textContent = titulo;
+  var html = Object.entries(datos).map(function(e) {
+    return `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #f1f5f9;">
+      <span style="color:#64748b;min-width:90px;">${e[0]}</span>
+      <span style="font-weight:600;">${e[1]}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('panel-info-body').innerHTML = html;
+}
+
+}); // fin esperarLeaflet
+</script>
+{% endblock %}

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}Gestión de Usuarios — ASUACAP{% endblock %}
+{% block extra_css %}
+<style>
+.user-avatar { width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #e2e8f0; }
+.user-avatar-default { width:40px;height:40px;border-radius:50%;background:#1E3A8A;color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0; }
+.rol-badge { padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700; }
+.rol-admin      { background:#fee2e2;color:#991b1b; }
+.rol-presidente { background:#dbeafe;color:#1e40af; }
+.rol-tesorera   { background:#d1fae5;color:#065f46; }
+.rol-secretaria { background:#ede9fe;color:#5b21b6; }
+.rol-tecnico    { background:#fef3c7;color:#92400e; }
+.rol-auxiliar   { background:#f1f5f9;color:#475569; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h5 class="mb-0"><i class="bi bi-people me-2 text-primary"></i>Gestión de Usuarios del Sistema</h5>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalUsuario"
+          onclick="prepararNuevo()">
+    <i class="bi bi-person-plus me-1"></i>Nuevo Usuario
+  </button>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" id="tabla-usuarios">
+      <thead class="table-dark"><tr>
+        <th>Foto</th><th>Nombre</th><th>Usuario</th><th>Rol</th>
+        <th>Correo / Tel.</th><th>Estado</th><th>Último acceso</th><th></th>
+      </tr></thead>
+      <tbody id="tbody-usuarios">
+        <tr><td colspan="8" class="text-center text-muted py-4">Cargando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal nuevo/editar usuario -->
+<div class="modal fade" id="modalUsuario" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modal-usuario-titulo">Nuevo Usuario</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="usuario-id">
+        <div class="text-center mb-3">
+          <div id="foto-preview-wrap" style="width:90px;height:90px;margin:0 auto;">
+            <div id="foto-default" class="user-avatar-default" style="width:90px;height:90px;font-size:28px;">👤</div>
+            <img id="foto-preview" src="" style="display:none;width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #1E3A8A;">
+          </div>
+          <label class="btn btn-sm btn-outline-secondary mt-2">
+            <i class="bi bi-camera me-1"></i>Foto
+            <input type="file" id="foto-input" accept="image/*" style="display:none"
+                   onchange="previewFoto(this)">
+          </label>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Nombre completo *</label>
+            <input type="text" id="u-nombre" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Nombre de usuario *</label>
+            <input type="text" id="u-usuario" class="form-control" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Rol *</label>
+            <select id="u-rol" class="form-select">
+              <option value="admin">Administrador</option>
+              <option value="presidente">Presidente</option>
+              <option value="tesorera">Tesorera</option>
+              <option value="secretaria">Secretaria</option>
+              <option value="tecnico">Técnico</option>
+              <option value="auxiliar" selected>Auxiliar</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Contraseña
+              <span id="clave-hint" class="text-muted small">(dejar vacío = no cambia)</span>
+            </label>
+            <input type="password" id="u-clave" class="form-control" minlength="6"
+                   placeholder="Mínimo 6 caracteres">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Estado</label>
+            <select id="u-activo" class="form-select">
+              <option value="1">✅ Activo</option>
+              <option value="0">❌ Inactivo</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Correo electrónico</label>
+            <input type="email" id="u-correo" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Teléfono</label>
+            <input type="text" id="u-telefono" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary fw-bold" onclick="guardarUsuario()">
+          <i class="bi bi-floppy me-1"></i>Guardar Usuario
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fmt(path, nombre) {
+  if (path) return `<img src="${path}" class="user-avatar">`;
+  return `<div class="user-avatar-default">${(nombre||'?').charAt(0).toUpperCase()}</div>`;
+}
+
+async function cargarUsuarios() {
+  const r = await fetch('/auditoria/api/usuarios');
+  const d = await r.json();
+  const tb = document.getElementById('tbody-usuarios');
+  if (!d.length) {
+    tb.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Sin usuarios.</td></tr>';
+    return;
+  }
+  tb.innerHTML = d.map(u => `
+    <tr>
+      <td>${fmt(u.foto_path, u.nombre_completo)}</td>
+      <td class="fw-semibold">${u.nombre_completo}</td>
+      <td><code>${u.nombre_usuario}</code></td>
+      <td><span class="rol-badge rol-${u.rol}">${u.rol}</span></td>
+      <td><small>${u.correo || '—'}<br>${u.telefono || ''}</small></td>
+      <td>
+        <span class="badge ${u.activo ? 'bg-success' : 'bg-secondary'}">${u.activo ? 'Activo' : 'Inactivo'}</span>
+        ${u.bloqueado ? '<span class="badge bg-danger ms-1">🔒 Bloqueado</span>' : ''}
+      </td>
+      <td><small class="text-muted">${(u.ultimo_acceso||'Nunca').substring(0,16)}</small></td>
+      <td>
+        <button class="btn btn-sm btn-ghost" onclick="editarUsuario(${u.pk_usuario_id})" title="Editar">✏️</button>
+        ${u.bloqueado ? `<button class="btn btn-sm btn-ghost" onclick="desbloquear(${u.pk_usuario_id})" title="Desbloquear">🔓</button>` : ''}
+        ${u.rol !== 'admin' ? `<button class="btn btn-sm btn-ghost" data-confirm="¿Desactivar este usuario?" onclick="eliminar(${u.pk_usuario_id}, this)" title="Desactivar">🗑</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function previewFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  document.getElementById('foto-preview').src = url;
+  document.getElementById('foto-preview').style.display = '';
+  document.getElementById('foto-default').style.display = 'none';
+}
+
+let _editId = null;
+function prepararNuevo() {
+  _editId = null;
+  document.getElementById('modal-usuario-titulo').textContent = 'Nuevo Usuario';
+  ['u-nombre','u-usuario','u-clave','u-correo','u-telefono'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('u-rol').value = 'auxiliar';
+  document.getElementById('u-activo').value = '1';
+  document.getElementById('foto-preview').style.display = 'none';
+  document.getElementById('foto-default').style.display = '';
+  document.getElementById('foto-input').value = '';
+  document.getElementById('clave-hint').textContent = '(obligatoria para nuevo usuario)';
+}
+
+async function editarUsuario(id) {
+  _editId = id;
+  const r = await fetch('/auditoria/api/usuarios');
+  const usuarios = await r.json();
+  const u = usuarios.find(x => x.pk_usuario_id === id);
+  if (!u) return;
+  document.getElementById('modal-usuario-titulo').textContent = 'Editar Usuario';
+  document.getElementById('usuario-id').value = id;
+  document.getElementById('u-nombre').value   = u.nombre_completo || '';
+  document.getElementById('u-usuario').value  = u.nombre_usuario || '';
+  document.getElementById('u-rol').value      = u.rol || 'auxiliar';
+  document.getElementById('u-activo').value   = u.activo ? '1' : '0';
+  document.getElementById('u-correo').value   = u.correo || '';
+  document.getElementById('u-telefono').value = u.telefono || '';
+  document.getElementById('u-clave').value    = '';
+  document.getElementById('clave-hint').textContent = '(dejar vacío = no cambia)';
+  if (u.foto_path) {
+    document.getElementById('foto-preview').src = u.foto_path;
+    document.getElementById('foto-preview').style.display = '';
+    document.getElementById('foto-default').style.display = 'none';
+  }
+  new bootstrap.Modal(document.getElementById('modalUsuario')).show();
+}
+
+async function guardarUsuario() {
+  const nombre  = document.getElementById('u-nombre').value.trim();
+  const usuario = document.getElementById('u-usuario').value.trim();
+  const clave   = document.getElementById('u-clave').value;
+  if (!nombre || !usuario) { alert('Nombre y usuario son obligatorios'); return; }
+  if (!_editId && !clave) { alert('La contraseña es obligatoria para nuevos usuarios'); return; }
+
+  const fd = new FormData();
+  fd.append('nombre_completo', nombre);
+  fd.append('nombre_usuario',  usuario);
+  fd.append('rol',    document.getElementById('u-rol').value);
+  fd.append('activo', document.getElementById('u-activo').value);
+  fd.append('correo', document.getElementById('u-correo').value);
+  fd.append('telefono', document.getElementById('u-telefono').value);
+  if (clave) fd.append('password', clave);
+  const fotoFile = document.getElementById('foto-input').files[0];
+  if (fotoFile) fd.append('foto', fotoFile);
+
+  const url    = _editId ? `/auditoria/api/usuarios/${_editId}` : '/auditoria/api/usuarios';
+  const method = _editId ? 'PUT' : 'POST';
+  const r = await fetch(url, { method, body: fd });
+  const d = await r.json();
+  if (d.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('modalUsuario'))?.hide();
+    cargarUsuarios();
+  } else {
+    alert('Error: ' + (d.error || 'Desconocido'));
+  }
+}
+
+async function desbloquear(id) {
+  if (!confirm('¿Desbloquear este usuario?')) return;
+  const r = await fetch(`/auditoria/api/usuarios/${id}/desbloquear`, { method: 'POST' });
+  const d = await r.json();
+  if (d.ok) cargarUsuarios();
+}
+
+async function eliminar(id, btn) {
+  if (!confirm(btn.getAttribute('data-confirm') || '¿Desactivar usuario?')) return;
+  const r = await fetch(`/auditoria/api/usuarios/${id}`, { method: 'DELETE' });
+  const d = await r.json();
+  if (d.ok) cargarUsuarios();
+  else alert('Error: ' + d.error);
+}
+
+document.addEventListener('DOMContentLoaded', cargarUsuarios);
+</script>
+{% endblock %}

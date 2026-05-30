@@ -1,0 +1,91 @@
+# ============================================================
+#   PARAGUASMJ — .gitignore
+#   Sistema de Gestion para Acueductos Rurales de Colombia
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Entornos virtuales
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# Variables de entorno (NUNCA subir)
+.env
+.flaskenv
+
+# Base de datos (datos reales — NUNCA subir)
+*.db
+*.sqlite
+*.sqlite3
+database/paraguasmj.db
+database/asuacap_sigd.db
+database/backups/
+
+# Logs del sistema
+logs/
+*.log
+
+# PDFs generados
+pdfs/
+
+# Archivos subidos por usuarios
+uploads/adjuntos/
+uploads/bitacoras/
+uploads/evidencias_proyectos/
+static/uploads/docs/
+static/uploads/logos/
+
+# TipTap y dependencias descargadas offline
+static/vendor/
+
+# PyInstaller
+build/
+dist/
+*.spec
+*.exe
+
+# Sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Pytest y coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Node (si se usa para docx/npm)
+node_modules/
+npm-debug.log
+
+# Archivos temporales
+*.tmp
+*.temp
+instance/
+
+# Instaladores compilados
+installers/*.exe
+installers/*.msi

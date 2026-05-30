@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Movimientos Bancarios{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <h5><i class="bi bi-arrow-left-right me-2 text-primary"></i>Movimientos Bancarios</h5>
+  <a href="{{ url_for('finanzas.bancos') }}" class="btn btn-sm btn-outline-secondary">← Cuentas</a>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <select name="cuenta_id" class="form-select form-select-sm">
+          <option value="">Todas las cuentas</option>
+          {% for c in cuentas %}
+          <option value="{{ c.pk_banco_id }}" {% if cuenta_id==c.pk_banco_id %}selected{% endif %}>
+            {{ c.banco_nombre }} ({{ c.codigo_cuenta }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto"><input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}"></div>
+      <div class="col-auto"><input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}"></div>
+      <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary">Consultar</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header">
+    <span>Saldo anterior al período: <strong class="text-primary">{{ saldo_anterior | moneda }}</strong></span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark"><tr><th>Fecha</th><th>Concepto</th><th>Ingreso</th><th>Egreso</th><th>Saldo</th></tr></thead>
+      <tbody>
+      {% for m in movimientos %}
+      <tr>
+        <td><small>{{ m.fecha }}</small></td><td>{{ m.concepto }}</td>
+        <td class="text-success fw-semibold">{% if m.ingreso > 0 %}{{ m.ingreso | moneda }}{% endif %}</td>
+        <td class="text-danger fw-semibold">{% if m.egreso > 0 %}{{ m.egreso | moneda }}{% endif %}</td>
+        <td class="fw-bold {% if m.saldo >= 0 %}text-primary{% else %}text-danger{% endif %}">{{ m.saldo | moneda }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-center text-muted py-3">Sin movimientos en el período.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-primary text-white">Registrar Movimiento</div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('finanzas.movimiento_nuevo') }}">
+      <div class="row g-3">
+        <div class="col-md-2"><label class="form-label fw-semibold">Fecha</label>
+          <input type="date" name="fecha" class="form-control" required value="{{ fecha_hasta }}"></div>
+        <div class="col-md-2"><label class="form-label fw-semibold">Cuenta</label>
+          <select name="fk_banco_id" class="form-select">
+            <option value="">Caja</option>
+            {% for c in cuentas %}<option value="{{ c.pk_banco_id }}">{{ c.banco_nombre }}</option>{% endfor %}
+          </select></div>
+        <div class="col-md-3"><label class="form-label fw-semibold">Concepto</label>
+          <input type="text" name="concepto" class="form-control" required></div>
+        <div class="col-md-2"><label class="form-label fw-semibold">Tipo</label>
+          <select name="tipo_mov" class="form-select">
+            <option value="INGRESO">💚 Ingreso</option>
+            <option value="EGRESO">❤️ Egreso</option>
+          </select></div>
+        <div class="col-md-2"><label class="form-label fw-semibold">Importe</label>
+          <input type="number" name="importe" class="form-control" required min="0" step="100"></div>
+        <div class="col-md-1 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-floppy"></i></button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

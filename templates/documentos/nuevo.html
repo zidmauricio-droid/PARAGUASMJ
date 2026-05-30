@@ -1,0 +1,1294 @@
+{% extends "base.html" %}
+{% block title %}Nuevo Documento — ASUACAP{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Editor container ─────────────────────────────── */
+.editor-wrap {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.editor-toolbar {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 6px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+}
+.tb-btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #334155;
+  transition: background .12s;
+  line-height: 1;
+}
+.tb-btn:hover { background: #e2e8f0; }
+.tb-btn.active { background: #1E3A8A; color: #fff; }
+.tb-sep { width: 1px; height: 20px; background: #e2e8f0; margin: 0 3px; }
+.tb-select {
+  font-size: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+}
+.ProseMirror {
+  padding: 20px 24px;
+  min-height: 420px;
+  outline: none;
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.7;
+  color: #1e293b;
+}
+.ProseMirror p { margin: 0 0 6px 0; }
+.ProseMirror h1 { font-size: 16pt; color: #1E3A8A; margin: 18px 0 8px; }
+.ProseMirror h2 { font-size: 13pt; color: #0F6E56; margin: 14px 0 6px; }
+.ProseMirror h3 { font-size: 11pt; color: #0ea5e9; margin: 10px 0 4px; }
+.ProseMirror table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+.ProseMirror table td, .ProseMirror table th {
+  border: 1px solid #94a3b8; padding: 6px 10px; vertical-align: top;
+}
+.ProseMirror table th { background: #f1f5f9; font-weight: 700; }
+.ProseMirror img { max-width: 100%; border-radius: 6px; margin: 4px 0; }
+.ProseMirror ul, .ProseMirror ol { padding-left: 20px; margin: 6px 0; }
+.ProseMirror blockquote {
+  border-left: 3px solid #1E3A8A;
+  margin: 8px 0;
+  padding: 4px 14px;
+  color: #64748b;
+}
+.ProseMirror .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #94a3b8;
+  pointer-events: none;
+  height: 0;
+}
+.ProseMirror-focused { outline: none; }
+
+/* Macro buttons */
+.macro-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 0;
+  border-top: 1px solid #f1f5f9;
+  margin-top: 6px;
+}
+.macro-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.macro-btn:hover { background: #1E3A8A; color: #fff; border-color: #1E3A8A; }
+
+/* Autosave badge */
+.autosave-badge {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-left: auto;
+}
+.saved   { background: #d1fae5; color: #065f46; }
+.saving  { background: #fef3c7; color: #92400e; }
+.unsaved { background: #fee2e2; color: #991b1b; }
+
+/* Sidebar firmantes */
+.firmante-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.firmante-chip input[type=checkbox] { accent-color: #1E3A8A; width: 16px; height: 16px; }
+
+/* Plantilla cards */
+.plantilla-card {
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.plantilla-card:hover { border-color: #1E3A8A; background: #eff6ff; }
+
+/* Corrector overlay */
+#corrector-panel {
+  display: none;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,.08);
+}
+.error-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 12px;
+}
+.error-word  { color: #991b1b; font-weight: 700; }
+.error-suger { color: #065f46; }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="POST" id="form-doc" enctype="multipart/form-data">
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">
+    <i class="bi bi-file-earmark-plus me-2 text-primary"></i>
+    Nuevo Documento Institucional
+  </h5>
+  <div class="d-flex align-items-center gap-2">
+    <span class="autosave-badge unsaved" id="badge-autosave">
+      <i class="bi bi-circle-fill me-1" style="font-size:8px;"></i>Sin guardar
+    </span>
+    <a href="{{ url_for('documentos.listar') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- ── COLUMNA PRINCIPAL: editor ───────────────────────────────── -->
+  <div class="col-lg-8">
+
+    <!-- Metadatos del documento -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header" style="background:#1E3A8A;color:#fff;">
+        <i class="bi bi-info-circle me-2"></i>Datos del Documento
+        <span id="codigo-preview" class="ms-3 font-monospace"
+              style="background:rgba(255,255,255,.15);padding:2px 10px;border-radius:6px;font-size:12px;">
+          — — —
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Área <span class="text-danger">*</span></label>
+            <select name="area" id="sel-area" class="form-select" required onchange="actualizarCodigo()">
+              {% for cod,nom in areas %}
+              <option value="{{ cod }}">{{ cod }} — {{ nom }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Tipo <span class="text-danger">*</span></label>
+            <select name="tipo_documento" id="sel-tipo" class="form-select" required onchange="actualizarCodigo()">
+              {% for codigo, nombre in tipos %}
+              <option value="{{ codigo }}">{{ codigo }} — {{ nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Fecha Radicación</label>
+            <input type="date" name="fecha_radicacion" class="form-control" value="{{ hoy }}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Fecha Vencimiento</label>
+            <input type="date" name="fecha_vencimiento" class="form-control">
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">Asunto <span class="text-danger">*</span></label>
+            <input type="text" name="asunto_resumen" id="inp-asunto" class="form-control" required
+                   maxlength="500" placeholder="Ej: Respuesta a requerimiento CAR sobre PUEAA...">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Destinatario <small class="text-muted fw-normal">(libre)</small></label>
+            <input type="text" name="destinatario_texto" class="form-control"
+                   placeholder="Nombre, entidad o cargo — edite libremente"
+                   list="lista-contactos">
+            <datalist id="lista-contactos">
+              {% for c in contactos %}
+              <option value="{{ c.razon_social }}">
+              {% endfor %}
+            </datalist>
+            <input type="hidden" name="fk_contacto_id" value="">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Notas internas</label>
+            <input type="text" name="notas_internas" class="form-control" maxlength="300"
+                   placeholder="Solo visible internamente...">
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">
+              🔗 Proyecto relacionado
+              <small class="text-muted fw-normal">(PUEAA, PSMV, Obra, etc.)</small>
+            </label>
+            <select id="doc-proyecto-id" class="form-select"
+                    onchange="document.getElementById('lbl-proy').textContent = this.selectedOptions[0]?.text||''">
+              <option value="">— Sin proyecto específico —</option>
+            </select>
+            <div id="lbl-proy" class="text-muted small mt-1"></div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Tipo de relación</label>
+            <select id="doc-tipo-relacion" class="form-select">
+              <option value="soporte">📎 Soporte documental</option>
+              <option value="entregable">📤 Entregable del proyecto</option>
+              <option value="acta">📋 Acta</option>
+              <option value="contrato">📝 Contrato/Convenio</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Editor TipTap -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-pencil-square me-1"></i>
+        <span class="fw-semibold">Contenido del Documento</span>
+        <span class="ms-auto text-muted small">
+          <i class="bi bi-clock me-1"></i>Guardado automático cada 30 seg.
+        </span>
+      </div>
+      <div class="card-body p-0">
+
+        <!-- ═══ TOOLBAR PROFESIONAL COMPLETA ═══ -->
+        <div class="editor-toolbar" id="toolbar">
+
+          <!-- Fuente -->
+          <select class="tb-select" id="sel-fuente" onchange="aplicarFuente(this.value)" title="Tipo de fuente" style="width:110px;">
+            <option value="">Fuente</option>
+            <option value="Calibri,Arial,sans-serif">Calibri</option>
+            <option value="Arial,sans-serif">Arial</option>
+            <option value="Times New Roman,serif">Times New Roman</option>
+            <option value="Georgia,serif">Georgia</option>
+            <option value="Courier New,monospace">Courier New</option>
+          </select>
+
+          <!-- Tamaño -->
+          <select class="tb-select" id="sel-fontsize" onchange="aplicarFontSize(this.value)" title="Tamaño de letra" style="width:52px;">
+            <option value="">Pt</option>
+            <option value="8px">8</option>
+            <option value="9px">9</option>
+            <option value="10px">10</option>
+            <option value="11px">11</option>
+            <option value="12px" selected>12</option>
+            <option value="14px">14</option>
+            <option value="16px">16</option>
+            <option value="18px">18</option>
+            <option value="20px">20</option>
+            <option value="24px">24</option>
+            <option value="28px">28</option>
+            <option value="36px">36</option>
+          </select>
+
+          <!-- Estilo de párrafo -->
+          <select class="tb-select" id="sel-heading" onchange="aplicarHeading(this.value)" title="Estilo de texto" style="width:100px;">
+            <option value="0">Párrafo</option>
+            <option value="1">Título 1</option>
+            <option value="2">Título 2</option>
+            <option value="3">Título 3</option>
+            <option value="4">Título 4</option>
+          </select>
+          <div class="tb-sep"></div>
+
+          <!-- Formato básico -->
+          <button type="button" class="tb-btn" id="btn-bold"   onclick="cmd('toggleBold')"      title="Negrita (Ctrl+B)"><b>B</b></button>
+          <button type="button" class="tb-btn" id="btn-italic" onclick="cmd('toggleItalic')"    title="Cursiva (Ctrl+I)"><i>I</i></button>
+          <button type="button" class="tb-btn" id="btn-under"  onclick="cmd('toggleUnderline')" title="Subrayado (Ctrl+U)"><u>U</u></button>
+          <button type="button" class="tb-btn" id="btn-strike" onclick="cmd('toggleStrike')"    title="Tachado"><s>S</s></button>
+          <button type="button" class="tb-btn"                 onclick="cmd('toggleSuperscript')" title="Superíndice (m³)">x²</button>
+          <button type="button" class="tb-btn"                 onclick="cmd('toggleSubscript')"   title="Subíndice">x₂</button>
+
+          <!-- Color de texto -->
+          <label class="tb-btn" title="Color de texto" style="padding:4px 6px;cursor:pointer;position:relative;">
+            <span style="font-weight:700;font-size:13px;border-bottom:3px solid #1E3A8A;">A</span>
+            <input type="color" id="color-texto" value="#000000"
+                   onchange="aplicarColorTexto(this.value)"
+                   style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer;">
+          </label>
+
+          <!-- Resaltado -->
+          <label class="tb-btn" title="Resaltar texto" style="padding:4px 6px;cursor:pointer;position:relative;">
+            <span style="background:#fef08a;padding:0 3px;font-size:12px;">ab</span>
+            <input type="color" id="color-resaltado" value="#fef08a"
+                   onchange="editor && editor.chain().focus().setHighlight({color:this.value}).run()"
+                   style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer;">
+          </label>
+
+          <!-- Limpiar formato -->
+          <button type="button" class="tb-btn" onclick="cmd('unsetAllMarks');cmd('clearNodes')" title="Limpiar formato" style="font-size:10px;">✕fmt</button>
+          <div class="tb-sep"></div>
+
+          <!-- Listas -->
+          <button type="button" class="tb-btn" id="btn-bullet"  onclick="cmd('toggleBulletList')"  title="Lista con viñetas (•)">• ≡</button>
+          <button type="button" class="tb-btn" id="btn-ordered" onclick="cmd('toggleOrderedList')" title="Lista numerada">1.</button>
+          <button type="button" class="tb-btn" onclick="cmd('toggleBlockquote')"                   title="Cita / nota">❝</button>
+          <button type="button" class="tb-btn" onclick="cmd('setHorizontalRule')"                  title="Línea horizontal">━</button>
+          <div class="tb-sep"></div>
+
+          <!-- Alineación -->
+          <button type="button" class="tb-btn" id="btn-al" onclick="cmd('setTextAlign','left')"    title="Alinear izquierda">&#9668;</button>
+          <button type="button" class="tb-btn" id="btn-ac" onclick="cmd('setTextAlign','center')"  title="Centrar">&#9670;</button>
+          <button type="button" class="tb-btn" id="btn-ar" onclick="cmd('setTextAlign','right')"   title="Alinear derecha">&#9658;</button>
+          <button type="button" class="tb-btn" id="btn-aj" onclick="cmd('setTextAlign','justify')" title="Justificar" style="font-size:10px;">&#9776;&#9776;</button>
+          <div class="tb-sep"></div>
+
+          <!-- Tabla -->
+          <button type="button" class="tb-btn" onclick="insertarTabla(3,3)"         title="Tabla 3×3">⊞3×3</button>
+          <button type="button" class="tb-btn" onclick="insertarTabla(4,4)"         title="Tabla 4×4">⊞4×4</button>
+          <button type="button" class="tb-btn" onclick="cmd('addColumnAfter')"      title="+ Columna">+Col</button>
+          <button type="button" class="tb-btn" onclick="cmd('addRowAfter')"         title="+ Fila">+Fila</button>
+          <button type="button" class="tb-btn" onclick="cmd('deleteColumn')"        title="- Columna" style="color:#b45309;">-Col</button>
+          <button type="button" class="tb-btn" onclick="cmd('deleteRow')"           title="- Fila"    style="color:#b45309;">-Fila</button>
+          <button type="button" class="tb-btn" onclick="cmd('deleteTable')"         title="Eliminar tabla" style="color:#ef4444;">⊗Tbl</button>
+          <label class="tb-btn" title="Color de celda" style="padding:4px 6px;cursor:pointer;position:relative;">
+            <span style="font-size:10px;">🎨Cel</span>
+            <input type="color" id="color-celda" value="#dbeafe"
+                   onchange="aplicarColorCelda(this.value)"
+                   style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer;">
+          </label>
+          <div class="tb-sep"></div>
+
+          <!-- Imagen y enlace -->
+          <button type="button" class="tb-btn" onclick="triggerImgUpload()" title="Insertar imagen">🖼 Img</button>
+          <button type="button" class="tb-btn" onclick="insertarLink()"     title="Insertar enlace">🔗</button>
+          <div class="tb-sep"></div>
+
+          <!-- Marca de agua -->
+          <button type="button" class="tb-btn" onclick="toggleMarcaAgua()" title="Marca de agua"
+                  style="font-size:10px;">💧MdA</button>
+
+          <!-- Formas -->
+          <button type="button" class="tb-btn" onclick="document.getElementById('panel-formas').style.display=document.getElementById('panel-formas').style.display==='none'?'block':'none'"
+                  title="Insertar formas" style="font-size:10px;">⬡ Forma</button>
+          <div class="tb-sep"></div>
+
+          <!-- Deshacer / Rehacer -->
+          <button type="button" class="tb-btn" onclick="cmd('undo')" title="Deshacer (Ctrl+Z)">↩</button>
+          <button type="button" class="tb-btn" onclick="cmd('redo')" title="Rehacer (Ctrl+Y)">↪</button>
+          <div class="tb-sep"></div>
+
+          <!-- IA -->
+          <button type="button" class="tb-btn" id="btn-ia" onclick="togglePanelIA()"
+                  title="Asistente IA"
+                  style="background:#1E3A8A;color:#fff;font-weight:700;padding:5px 12px;border-radius:8px;font-size:12px;">
+            🤖 IA
+          </button>
+        </div>
+
+        <!-- ══ PANEL: MARCA DE AGUA ══ -->
+        <div id="panel-marca" style="display:none;background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:12px 16px;">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="fw-bold small">💧 Marca de agua:</span>
+            <input type="text" id="ma-texto" class="form-control form-control-sm" style="width:140px;" value="BORRADOR" placeholder="Texto">
+            <label class="small">Opacidad:
+              <input type="range" id="ma-opacidad" min="0.03" max="0.40" step="0.01" value="0.12" style="width:90px;">
+              <span id="ma-opacidad-val">0.12</span>
+            </label>
+            <label class="small">Color:
+              <input type="color" id="ma-color" value="#1E3A8A" style="width:36px;height:24px;border:none;">
+            </label>
+            <button class="btn btn-primary btn-sm" onclick="aplicarMarcaAgua()">Aplicar</button>
+            <button class="btn btn-ghost btn-sm" onclick="quitarMarcaAgua()">Quitar</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('panel-marca').style.display='none'">✕</button>
+          </div>
+        </div>
+
+        <!-- ══ PANEL: FORMAS ══ -->
+        <div id="panel-formas" style="display:none;background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:12px 16px;">
+          <div class="d-flex gap-2 flex-wrap align-items-center">
+            <span class="fw-bold small">⬡ Insertar forma:</span>
+            <button class="btn btn-outline-secondary btn-sm" onclick="insertarForma('linea_h')">━ Línea horizontal</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="insertarForma('recuadro')">▭ Recuadro</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="insertarForma('caja_info')">ℹ️ Caja informativa</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="insertarForma('caja_alerta')">⚠️ Caja de alerta</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="insertarForma('firma_box')">✍️ Zona de firmas</button>
+            <button class="btn btn-ghost btn-sm ms-2" onclick="document.getElementById('panel-formas').style.display='none'">✕</button>
+          </div>
+        </div>
+
+        <!-- ══ PANEL ASISTENTE IA ══ -->
+        <div id="panel-ia" style="display:none;background:linear-gradient(135deg,#1e3a8a08,#0f6e5608);
+             border-bottom:1px solid #e2e8f0;padding:14px 16px;">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span style="font-weight:700;color:#1E3A8A;font-size:13px;">
+              🤖 Asistente IA — Redacción institucional ASUACAP
+            </span>
+            <button type="button" onclick="togglePanelIA()"
+                    style="background:none;border:none;font-size:16px;cursor:pointer;color:#64748b;">✕</button>
+          </div>
+
+          <!-- Comandos rápidos -->
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button type="button" class="btn btn-sm"
+                    style="background:#e0e7ff;color:#1e3a8a;font-size:11px;border:none;"
+                    onclick="promptIA('Redacta el objetivo del proyecto usando los indicadores reales del sistema. Tono formal colombiano. Extensión 2 párrafos.')">
+              📋 Objetivo del proyecto
+            </button>
+            <button type="button" class="btn btn-sm"
+                    style="background:#dcfce7;color:#14532d;font-size:11px;border:none;"
+                    onclick="promptIA('Genera las conclusiones del informe de avance con base en los indicadores técnicos reales. Menciona IANC, continuidad y calidad del agua. Formato de lista con ítems.')">
+              ✅ Conclusiones del informe
+            </button>
+            <button type="button" class="btn btn-sm"
+                    style="background:#fef9c3;color:#713f12;font-size:11px;border:none;"
+                    onclick="promptIA('Redacta el marco jurídico del proyecto PUEAA citando: Ley 142/1994, Ley 373/1997, Decreto 1076/2015, RAS 2017 y Res. CRA vigente. Formato tabla Norma|Aplicación.')">
+              ⚖️ Marco jurídico
+            </button>
+            <button type="button" class="btn btn-sm"
+                    style="background:#fce7f3;color:#831843;font-size:11px;border:none;"
+                    onclick="promptIA('Describe los hallazgos del balance hídrico del acueducto. Incluye pérdidas por tramo: bocatoma-desarenador, desarenador-PTAP, PTAP-distribución. Usa conversión 1 L/s = 86.4 m³/día.')">
+              💧 Hallazgos balance hídrico
+            </button>
+            <button type="button" class="btn btn-sm"
+                    style="background:#ede9fe;color:#4c1d95;font-size:11px;border:none;"
+                    onclick="promptIA('Redacta las recomendaciones del informe PUEAA para un acueducto rural colombiano. Incluye: reducción de pérdidas, mantenimiento preventivo, campañas educativas y macromedición. 5 recomendaciones numeradas.')">
+              🌿 Recomendaciones PUEAA
+            </button>
+            <button type="button" class="btn btn-sm"
+                    style="background:#ffedd5;color:#7c2d12;font-size:11px;border:none;"
+                    onclick="promptIA('Redacta la introducción de un informe de gestión para ASUACAP — Centro Poblado El Puente, Villeta, Cundinamarca. Menciona la misión del acueducto comunitario, su cobertura y el período del informe.')">
+              📝 Introducción del informe
+            </button>
+            <button type="button" class="btn btn-sm"
+                    style="background:#f1f5f9;color:#334155;font-size:11px;border:1px solid #e2e8f0;"
+                    onclick="abrirPromptPersonalizado()">
+              ✏️ Instrucción personalizada...
+            </button>
+          </div>
+
+          <!-- Área de respuesta IA -->
+          <div id="ia-resultado-wrap" style="display:none;">
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;">
+              Resultado — revise y luego inserte en el documento:
+            </div>
+            <div id="ia-resultado"
+                 style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;
+                        padding:12px;min-height:60px;max-height:260px;overflow-y:auto;
+                        font-size:12px;line-height:1.7;white-space:pre-wrap;"></div>
+            <div class="d-flex gap-2 mt-2">
+              <button type="button" class="btn btn-primary btn-sm fw-bold"
+                      onclick="insertarTextoIA()">
+                ↓ Insertar en documento
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm"
+                      onclick="copiarTextoIA()">
+                📋 Copiar
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm"
+                      onclick="document.getElementById('ia-resultado-wrap').style.display='none'">
+                ✕ Descartar
+              </button>
+            </div>
+          </div>
+
+          <!-- Indicador de carga -->
+          <div id="ia-cargando" style="display:none;text-align:center;padding:12px;">
+            <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+            <span style="font-size:12px;color:#475569;">Claude está redactando...</span>
+          </div>
+
+        </div>
+
+        <!-- Área de edición TipTap -->
+        
+      <!-- ═══ MEMBRETE INSTITUCIONAL DINÁMICO (igual al documento real) ═══ -->
+      <div id="membrete-editor-preview" style="margin-bottom:8px;">
+        <!-- Se llena con JS al cargar la página -->
+      </div>
+<div id="editor-tiptap"></div>
+        <input type="hidden" name="contenido_html" id="contenido-hidden">
+
+        <!-- Upload imagen oculto -->
+        <input type="file" id="input-img-upload" accept="image/*" style="display:none"
+               onchange="handleImageUpload(this)">
+
+        <!-- Macros institucionales -->
+        <div class="px-3 pb-3">
+          <div class="macro-bar">
+            <span style="font-size:11px;font-weight:700;color:#64748b;margin-right:4px;">Insertar:</span>
+            <button type="button" class="macro-btn" onclick="macroFecha()">📅 Fecha</button>
+            <button type="button" class="macro-btn" onclick="macroFirma()">✍️ Firma</button>
+            <button type="button" class="macro-btn" onclick="macroTablaIndicadores()">📊 Tabla indicadores</button>
+            <button type="button" class="macro-btn" onclick="macroTablaActividades()">📋 Tabla actividades</button>
+            <button type="button" class="macro-btn" onclick="macroTablaMarcoJuridico()">⚖️ Marco jurídico</button>
+            <button type="button" class="macro-btn" onclick="macroRepresentante()">
+              👤 Representante
+            </button>
+            <button type="button" class="macro-btn" onclick="macroEncabezado()">
+              🏢 Encabezado institucional
+            </button>
+            <button type="button" class="macro-btn" onclick="macroBalanceHidrico()">
+              💧 Tabla balance hídrico
+            </button>
+            <button type="button" class="macro-btn" onclick="macroFirmantes()">
+              ✍️ Líneas de firma
+            </button>
+            <button type="button" class="macro-btn" onclick="macroSaltoLegal()">
+              ⚖️ Saludo legal
+            </button>
+            <button type="button" class="macro-btn"
+                    onclick="document.getElementById('corrector-panel').style.display='block';revisarOrtografia()">
+              🔍 Revisar ortografía
+            </button>
+          </div>
+
+          <!-- Panel corrector ortográfico -->
+          <div id="corrector-panel">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong style="font-size:13px;">🔍 Corrector Ortográfico</strong>
+              <button type="button" class="btn btn-sm btn-ghost"
+                      onclick="document.getElementById('corrector-panel').style.display='none'">✕</button>
+            </div>
+            <div id="corrector-resultados">
+              <div class="text-muted small">Analizando texto...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /col-lg-8 -->
+
+  <!-- ── COLUMNA LATERAL ──────────────────────────────────────────── -->
+  <div class="col-lg-4">
+
+    <!-- Plantillas predefinidas -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header">
+        <i class="bi bi-layout-text-window me-2"></i>Plantillas Institucionales
+      </div>
+      <div class="card-body" style="max-height:280px;overflow-y:auto;">
+        {% for key, pt in plantillas.items() %}
+        <div class="plantilla-card" onclick="cargarPlantilla('{{ key }}')">
+          <div class="fw-semibold">{{ pt.nombre }}</div>
+          <div class="text-muted" style="font-size:11px;">Clic para insertar en el editor</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Selección de firmantes -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header">
+        <i class="bi bi-pen me-2"></i>Firmantes del Documento
+        <span class="badge bg-secondary ms-auto" id="cnt-firmantes">0</span>
+      </div>
+      <div class="card-body" style="max-height:260px;overflow-y:auto;">
+        {% for f in firmantes %}
+        <div class="firmante-chip">
+          <input type="checkbox" name="firmantes_sel" value="{{ f.pk_firmante_id }}"
+                 id="fir-{{ f.pk_firmante_id }}" onchange="contarFirmantes()">
+          <label for="fir-{{ f.pk_firmante_id }}" style="cursor:pointer;flex:1;">
+            <div class="fw-semibold" style="font-size:13px;">{{ f.nombre_completo }}</div>
+            <div class="text-muted" style="font-size:11px;">{{ f.cargo }}</div>
+          </label>
+        </div>
+        {% else %}
+        <div class="text-muted small p-2">Sin firmantes configurados</div>
+        {% endfor %}
+        <div class="mt-2 p-2 bg-light rounded" style="font-size:11px;color:#64748b;">
+          <i class="bi bi-info-circle me-1"></i>
+          Si no selecciona, se usan las reglas por tipo de documento.
+        </div>
+      </div>
+    </div>
+
+    <!-- Adjuntos -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header"><i class="bi bi-paperclip me-2"></i>Adjuntos (opcional)</div>
+      <div class="card-body">
+        <div id="lista-adjuntos-preview" style="font-size:12px;margin-bottom:8px;"></div>
+        <label class="btn btn-outline-secondary btn-sm w-100">
+          <i class="bi bi-file-earmark-plus me-1"></i>Adjuntar archivo
+          <input type="file" name="adjuntos" multiple style="display:none"
+                 onchange="previewAdjuntos(this)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-body d-flex flex-column gap-2">
+        <button type="button" class="btn btn-outline-secondary fw-semibold"
+                onclick="guardarBorrador()">
+          <i class="bi bi-floppy me-1"></i>Guardar borrador
+        </button>
+        <button type="submit" class="btn btn-primary fw-bold py-2" id="btn-crear"
+                onclick="sincronizarContenido()">
+          <i class="bi bi-check-circle me-1"></i>Crear Documento
+        </button>
+        <a href="{{ url_for('documentos.listar') }}" class="btn btn-ghost text-center">
+          Cancelar
+        </a>
+      </div>
+    </div>
+
+  </div><!-- /col-lg-4 -->
+</div><!-- /row -->
+</form>
+{% endblock %}
+
+{% block extra_js %}
+
+<!-- Datos de plantillas disponibles para JS -->
+<script>
+const PLANTILLAS_DATA = {
+  {% for key, pt in plantillas.items() %}
+  "{{ key }}": {{ pt.html | tojson }},
+  {% endfor %}
+};
+</script>
+
+<!-- ═══ TipTap 2.x via CDN — cada extensión expone su propio global ═══ -->
+<script>
+// Shim: exponer todo bajo window.tt para acceso unificado
+window.tt = window.tt || {};
+</script>
+<!-- TipTap 2.4 local-first, CDN fallback -->
+<script>
+(function() {
+  var LOC = '/static/vendor/tiptap/', CDN = 'https://cdn.jsdelivr.net/npm/@tiptap/', V='2.4.0';
+  var pkgs=['pm','core','starter-kit','extension-table','extension-table-row',
+    'extension-table-header','extension-table-cell','extension-image',
+    'extension-text-align','extension-link','extension-underline',
+    'extension-superscript','extension-subscript','extension-color',
+    'extension-text-style','extension-highlight','extension-font-family'];
+  function load(u,fb){ return new Promise(function(ok){
+    var s=document.createElement('script'); s.src=u; s.onload=ok;
+    s.onerror=function(){ if(fb){var s2=document.createElement('script');s2.src=fb;s2.onload=ok;
+      s2.onerror=ok; document.head.appendChild(s2);}else ok(); };
+    document.head.appendChild(s);
+  });}
+  window._tiptapReady=(async function(){
+    for(var i=0;i<pkgs.length;i++)
+      await load(LOC+pkgs[i]+'.umd.js', CDN+pkgs[i]+'@'+V+'/dist/index.umd.js');
+  })();
+})();
+</script>
+<script>
+// ════════════════════════════════════════════════════════════════════
+// EDITOR TIPTAP PROFESIONAL PARAGUASMJ
+// Fix: los UMD de TipTap se exponen como TiptapCore, TiptapStarterKit, etc.
+// ════════════════════════════════════════════════════════════════════
+let editor = null, docId = null, autosaveTimer = null, textoIA = "";
+
+// ── Resolver extensiones desde los globals UMD ─────────────────────
+function getExt(names) {
+  // Intenta múltiples formatos de nombre global que TipTap puede usar
+  const candidates = [
+    ...names,
+    ...names.map(n => 'Tiptap' + n),
+    ...names.map(n => 'tiptap' + n),
+    ...names.map(n => n.replace(/([A-Z])/g, '_$1').toUpperCase()),
+  ];
+  for (const name of candidates) {
+    const g = window[name];
+    if (g && (g.configure || g.extend || typeof g === 'function')) return g;
+    // Algunos UMD exponen el objeto con .default
+    if (g && g.default && (g.default.configure || g.default.extend)) return g.default;
+    // Buscar en el objeto si tiene la propiedad
+    for (const key of Object.keys(window)) {
+      if (key.toLowerCase().includes(name.toLowerCase())) {
+        const v = window[key];
+        if (v && (v.configure || v.extend)) return v;
+      }
+    }
+  }
+  return null;
+}
+
+// ── Extensión FontSize (sobre TextStyle) ───────────────────────────
+function crearExtFontSize(TextStyle) {
+  if (!TextStyle) return null;
+  return TextStyle.extend({
+    name: 'fontSize',
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        fontSize: {
+          default: null,
+          parseHTML: el => el.style.fontSize || null,
+          renderHTML: attrs => attrs.fontSize ? {style:`font-size:${attrs.fontSize}`} : {},
+        }
+      };
+    },
+    addGlobalAttributes() {
+      return [{
+        types: ['textStyle'],
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: el => el.style.fontSize || null,
+            renderHTML: attrs => attrs.fontSize ? {style:`font-size:${attrs.fontSize}`} : {},
+          }
+        }
+      }];
+    }
+  });
+}
+
+// ── Inicializar editor ─────────────────────────────────────────────
+
+// ── Tipos de documento: vienen del servidor (Jinja2), JS solo verifica ──
+function cargarTiposDocumento() {
+  // El servidor ya renderizó las 44+ opciones via Jinja2.
+  // Esta función SOLO actúa si el select llegó vacío (caso excepcional).
+  const sel = document.getElementById('sel-tipo');
+  if (!sel || sel.options.length > 1) return Promise.resolve();
+  // Solo si está vacío: lista de emergencia sin fetch (evita Cargando...)
+  const tiposLocal = [
+    ['OFI','Oficio'],['ACT','Acta'],['RES','Resolución'],['INF','Informe'],
+    ['OT','Orden de Trabajo'],['OC','Orden de Compra'],['PQR','PQRS'],
+    ['CON','Convenio / Contrato'],['COT','Cotización'],['CIR','Circular'],
+    ['MEM','Memorando'],['CER','Certificado'],['FOR','Formulario'],
+    ['MAN','Manual'],['P','Procedimiento'],['POL','Política'],
+    ['CCB','Cuenta de Cobro'],['CDP','Disponibilidad Presupuestal'],
+    ['CRP','Cert. Registro Presupuestal'],['EST','Estudio'],
+    ['ACP','Acuerdo de Pago'],['SOL','Solicitud'],
+    ['RAL','Respuesta Alcaldía'],['RCAR','Respuesta CAR'],
+    ['RSSPD','Respuesta SSPD'],['RIE','Matriz Riesgos'],
+    ['PRY','Proyecto'],['EVI','Evidencia']
+  ];
+  sel.innerHTML = tiposLocal.map(([c,n])=>
+    `<option value="${c}">${c} — ${n}</option>`).join('');
+  return Promise.resolve();
+}
+
+
+// ── Plantillas institucionales ──────────────────────────────────────
+async function cargarPlantilla(key) {
+  // Esperar al editor si todavía no está listo (máx 5 seg)
+  if (!editor) {
+    const inicio = Date.now();
+    while (!editor && Date.now() - inicio < 5000) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+  }
+  if (!editor) {
+    alert('El editor no pudo cargar. Recargue la página.');
+    return;
+  }
+  const html = PLANTILLAS_DATA[key];
+  if (!html) {
+    console.warn('Plantilla no encontrada:', key);
+    return;
+  }
+  // Insertar al final del contenido actual
+  editor.commands.setContent(editor.getHTML() + html);
+  // Scroll al final del editor
+  const el = document.querySelector('.ProseMirror');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+// ── Preview del código (SIN XXX — solo área-tipo-año-NNN) ────────────
+function actualizarCodigo() {
+  const area = document.getElementById('sel-area')?.value || 'GA';
+  const tipo = document.getElementById('sel-tipo')?.value || 'OFI';
+  const anio = new Date().getFullYear();
+  const prev = document.getElementById('codigo-preview');
+  if (prev) {
+    prev.textContent = `${area}-${tipo}-${anio}-###`;
+    prev.title = 'El consecutivo se asigna al guardar';
+  }
+  cargarMembreteEditor();
+}
+
+function initEditor() {
+  // Buscar TiptapCore (el namespace principal)
+  const Core = window.TiptapCore || window.tiptapCore;
+  if (!Core || !Core.Editor) {
+    console.warn('TiptapCore no cargado — usando textarea fallback');
+    fallbackEditor();
+    return;
+  }
+  const { Editor } = Core;
+
+  // Buscar cada extensión
+  const SK   = window.TiptapStarterKit   || window.tiptapStarterKit;
+  const TA   = window.TiptapTextAlign    || window.tiptapTextAlign;
+  const TBL  = window.TiptapTable        || window.tiptapTable;
+  const TBLR = window.TiptapTableRow     || window.tiptapTableRow;
+  const TBLH = window.TiptapTableHeader  || window.tiptapTableHeader;
+  const TBLC = window.TiptapTableCell    || window.tiptapTableCell;
+  const IMG  = window.TiptapImage        || window.tiptapImage;
+  const LNK  = window.TiptapLink         || window.tiptapLink;
+  const UND  = window.TiptapUnderline    || window.tiptapUnderline;
+  const SUP  = window.TiptapSuperscript  || window.tiptapSuperscript;
+  const SUB  = window.TiptapSubscript    || window.tiptapSubscript;
+  const CLR  = window.TiptapColor        || window.tiptapColor;
+  const TS   = window.TiptapTextStyle    || window.tiptapTextStyle;
+  const HL   = window.TiptapHighlight    || window.tiptapHighlight;
+  const FF   = window.TiptapFontFamily   || window.tiptapFontFamily;
+
+  if (!SK || !SK.StarterKit) { fallbackEditor(); return; }
+
+  const exts = [SK.StarterKit];
+  if (UND && UND.Underline)    exts.push(UND.Underline);
+  if (TA  && TA.TextAlign)     exts.push(TA.TextAlign.configure({types:['heading','paragraph']}));
+  if (TBL && TBL.Table)        exts.push(TBL.Table.configure({resizable:true}));
+  if (TBLR && TBLR.TableRow)   exts.push(TBLR.TableRow);
+  if (TBLH && TBLH.TableHeader) exts.push(TBLH.TableHeader);
+  if (TBLC && TBLC.TableCell)  exts.push(TBLC.TableCell);
+  if (IMG  && IMG.Image)       exts.push(IMG.Image.configure({allowBase64:true,inline:false}));
+  if (LNK  && LNK.Link)        exts.push(LNK.Link.configure({openOnClick:false}));
+  if (SUP  && SUP.Superscript) exts.push(SUP.Superscript);
+  if (SUB  && SUB.Subscript)   exts.push(SUB.Subscript);
+  if (TS   && TS.TextStyle) {
+    exts.push(TS.TextStyle);
+    const FS = crearExtFontSize(TS.TextStyle);
+    if (FS) exts.push(FS);
+  }
+  if (CLR  && CLR.Color)       exts.push(CLR.Color);
+  if (HL   && HL.Highlight)    exts.push(HL.Highlight.configure({multicolor:true}));
+  if (FF   && FF.FontFamily)   exts.push(FF.FontFamily);
+
+  editor = new Editor({
+    element: document.getElementById('editor-tiptap'),
+    extensions: exts,
+    content: '<p></p>',
+    onUpdate() { marcarUnsaved(); clearTimeout(autosaveTimer); autosaveTimer = setTimeout(guardarBorrador,30000); },
+    onSelectionUpdate() { actualizarToolbar(); },
+  });
+
+  // Cargar contenido guardado
+  const saved = document.getElementById('contenido-guardado')?.value;
+  if (saved && saved.trim() && saved !== '<p></p>') editor.commands.setContent(saved);
+
+  // Drag & drop imágenes
+  document.getElementById('editor-tiptap').addEventListener('drop', async e => {
+    const file = e.dataTransfer?.files?.[0];
+    if (file?.type.startsWith('image/')) {
+      e.preventDefault();
+      const url = await uploadImagen(file);
+      if (url) editor.chain().focus().setImage({src:url}).run();
+    }
+  });
+
+  console.log('✅ Editor TipTap inicializado con', exts.length, 'extensiones');
+}
+
+function fallbackEditor() {
+  document.getElementById('toolbar').innerHTML =
+    '<div class="alert alert-warning m-2 small">Editor avanzado requiere conexión a internet. '
+    +'Se usa modo texto simple.</div>';
+  document.getElementById('editor-tiptap').innerHTML =
+    `<textarea id="ta-fallback" rows="20"
+      style="width:100%;border:none;padding:20px 24px;resize:vertical;
+             font-family:Calibri,Arial,sans-serif;font-size:11pt;outline:none;"
+      placeholder="Redacte aquí el contenido del documento..."></textarea>`;
+}
+
+// ── Comandos del toolbar ────────────────────────────────────────────
+function cmd(accion, valor) {
+  if (!editor) return;
+  const c = editor.chain().focus();
+  try { valor !== undefined ? c[accion](valor).run() : c[accion]().run(); }
+  catch(e) { console.warn('cmd error:', accion, e); }
+  actualizarToolbar();
+}
+
+function aplicarHeading(nivel) {
+  if (!editor) return;
+  parseInt(nivel) === 0
+    ? editor.chain().focus().setParagraph().run()
+    : editor.chain().focus().setHeading({level: parseInt(nivel)}).run();
+}
+
+function aplicarFontSize(px) {
+  if (!editor || !px) return;
+  editor.chain().focus().setMark('textStyle', {fontSize: px}).run();
+}
+
+function aplicarFuente(familia) {
+  if (!editor || !familia) return;
+  try { editor.chain().focus().setFontFamily(familia).run(); }
+  catch { editor.chain().focus().setMark('textStyle', {fontFamily: familia}).run(); }
+}
+
+function aplicarColorTexto(hex) {
+  if (!editor) return;
+  editor.chain().focus().setColor(hex).run();
+}
+
+function aplicarColorCelda(hex) {
+  if (!editor) return;
+  editor.chain().focus()
+    .updateAttributes('tableCell', {backgroundColor: hex})
+    .updateAttributes('tableHeader', {backgroundColor: hex})
+    .run();
+}
+
+function insertarTabla(filas, cols) {
+  if (!editor) return;
+  editor.chain().focus().insertTable({rows: filas||3, cols: cols||3, withHeaderRow:true}).run();
+}
+
+function insertarLink() {
+  if (!editor) return;
+  const url = prompt('URL del enlace:', 'https://');
+  if (url) editor.chain().focus().setLink({href: url}).run();
+}
+
+function triggerImgUpload() {
+  document.getElementById('inp-img-upload').click();
+}
+
+async function handleImageUpload(input) {
+  const file = input.files[0]; if (!file) return;
+  const url = await uploadImagen(file);
+  if (url && editor) editor.chain().focus().setImage({src: url}).run();
+  input.value = '';
+}
+
+async function uploadImagen(file) {
+  const fd = new FormData(); fd.append('imagen', file);
+  try {
+    const r = await fetch('/documentos/api/upload/imagen', {method:'POST', body:fd});
+    const d = await r.json();
+    if (d.url) return d.url;
+  } catch {}
+  // Fallback base64
+  return new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = e => res(e.target.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Marca de agua ───────────────────────────────────────────────────
+let marcaActiva = false;
+function toggleMarcaAgua() {
+  const panel = document.getElementById('panel-marca');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function aplicarMarcaAgua() {
+  const texto    = document.getElementById('ma-texto').value || 'BORRADOR';
+  const opacidad = parseFloat(document.getElementById('ma-opacidad').value) || 0.12;
+  const color    = document.getElementById('ma-color').value || '#1E3A8A';
+  const area     = document.getElementById('editor-tiptap');
+  area.style.backgroundImage = `none`;
+  // SVG inline como background
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'>
+    <text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle'
+      font-size='64' font-family='Calibri,Arial' font-weight='bold'
+      fill='${color}' opacity='${opacidad}'
+      transform='rotate(-35,200,150)'>${texto}</text>
+  </svg>`;
+  const encoded = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+  area.style.backgroundImage = `url("${encoded}")`;
+  area.style.backgroundRepeat = 'repeat';
+  area.style.backgroundPosition = 'center';
+  marcaActiva = true;
+  document.getElementById('panel-marca').style.display = 'none';
+}
+
+function quitarMarcaAgua() {
+  document.getElementById('editor-tiptap').style.backgroundImage = 'none';
+  marcaActiva = false;
+  document.getElementById('panel-marca').style.display = 'none';
+}
+
+// ── Insertar formas ─────────────────────────────────────────────────
+function insertarForma(tipo) {
+  if (!editor) return;
+  const formas = {
+    'linea_h':  '<hr style="border:2px solid #1E3A8A;margin:12px 0;">',
+    'linea_v':  '<div style="border-left:3px solid #1E3A8A;height:60px;display:inline-block;margin:4px 8px;vertical-align:middle;"></div>',
+    'recuadro': '<div style="border:2px solid #1E3A8A;padding:12px 16px;border-radius:6px;min-height:40px;margin:8px 0;"><br></div>',
+    'caja_info':'<div style="background:#dbeafe;border-left:4px solid #1E3A8A;padding:10px 14px;border-radius:0 6px 6px 0;margin:8px 0;">ℹ️ Información importante</div>',
+    'caja_alerta':'<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:10px 14px;border-radius:0 6px 6px 0;margin:8px 0;">⚠️ Advertencia</div>',
+    'firma_box':'<table style="width:100%;border-collapse:collapse;margin-top:32px;"><tr><td style="width:45%;border-top:1px solid #000;text-align:center;padding-top:8px;font-size:10px;">__________________________<br><strong>Nombre</strong><br>Cargo</td><td style="width:10%;"></td><td style="width:45%;border-top:1px solid #000;text-align:center;padding-top:8px;font-size:10px;">__________________________<br><strong>Nombre</strong><br>Cargo</td></tr></table>',
+  };
+  const html = formas[tipo];
+  if (html) editor.chain().focus().insertContent(html).run();
+  document.getElementById('panel-formas').style.display = 'none';
+}
+
+// ── Actualizar toolbar ──────────────────────────────────────────────
+function actualizarToolbar() {
+  if (!editor) return;
+  const activos = {
+    'btn-bold': editor.isActive('bold'),
+    'btn-italic': editor.isActive('italic'),
+    'btn-under': editor.isActive('underline'),
+    'btn-strike': editor.isActive('strike'),
+    'btn-bullet': editor.isActive('bulletList'),
+    'btn-ordered': editor.isActive('orderedList'),
+    'btn-al': editor.isActive({textAlign:'left'}),
+    'btn-ac': editor.isActive({textAlign:'center'}),
+    'btn-ar': editor.isActive({textAlign:'right'}),
+    'btn-aj': editor.isActive({textAlign:'justify'}),
+  };
+  for (const [id,a] of Object.entries(activos)) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('activo', a);
+  }
+  const hs = document.getElementById('sel-heading');
+  if (hs) {
+    for (let i=1;i<=4;i++) {
+      if (editor.isActive('heading',{level:i})) { hs.value=String(i); return; }
+    }
+    hs.value='0';
+  }
+}
+
+// ── Autosave + guardado ─────────────────────────────────────────────
+function marcarUnsaved() {
+  const el = document.getElementById('save-indicator');
+  if (el) { el.textContent='Sin guardar'; el.style.color='#f59e0b'; }
+}
+function marcarSaved() {
+  const el = document.getElementById('save-indicator');
+  if (el) { el.textContent='Guardado ✓'; el.style.color='#10b981'; }
+}
+
+async function guardarBorrador() {
+  if (!editor) return;
+  const html = editor.getHTML();
+  if (!html || html === '<p></p>') return;
+  document.getElementById('contenido-hidden').value = html;
+  const form = document.getElementById('form-doc');
+  const fd = new FormData(form);
+  try {
+    const url = docId ? `/documentos/api/borrador/${docId}` : '/documentos/api/borrador';
+    const r = await fetch(url, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        asunto: fd.get('asunto_resumen') || '',
+        area:   fd.get('area') || 'GA',
+        tipo:   fd.get('tipo_documento') || 'OFI',
+        fecha:  fd.get('fecha_radicacion') || '',
+        contenido: html,
+      })
+    });
+    const d = await r.json();
+    if (d.ok) { docId = d.id; marcarSaved(); }
+  } catch {}
+}
+
+// ── IA ──────────────────────────────────────────────────────────────
+function togglePanelIA() {
+  const p = document.getElementById('panel-ia');
+  const btn = document.getElementById('btn-ia');
+  const vis = p.style.display !== 'none';
+  p.style.display = vis ? 'none' : 'block';
+  btn.style.background = vis ? '#1E3A8A' : '#0f6e56';
+}
+
+function abrirPromptPersonalizado() {
+  const instr = prompt(
+    'Instrucción para Claude:
+Ej: "Redacta la introducción del informe PUEAA 2026"'
+  );
+  if (instr && instr.trim()) promptIA(instr.trim());
+}
+
+async function promptIA(instruccion) {
+  const carg = document.getElementById('ia-cargando');
+  const res  = document.getElementById('ia-resultado');
+  const wrap = document.getElementById('ia-resultado-wrap');
+  carg.style.display='block'; wrap.style.display='none'; res.textContent='';
+  textoIA = '';
+
+  const asunto = document.getElementById('doc-asunto')?.value || '';
+  const area   = document.querySelector('[name="area"]')?.value || 'GA';
+  const tipo   = document.querySelector('[name="tipo_documento"]')?.value || 'OFI';
+
+  const ctx = `SISTEMA: ASUACAP — Centro Poblado El Puente, Villeta, Cundinamarca, NIT 832.001.389-2
+Documento: ${area}-${tipo} — "${asunto}"
+Tipo: acueducto rural comunitario, esquema diferencial CRA 943/2021
+
+INSTRUCCIÓN: ${instruccion}
+
+REGLAS: Tono formal colombiano. Sin markdown, texto plano con saltos de línea.
+Si es tabla: formato Columna1 | Columna2 | Columna3. Máximo 400 palabras.`;
+
+  try {
+    const resp = await fetch('/documentos/api/ia_proxy', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({instruccion: instruccion, contexto: ctx})
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      textoIA = data.texto || '';
+    } else if (data.error && data.error.includes('Sin clave API')) {
+      document.getElementById('ia-aviso-clave').style.display='block';
+      textoIA = '⚠ La IA requiere configurar la Clave API Claude en:\nConfiguración > Notificaciones > Clave API Claude IA\n\nObtén una clave gratuita en: console.anthropic.com';
+    } else {
+      textoIA = '⚠ Error: ' + (data.error || 'Sin respuesta');
+    }
+    res.textContent = textoIA;
+    carg.style.display='none'; wrap.style.display='block';
+  } catch(e) {
+    carg.style.display='none';
+    res.textContent = '⚠ Sin conexión: ' + e.message;
+    wrap.style.display='block';
+  }
+}
+
+function insertarTextoIA() {
+  if (!editor || !textoIA) return;
+  textoIA.split('\n').filter(p=>p.trim()).forEach(p => {
+    editor.chain().focus().insertContent('<p>'+p+'</p>').run();
+  });
+  document.getElementById('ia-resultado-wrap').style.display='none';
+  document.getElementById('panel-ia').style.display='none';
+  document.getElementById('btn-ia').style.background='#1E3A8A';
+  textoIA='';
+}
+
+function copiarTextoIA() {
+  if (!textoIA) return;
+  navigator.clipboard.writeText(textoIA).then(()=>{
+    const btn=event.target; btn.textContent='✅ Copiado';
+    setTimeout(()=>btn.textContent='📋 Copiar',2000);
+  });
+}
+
+// ── Macros ─────────────────────────────────────────────────────────
+function macroFecha() {
+  if (!editor) return;
+  const h = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+  editor.chain().focus().insertContent(h).run();
+}
+function macroFirma() {
+  if (!editor) return;
+  editor.chain().focus().insertContent(`
+    <p>&nbsp;</p><p>Cordialmente,</p><p>&nbsp;</p>
+    <p>___________________________</p>
+    <p><strong>José Humberto Ramírez</strong></p>
+    <p>Representante Legal — ASUACAP</p>
+    <p>Villeta, Cundinamarca</p>
+  `).run();
+}
+function macroTablaIndicadores() {
+  if (!editor) return;
+  editor.chain().focus().insertContent(`
+    <table><tr><th>Indicador</th><th>Meta</th><th>Actual</th><th>Cumplimiento</th><th>Observación</th></tr>
+    <tr><td>IANC (%)</td><td>&lt;30%</td><td></td><td></td><td></td></tr>
+    <tr><td>Continuidad (h/día)</td><td>24 h</td><td></td><td></td><td></td></tr>
+    <tr><td>IRCA (%)</td><td>&lt;5%</td><td></td><td></td><td></td></tr>
+    <tr><td>Micromedición (%)</td><td>100%</td><td></td><td></td><td></td></tr>
+    <tr><td>IPUF (m³/susc-mes)</td><td>&lt;6</td><td></td><td></td><td></td></tr>
+    </table>
+  `).run();
+}
+function macroTablaActividades() {
+  if (!editor) return;
+  editor.chain().focus().insertContent(`
+    <table><tr><th>Actividad</th><th>Responsable</th><th>Fecha Prog.</th><th>Fecha Real</th><th>Estado</th><th>% Avance</th></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    </table>
+  `).run();
+}
+function macroTablaMarcoJuridico() {
+  if (!editor) return;
+  editor.chain().focus().insertContent(`
+    <table><tr><th>Norma</th><th>Entidad</th><th>Aplicación</th></tr>
+    <tr><td>Ley 142/1994</td><td>Congreso</td><td>Régimen servicios públicos</td></tr>
+    <tr><td>Ley 373/1997</td><td>Congreso</td><td>Uso eficiente del agua (PUEAA)</td></tr>
+    <tr><td>Decreto 1076/2015</td><td>MADS</td><td>Sector ambiental</td></tr>
+    <tr><td>RAS 2017</td><td>MVCT</td><td>Reglamento técnico agua</td></tr>
+    <tr><td>Res. CRA 943/2021</td><td>CRA</td><td>Esquemas diferenciales rurales</td></tr>
+    <tr><td></td><td></td><td></td></tr>
+    </table>
+  `).run();
+}
+
+// ── Membrete dinámico ───────────────────────────────────────────────
+async function cargarMembreteEditor() {
+  try {
+    const d = await fetch('/logo/actual').then(r=>r.json());
+    const aprobador = await fetch('/configuracion/api/aprobador_formato').then(r=>r.json()).catch(()=>({}));
+    const asunto = document.getElementById('doc-asunto')?.value || '(asunto)';
+    const area   = document.querySelector('[name="area"]')?.value || 'GA';
+    const tipo   = document.querySelector('[name="tipo_documento"]')?.value || 'OFI';
+    const fecha  = document.querySelector('[name="fecha_radicacion"]')?.value?.substring(0,4) || new Date().getFullYear();
+    const aprob  = aprobador.nombre || d.representante || 'José Humberto Ramírez';
+    const imgTag = d.tiene_logo && d.base64
+      ? `<img src="${d.base64}" style="height:52px;max-width:70px;object-fit:contain;">`
+      : `<div style="width:60px;height:52px;background:#1E3A8A;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:9px;">${(d.nombre_corto||'ASUACAP').substring(0,6)}</div>`;
+    const B='border:1px solid #94a3b8;'; const P='padding:5px 8px;font-size:10px;';
+    document.getElementById('membrete-editor-preview').innerHTML = `
+      <table style="width:100%;border-collapse:collapse;${B}font-family:Calibri,Arial,sans-serif;">
+        <tr>
+          <td style="${P}border-bottom:1px solid #94a3b8;border-right:1px solid #94a3b8;" colspan="3">
+            <strong style="font-size:11px;color:#1E3A8A;">${(d.nombre_asoc||'ASUACAP').toUpperCase()}</strong><br>
+            <span style="color:#475569;">NIT: ${d.nit||'832.001.389-2'}</span>
+          </td>
+          <td style="${P}border-bottom:1px solid #94a3b8;text-align:center;vertical-align:middle;width:80px;" rowspan="3">${imgTag}</td>
+        </tr>
+        <tr>
+          <td style="${P}border-bottom:1px solid #94a3b8;border-right:1px solid #94a3b8;" colspan="3">
+            <strong>Asunto:</strong> ${asunto}
+          </td>
+        </tr>
+        <tr>
+          <td style="${P}border-right:1px solid #94a3b8;"><strong>Código:</strong> ${area}-${tipo}-${fecha}-###</td>
+          <td style="${P}border-right:1px solid #94a3b8;"><strong>Aprobó formato:</strong> ${aprob}</td>
+          <td style="${P}border-right:1px solid #94a3b8;"><strong>Página:</strong> 1</td>
+        </tr>
+      </table>
+      <div style="height:3px;background:#1E3A8A;margin:0 0 10px 0;"></div>`;
+  } catch(e) { console.warn('membrete:', e); }
+}
+
+// ── Inicialización ──────────────────────────────────────────────────
+document.getElementById('ma-opacidad').addEventListener('input',function(){
+  document.getElementById('ma-opacidad-val').textContent=this.value;
+});
+document.addEventListener('DOMContentLoaded', () => {
+  // Tipos de documento: cargar INMEDIATAMENTE (no depende de TipTap)
+  cargarTiposDocumento().then(() => actualizarCodigo());
+  cargarMembreteEditor();
+
+  // Editor TipTap: esperar que los scripts UMD carguen
+  (async function() {
+    if (window._tiptapReady) { try { await window._tiptapReady; } catch(e){} }
+    await new Promise(r => setTimeout(r, 300));
+    initEditor();
+  })();
+
+  // Actualizar membrete al cambiar campos
+  ['doc-asunto','doc-area','doc-tipo','doc-fecha'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', cargarMembreteEditor);
+      el.addEventListener('input', () => {
+        clearTimeout(window._mt);
+        window._mt = setTimeout(cargarMembreteEditor, 600);
+      });
+    }
+  });
+
+  // Ctrl+S = guardar
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); guardarBorrador(); }
+  });
+});
+</script>
+{% endblock %}

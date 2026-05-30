@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Balance Hidrico — ASUACAP{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5><i class="bi bi-water me-2 text-primary"></i>Balance Hidrico — {{ nombre_mes }} {{ anio }}</h5>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('balance_hidrico.nueva_lectura') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus me-1"></i>Nueva Lectura
+        </a>
+        <a href="{{ url_for('balance_hidrico.exportar', anio=anio, mes=mes) }}" class="btn btn-success btn-sm">
+            <i class="bi bi-file-excel me-1"></i>Excel
+        </a>
+    </div>
+</div>
+
+<!-- Filtro mes/anio -->
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <select name="anio" class="form-select form-select-sm">
+                    {% for a in anios %}
+                    <option value="{{ a }}" {% if a==anio %}selected{% endif %}>{{ a }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="mes" class="form-select form-select-sm">
+                    {% for m in range(1,13) %}
+                    <option value="{{ m }}" {% if m==mes %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Ver</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if indicador %}
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold text-primary">{{ "%.1f"|format(indicador.produccion_m3 or 0) }} m³</div>
+            <div class="text-muted small">Produccion Total</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold text-success">{{ "%.1f"|format(indicador.facturado_m3 or 0) }} m³</div>
+            <div class="text-muted small">Facturado/Medido</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            <div class="fs-3 fw-bold text-warning">{{ "%.1f"|format(indicador.perdidas_m3 or 0) }} m³</div>
+            <div class="text-muted small">Perdidas</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm text-center p-3">
+            {% set ianc = indicador.ianc or 0 %}
+            <div class="fs-3 fw-bold {% if ianc <= 15 %}text-success{% elif ianc <= 25 %}text-warning{% else %}text-danger{% endif %}">{{ "%.1f"|format(ianc) }}%</div>
+            <div class="text-muted small">IANC</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header">Lecturas del Mes ({{ lecturas|length }} registros · Total: {{ prod_total }} m³)</div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead class="table-light"><tr>
+                <th>Fecha</th><th>Lect. Inicial</th><th>Lect. Final</th><th>Produccion Diaria</th><th>Observaciones</th>
+            </tr></thead>
+            <tbody>
+            {% for l in lecturas %}
+            <tr>
+                <td>{{ l.fecha }}</td>
+                <td>{{ l.lectura_inicial or "—" }}</td>
+                <td>{{ l.lectura_final or "—" }}</td>
+                <td><strong>{{ "%.2f"|format(l.produccion_diaria or 0) }} m³</strong></td>
+                <td><small class="text-muted">{{ l.observaciones or "" }}</small></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-4">Sin lecturas para este periodo.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

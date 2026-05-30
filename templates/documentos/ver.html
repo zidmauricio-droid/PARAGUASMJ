@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ doc.codigo_completo }} — ASUACAP{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5><i class="bi bi-file-earmark-text me-2 text-primary"></i>{{ doc.codigo_completo }}</h5>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('documentos.generar_pdf', registro_id=doc.pk_registro_id) }}"
+           class="btn btn-sm btn-danger"><i class="bi bi-file-pdf me-1"></i>PDF</a>
+        <a href="{{ url_for('documentos.listar') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Volver
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Datos del documento -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header">
+                <span class="fw-semibold">Datos del Documento</span>
+                <span class="badge float-end estado-badge" data-estado="{{ doc.estado }}">{{ doc.estado }}</span>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Codigo</dt>
+                    <dd class="col-sm-9 fw-semibold text-primary">{{ doc.codigo_completo }}</dd>
+                    <dt class="col-sm-3">Asunto</dt>
+                    <dd class="col-sm-9">{{ doc.asunto_resumen }}</dd>
+                    <dt class="col-sm-3">Fecha radicacion</dt>
+                    <dd class="col-sm-9">{{ doc.fecha_radicacion }}</dd>
+                    {% if doc.fecha_vencimiento %}
+                    <dt class="col-sm-3">Vence</dt>
+                    <dd class="col-sm-9">{{ doc.fecha_vencimiento }}</dd>
+                    {% endif %}
+                    {% if doc.contacto_nombre %}
+                    <dt class="col-sm-3">Destinatario</dt>
+                    <dd class="col-sm-9">{{ doc.contacto_nombre }}</dd>
+                    {% endif %}
+                    {% if doc.notas_internas %}
+                    <dt class="col-sm-3">Notas internas</dt>
+                    <dd class="col-sm-9 text-muted fst-italic">{{ doc.notas_internas }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        <!-- Contenido -->
+        {% if contenido %}
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header">Contenido del Documento</div>
+            <div class="card-body contenido-doc">
+                {{ contenido.contenido_html | safe }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Panel lateral -->
+    <div class="col-lg-4">
+        <!-- Cambio de estado -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header">Cambiar Estado</div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('documentos.cambiar_estado', registro_id=doc.pk_registro_id) }}">
+                    <select name="nuevo_estado" class="form-select form-select-sm mb-2">
+                        {% for e in ['Borrador','En_revision','En_autorizacion','Aprobado','Rechazado','Archivado'] %}
+                        <option value="{{ e }}" {% if e==doc.estado %}selected{% endif %}>{{ e }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" name="observacion" class="form-control form-control-sm mb-2" placeholder="Observacion...">
+                    <button type="submit" class="btn btn-sm btn-warning w-100">Actualizar estado</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Seguimiento -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header">Seguimiento</div>
+            <ul class="list-group list-group-flush" style="max-height:200px;overflow-y:auto;">
+                {% for s in seguimiento %}
+                <li class="list-group-item py-1 px-3">
+                    <div class="d-flex justify-content-between">
+                        <span class="badge estado-badge" data-estado="{{ s.estado_actual }}">{{ s.estado_actual }}</span>
+                        <small class="text-muted">{{ s.fecha_cambio[:10] }}</small>
+                    </div>
+                    {% if s.observaciones %}<small class="text-muted">{{ s.observaciones }}</small>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Acciones / OTP -->
+        {% if acciones %}
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header">Firmas Pendientes</div>
+            <ul class="list-group list-group-flush">
+                {% for a in acciones %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <small class="fw-semibold">{{ a.nombre_completo }}</small><br>
+                        <small class="text-muted">{{ a.cargo }}</small>
+                    </div>
+                    <span class="badge {% if a.estado=='Completada' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ a.estado }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
