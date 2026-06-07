@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Gestion de Usuarios{% endblock %}
+{% block content %}
+<h5 class="mb-4"><i class="bi bi-people me-2 text-primary"></i>Gestion de Usuarios del Sistema</h5>
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark"><tr>
+                <th>Nombre</th><th>Usuario</th><th>Rol</th><th>Ultimo Acceso</th><th>Estado</th>
+            </tr></thead>
+            <tbody>
+            {% for u in usuarios %}
+            <tr>
+                <td>{{ u.nombre_completo }}</td>
+                <td><code>{{ u.nombre_usuario }}</code></td>
+                <td><span class="badge bg-primary text-capitalize">{{ u.rol }}</span></td>
+                <td><small>{{ u.ultimo_acceso or "Nunca" }}</small></td>
+                <td>
+                    {% if u.activo %}
+                    <span class="badge bg-success">Activo</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Inactivo</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,844 @@
+{% extends "base.html" %}
+{% block title %}Proyectos — ASUACAP{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.css">
+<style>
+/* ── Cards de proyectos ─── */
+.proy-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;
+  padding:16px;transition:all .2s;cursor:pointer;}
+.proy-card:hover{box-shadow:0 8px 28px rgba(0,0,0,.12);transform:translateY(-3px);}
+.tipo-badge,.est-badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
+.tipo-pueaa{background:#dbeafe;color:#1e40af;}
+.tipo-obra{background:#d1fae5;color:#065f46;}
+.tipo-psmv{background:#ede9fe;color:#5b21b6;}
+.tipo-mejora{background:#fef3c7;color:#92400e;}
+.tipo-otro{background:#f1f5f9;color:#475569;}
+.est-activo{background:#d1fae5;color:#065f46;}
+.est-planificacion{background:#fef3c7;color:#92400e;}
+.est-pausado{background:#fee2e2;color:#991b1b;}
+.est-completado{background:#dbeafe;color:#1e40af;}
+.est-cancelado{background:#f1f5f9;color:#94a3b8;}
+
+/* ── Tabs del modal ─── */
+.tab-pill{border:none;background:transparent;padding:8px 14px;border-radius:8px;
+  font-weight:600;font-size:12px;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.tab-pill.active{background:#1E3A8A;color:#fff;}
+.tab-pane{display:none;padding-top:12px;}
+.tab-pane.active{display:block;}
+
+/* ── Tabla de docs ─── */
+.doc-chip{display:flex;align-items:center;gap:6px;padding:5px 10px;
+  background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:4px;font-size:12px;}
+.doc-chip a{color:#1E3A8A;font-weight:600;text-decoration:none;}
+.doc-chip a:hover{text-decoration:underline;}
+
+/* ── Buscador de docs ─── */
+.doc-search-results{position:absolute;z-index:999;width:100%;background:#fff;
+  border:1px solid #e2e8f0;border-radius:8px;max-height:200px;overflow-y:auto;
+  box-shadow:0 4px 16px rgba(0,0,0,.1);}
+.doc-search-item{padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;}
+.doc-search-item:hover{background:#eff6ff;}
+.doc-search-item strong{display:block;color:#1E3A8A;}
+
+/* ── Riesgos ─── */
+.riesgo-alto{border-left:3px solid #ef4444 !important;}
+.riesgo-medio{border-left:3px solid #f59e0b !important;}
+.riesgo-bajo{border-left:3px solid #10b981 !important;}
+
+.gantt-wrap{overflow-x:auto;min-height:180px;padding:8px 0;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h5 class="mb-0">
+    <i class="bi bi-kanban me-2 text-primary"></i>
+    Gestión de Proyectos — PUEAA · PSMV · Obras
+  </h5>
+  <button class="btn btn-primary" onclick="abrirModalProyecto()">
+    <i class="bi bi-plus-circle me-1"></i>Nuevo Proyecto
+  </button>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-2 d-flex flex-wrap gap-2">
+    <select id="f-estado" class="form-select form-select-sm" style="width:160px;" onchange="cargarProyectos()">
+      <option value="">Todos los estados</option>
+      <option value="planificacion">🟡 Planificación</option>
+      <option value="activo">🟢 Activo</option>
+      <option value="pausado">🔴 Pausado</option>
+      <option value="completado">🔵 Completado</option>
+      <option value="cancelado">⚫ Cancelado</option>
+    </select>
+    <select id="f-tipo" class="form-select form-select-sm" style="width:160px;" onchange="cargarProyectos()">
+      <option value="">Todos los tipos</option>
+      <option value="pueaa">💧 PUEAA</option>
+      <option value="psmv">🔵 PSMV</option>
+      <option value="obra">🏗️ Obra</option>
+      <option value="mejora">⚡ Mejora</option>
+      <option value="otro">📋 Otro</option>
+    </select>
+    <button class="btn btn-sm btn-ghost ms-auto" onclick="cargarProyectos()">
+      <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+    </button>
+  </div>
+</div>
+
+<!-- Grid de proyectos -->
+<div class="row g-3" id="grid-proyectos">
+  <div class="col-12 text-center text-muted py-5">
+    <div class="spinner-border text-primary mb-2" style="width:2rem;height:2rem;"></div>
+    <div>Cargando proyectos...</div>
+  </div>
+</div>
+
+
+<!-- ═══ MODAL: Nuevo/Editar Proyecto ═══ -->
+<div class="modal fade" id="modalProyecto" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="mp-titulo">Nuevo Proyecto</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="mp-id">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Código</label>
+            <input type="text" id="mp-codigo" class="form-control" placeholder="Auto si vacío">
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">Nombre del proyecto *</label>
+            <input type="text" id="mp-nombre" class="form-control" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Descripción</label>
+            <textarea id="mp-desc" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Objetivo estratégico</label>
+            <textarea id="mp-objetivo" class="form-control" rows="2"
+                      placeholder="Ej: Reducir IANC al 15% en 5 años..."></textarea>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Tipo</label>
+            <select id="mp-tipo" class="form-select">
+              <option value="pueaa">💧 PUEAA</option>
+              <option value="psmv">🔵 PSMV</option>
+              <option value="obra">🏗️ Obra</option>
+              <option value="mejora">⚡ Mejora</option>
+              <option value="otro" selected>📋 Otro</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Estado</label>
+            <select id="mp-estado" class="form-select">
+              <option value="planificacion">Planificación</option>
+              <option value="activo">Activo</option>
+              <option value="pausado">Pausado</option>
+              <option value="completado">Completado</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Presupuesto (COP)</label>
+            <input type="number" id="mp-presupuesto" class="form-control" value="0" min="0">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Responsable</label>
+            <select id="mp-responsable" class="form-select">
+              <option value="">— Sin asignar —</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Inicio plan</label>
+            <input type="date" id="mp-fi" class="form-control">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Fin plan</label>
+            <input type="date" id="mp-ff" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary fw-bold" onclick="guardarProyecto()">
+          <i class="bi bi-floppy me-1"></i>Guardar Proyecto
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ MODAL: Detalle del Proyecto (6+1 tabs) ═══ -->
+<div class="modal fade" id="modalDetalle" tabindex="-1" style="z-index:1060;">
+  <div class="modal-dialog modal-xl modal-fullscreen-lg-down">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#1E3A8A;color:#fff;padding:12px 20px;">
+        <div>
+          <h5 class="modal-title mb-0" id="det-titulo">Proyecto</h5>
+          <small id="det-subtitulo" class="opacity-75"></small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <!-- Tabs -->
+        <div class="d-flex gap-1 p-2 border-bottom flex-wrap" style="background:#f8fafc;">
+          {% for tab in [('resumen','📊 Resumen'),('tareas','✅ Tareas'),
+                         ('gantt','📅 Gantt'),('costos','💰 Finanzas'),
+                         ('riesgos','⚠️ Riesgos'),('metas','🎯 Metas PUEAA/PSMV'),
+                         ('docs','📄 Documentos')] %}
+          <button class="tab-pill {% if loop.first %}active{% endif %}"
+                  data-tab="{{ tab[0] }}"
+                  onclick="activarTab('{{ tab[0] }}', this)">
+            {{ tab[1] }}
+          </button>
+          {% endfor %}
+        </div>
+        <!-- Contenido tabs -->
+        <div class="p-3">
+          <div id="tab-resumen"  class="tab-pane active"></div>
+          <div id="tab-tareas"   class="tab-pane"></div>
+          <div id="tab-gantt"    class="tab-pane">
+            <div class="gantt-wrap"><div id="gantt-chart"></div></div>
+          </div>
+          <div id="tab-costos"   class="tab-pane"></div>
+          <div id="tab-riesgos"  class="tab-pane"></div>
+          <div id="tab-metas"    class="tab-pane"></div>
+          <div id="tab-docs"     class="tab-pane"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
+<script>
+// ════════════════════════════════════════════════════════════════
+// PARAGUASMJ — Panel de Proyectos v2 (PROG_4 + PROG_5)
+// ════════════════════════════════════════════════════════════════
+const fmt  = n => 'COP $' + Math.round(n||0).toLocaleString('es-CO');
+const api  = path => fetch('/proyectos2' + path).then(r => r.json());
+const post = (path, data) => fetch('/proyectos2'+path, {
+  method:'POST', headers:{'Content-Type':'application/json'},
+  body: JSON.stringify(data)
+}).then(r => r.json());
+const put  = (path, data) => fetch('/proyectos2'+path, {
+  method:'PUT', headers:{'Content-Type':'application/json'},
+  body: JSON.stringify(data)
+}).then(r => r.json());
+const del  = path => fetch('/proyectos2'+path, {method:'DELETE'}).then(r=>r.json());
+
+let _pid = null, _data = null;
+
+// ── Cargar grid ──────────────────────────────────────────────────
+async function cargarProyectos() {
+  const spinner = document.getElementById('spinner-proyectos');
+  const grid    = document.getElementById('grid-proyectos');
+  if (spinner) spinner.style.display = 'flex';
+
+  try {
+    const estado = document.getElementById('f-estado')?.value || '';
+    const tipo   = document.getElementById('f-tipo')?.value   || '';
+    const params = new URLSearchParams();
+    if (estado) params.set('estado', estado);
+    if (tipo)   params.set('tipo',   tipo);
+
+    const resp = await fetch('/proyectos2/api?' + params);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const list = await resp.json();
+
+    if (spinner) spinner.style.display = 'none';
+
+    if (!list || !list.length) {
+      grid.innerHTML = `<div class="col-12 text-center text-muted py-5">
+        <i class="bi bi-inbox" style="font-size:3rem;opacity:.3;"></i>
+        <div class="mt-2">No hay proyectos. ¡Crea el primero!</div>
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = list.map(p => {
+      const pct  = parseFloat(p.porcentaje_avance) || 0;
+      const bar  = pct>=80?'#10b981':pct>=50?'#f59e0b':'#3b82f6';
+      const saldo = (parseFloat(p.ingresos_totales)||0) - (parseFloat(p.costo_real)||0);
+      const tipo_label = (p.tipo_proyecto || 'otro').toUpperCase();
+      const estado_label = p.estado || 'planificacion';
+      const nombre = p.nombre || 'Sin nombre';
+      const codigo = p.codigo || '';
+      const desc   = (p.descripcion || 'Sin descripción').substring(0, 70);
+      const t_ok   = parseInt(p.tareas_ok)   || 0;
+      const t_tot  = parseInt(p.total_tareas) || 0;
+      return `
+      <div class="col-md-6 col-xl-4">
+        <div class="proy-card" onclick="verDetalle(${p.id})" style="cursor:pointer;
+          background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);
+          border-radius:12px;padding:16px;height:100%;transition:box-shadow .2s;">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <div class="fw-bold">${nombre}</div>
+              <code style="font-size:11px;color:#64748b;">${codigo}</code>
+            </div>
+            <div class="d-flex flex-column gap-1 align-items-end">
+              <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;
+                background:#e0f2fe;color:#0369a1;">${tipo_label}</span>
+              <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;
+                background:${estado_label==='ejecucion'?'#dcfce7':'#f1f5f9'};
+                color:${estado_label==='ejecucion'?'#166534':'#475569'};">${estado_label}</span>
+            </div>
+          </div>
+          <p class="text-muted small mb-2" style="min-height:28px;overflow:hidden;">${desc}…</p>
+          <div class="d-flex justify-content-between small text-muted mb-1">
+            <span>Avance</span><span><strong>${pct.toFixed(1)}%</strong></span>
+          </div>
+          <div style="background:#e2e8f0;border-radius:99px;height:6px;overflow:hidden;margin-bottom:8px;">
+            <div style="width:${Math.min(pct,100)}%;height:100%;background:${bar};border-radius:99px;
+              transition:width .5s;"></div>
+          </div>
+          <div class="d-flex justify-content-between small text-muted">
+            <span>${t_ok}/${t_tot} tareas</span>
+            <span style="color:${saldo>=0?'#10b981':'#ef4444'};">
+              $${Math.abs(saldo).toLocaleString('es-CO',{maximumFractionDigits:0})}
+            </span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch(err) {
+    if (spinner) spinner.style.display = 'none';
+    grid.innerHTML = `<div class="col-12 text-center py-4">
+      <div class="alert alert-danger d-inline-block">
+        Error al cargar proyectos: ${err.message}
+        <button class="btn btn-sm btn-outline-danger ms-2" onclick="cargarProyectos()">Reintentar</button>
+      </div>
+    </div>`;
+    console.error('cargarProyectos:', err);
+  }
+}
+
+async function abrirModalProyecto(pid=null) {
+  await cargarResponsables();
+  const mEl = document.getElementById('modalProyecto');
+  if (pid) {
+    const d = await api(`/api/${pid}`);
+    const p = d.proyecto;
+    document.getElementById('mp-titulo').textContent = 'Editar Proyecto';
+    document.getElementById('mp-id').value        = p.id;
+    document.getElementById('mp-codigo').value    = p.codigo || '';
+    document.getElementById('mp-nombre').value    = p.nombre || '';
+    document.getElementById('mp-desc').value      = p.descripcion || '';
+    document.getElementById('mp-objetivo').value  = p.objetivo || '';
+    document.getElementById('mp-tipo').value      = p.tipo_proyecto || 'otro';
+    document.getElementById('mp-estado').value    = p.estado || 'planificacion';
+    document.getElementById('mp-presupuesto').value = p.presupuesto_total || 0;
+    document.getElementById('mp-responsable').value = p.responsable_id || '';
+    document.getElementById('mp-fi').value        = p.fecha_inicio_plan || '';
+    document.getElementById('mp-ff').value        = p.fecha_fin_plan || '';
+  } else {
+    document.getElementById('mp-titulo').textContent = 'Nuevo Proyecto';
+    ['mp-id','mp-codigo','mp-nombre','mp-desc','mp-objetivo','mp-fi','mp-ff']
+      .forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mp-tipo').value = 'otro';
+    document.getElementById('mp-estado').value = 'planificacion';
+    document.getElementById('mp-presupuesto').value = 0;
+    document.getElementById('mp-responsable').value = '';
+  }
+  new bootstrap.Modal(mEl).show();
+}
+
+async function cargarResponsables() {
+  try {
+    const users = await fetch('/auditoria/api/usuarios').then(r=>r.json());
+    const sel   = document.getElementById('mp-responsable');
+    const val   = sel.value;
+    sel.innerHTML = '<option value="">— Sin asignar —</option>';
+    users.forEach(u => {
+      const o = new Option(u.nombre_completo, u.pk_usuario_id);
+      sel.appendChild(o);
+    });
+    if (val) sel.value = val;
+  } catch {}
+}
+
+async function guardarProyecto() {
+  const pid  = document.getElementById('mp-id').value;
+  const nombre = document.getElementById('mp-nombre').value.trim();
+  if (!nombre) { alert('El nombre es obligatorio'); return; }
+  const data = {
+    codigo:         document.getElementById('mp-codigo').value || undefined,
+    nombre, descripcion: document.getElementById('mp-desc').value,
+    objetivo:       document.getElementById('mp-objetivo').value,
+    tipo_proyecto:  document.getElementById('mp-tipo').value,
+    estado:         document.getElementById('mp-estado').value,
+    presupuesto_total: parseFloat(document.getElementById('mp-presupuesto').value)||0,
+    responsable_id: document.getElementById('mp-responsable').value || null,
+    fecha_inicio_plan: document.getElementById('mp-fi').value || null,
+    fecha_fin_plan:    document.getElementById('mp-ff').value || null,
+  };
+  const url    = pid ? `/proyectos2/api/${pid}` : '/proyectos2/api';
+  const method = pid ? 'PUT' : 'POST';
+  const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}).then(r=>r.json());
+  if (r.ok || r.id) {
+    bootstrap.Modal.getInstance(document.getElementById('modalProyecto'))?.hide();
+    cargarProyectos();
+  } else { alert('Error: ' + (r.error||'Desconocido')); }
+}
+
+// ── Ver detalle ──────────────────────────────────────────────────
+async function verDetalle(pid) {
+  _pid  = pid;
+  _data = await api(`/api/${pid}`);
+  const p = _data.proyecto;
+  document.getElementById('det-titulo').textContent   = p.nombre;
+  document.getElementById('det-subtitulo').textContent = `${p.codigo} · ${(p.tipo_proyecto||'').toUpperCase()} · ${p.estado}`;
+  renderResumen(p);
+  renderTareas(_data.tareas);
+  renderCostos(_data.costos, _data.ingresos, p);
+  renderRiesgos(_data.riesgos);
+  renderMetas(_data.metas);
+  renderDocs(_data.documentos||[]);
+  activarTab('resumen', document.querySelector('[data-tab="resumen"]'));
+  new bootstrap.Modal(document.getElementById('modalDetalle')).show();
+}
+
+function activarTab(tab, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (tab==='gantt') setTimeout(() => renderGantt(_data?.tareas||[]), 80);
+}
+
+// ── Tab Resumen ─────────────────────────────────────────────────
+function renderResumen(p) {
+  const pct   = p.porcentaje_avance||0;
+  const saldo = (p.ingresos_totales||0) - (p.costo_real||0);
+  document.getElementById('tab-resumen').innerHTML = `
+  <div class="row g-3">
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="row g-3 text-center mb-3">
+            <div class="col-4">
+              <div style="font-size:26px;font-weight:800;color:#1E3A8A;">${pct}%</div>
+              <div class="text-muted small">Avance general</div>
+              <div style="background:#e2e8f0;border-radius:99px;height:6px;margin-top:4px;">
+                <div style="width:${pct}%;height:100%;background:#1E3A8A;border-radius:99px;"></div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div style="font-size:16px;font-weight:800;color:#0F6E56;">${fmt(p.costo_real)}</div>
+              <div class="text-muted small">Ejecutado</div>
+              <div class="text-muted" style="font-size:10px;">de ${fmt(p.presupuesto_total)}</div>
+            </div>
+            <div class="col-4">
+              <div style="font-size:16px;font-weight:800;color:${saldo>=0?'#10b981':'#ef4444'};">${fmt(saldo)}</div>
+              <div class="text-muted small">Saldo</div>
+            </div>
+          </div>
+          <hr>
+          <p class="mb-1"><strong>Descripción:</strong> ${p.descripcion||'—'}</p>
+          <p class="mb-1"><strong>Objetivo:</strong> ${p.objetivo||'—'}</p>
+          <p class="mb-1"><strong>Fechas:</strong> ${p.fecha_inicio_plan||'—'} → ${p.fecha_fin_plan||'—'}</p>
+          <p class="mb-0"><strong>Responsable:</strong> ${p.responsable_nombre||'—'}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="fw-bold mb-3">⚡ Acciones rápidas</h6>
+          <div class="d-flex flex-column gap-2">
+            <button class="btn btn-sm btn-outline-primary" onclick="agregarTarea()">➕ Nueva tarea</button>
+            <button class="btn btn-sm btn-outline-success" onclick="activarTab('costos',document.querySelector('[data-tab=costos]'));agregarCosto()">💰 Registrar costo</button>
+            <button class="btn btn-sm btn-outline-warning" onclick="activarTab('riesgos',document.querySelector('[data-tab=riesgos]'));agregarRiesgo()">⚠️ Agregar riesgo</button>
+            <button class="btn btn-sm btn-outline-info" onclick="activarTab('docs',document.querySelector('[data-tab=docs]'))">📄 Ver documentos</button>
+            <a href="/proyectos2/api/${_pid}/informe_avance" target="_blank" class="btn btn-sm btn-success fw-bold">
+              📊 Informe de avance (Excel)
+            </a>
+            <button class="btn btn-sm btn-ghost" onclick="abrirModalProyecto(${p.id})">✏️ Editar proyecto</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Tab Tareas ──────────────────────────────────────────────────
+function renderTareas(tareas) {
+  document.getElementById('tab-tareas').innerHTML = `
+  <div class="d-flex justify-content-between mb-3">
+    <strong>${tareas.length} tarea(s)</strong>
+    <button class="btn btn-sm btn-primary" onclick="agregarTarea()">➕ Nueva tarea</button>
+  </div>
+  <div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+  <thead class="table-dark"><tr>
+    <th>Tarea</th><th>Inicio</th><th>Fin</th><th>Avance</th>
+    <th>Estado</th><th>Prioridad</th><th></th>
+  </tr></thead><tbody>
+  ${tareas.map(t => `<tr>
+    <td class="fw-semibold">${t.nombre}</td>
+    <td><small>${t.fecha_inicio_plan||'—'}</small></td>
+    <td><small>${t.fecha_fin_plan||'—'}</small></td>
+    <td>
+      <div class="d-flex align-items-center gap-2">
+        <input type="range" min="0" max="100" value="${t.porcentaje_avance||0}"
+               style="width:80px;" class="form-range"
+               oninput="this.nextElementSibling.textContent=this.value+'%'"
+               onchange="actualizarAvance(${t.id},this.value)">
+        <span style="font-size:11px;min-width:32px;">${t.porcentaje_avance||0}%</span>
+      </div>
+    </td>
+    <td>
+      <select class="form-select form-select-sm" style="width:120px;"
+              onchange="actualizarEstadoTarea(${t.id},this.value)">
+        ${['pendiente','en_progreso','completada','bloqueada'].map(s =>
+          `<option ${t.estado===s?'selected':''} value="${s}">${s}</option>`).join('')}
+      </select>
+    </td>
+    <td><span class="badge bg-${t.prioridad==='alta'?'danger':t.prioridad==='baja'?'success':'warning'}">${t.prioridad||'media'}</span></td>
+    <td><button class="btn btn-sm btn-ghost" onclick="eliminarTarea(${t.id})">🗑</button></td>
+  </tr>`).join('') || '<tr><td colspan="7" class="text-center text-muted py-3">Sin tareas. ¡Agrega la primera!</td></tr>'}
+  </tbody></table></div>`;
+}
+
+async function agregarTarea() {
+  const nombre = prompt('Nombre de la tarea:');
+  if (!nombre) return;
+  const fi = prompt('Fecha inicio plan (YYYY-MM-DD):', '') || null;
+  const ff = prompt('Fecha fin plan (YYYY-MM-DD):', '') || null;
+  const p  = prompt('Prioridad (alta/media/baja):', 'media') || 'media';
+  const r  = await post(`/api/${_pid}/tareas`, {nombre, fecha_inicio_plan:fi, fecha_fin_plan:ff, prioridad:p});
+  if (r.ok) await recargar();
+}
+async function actualizarAvance(tid, val) {
+  await put(`/api/tareas/${tid}`, {porcentaje_avance:parseInt(val)});
+  await recargar();
+}
+async function actualizarEstadoTarea(tid, estado) {
+  await put(`/api/tareas/${tid}`, {estado});
+  await recargar();
+}
+async function eliminarTarea(tid) {
+  if (!confirm('¿Eliminar tarea?')) return;
+  await del(`/api/tareas/${tid}`);
+  await recargar();
+}
+
+// ── Tab Gantt ───────────────────────────────────────────────────
+function renderGantt(tareas) {
+  const el = document.getElementById('gantt-chart');
+  el.innerHTML = '';
+  const validas = tareas.filter(t => t.fecha_inicio_plan && t.fecha_fin_plan);
+  if (!validas.length) {
+    el.innerHTML = '<div class="text-center text-muted py-5"><i class="bi bi-calendar-x" style="font-size:2rem;opacity:.3;"></i><div class="mt-2">Agrega tareas con fechas para ver el Gantt.</div></div>';
+    return;
+  }
+  try {
+    new Gantt('#gantt-chart', validas.map(t => ({
+      id: String(t.id), name: t.nombre,
+      start: t.fecha_inicio_plan, end: t.fecha_fin_plan,
+      progress: t.porcentaje_avance || 0,
+    })), { view_mode:'Week', language:'es',
+      on_progress_change: async (t, prog) => {
+        await put(`/api/tareas/${t.id}`, {porcentaje_avance: Math.round(prog)});
+        await recargar();
+      }
+    });
+  } catch(e) {
+    el.innerHTML = `<div class="alert alert-warning m-3">Gantt: ${e.message}</div>`;
+  }
+}
+
+// ── Tab Costos/Ingresos ─────────────────────────────────────────
+function renderCostos(costos, ingresos, p) {
+  const tc = costos.reduce((s,c)=>s+parseFloat(c.monto||0),0);
+  const ti = ingresos.reduce((s,i)=>s+parseFloat(i.monto||0),0);
+  document.getElementById('tab-costos').innerHTML = `
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header d-flex justify-content-between">
+          <span>💸 Gastos Reales</span>
+          <button class="btn btn-sm btn-primary" onclick="agregarCosto()">➕</button>
+        </div>
+        <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light"><tr><th>Fecha</th><th>Concepto</th><th class="text-end">Monto</th></tr></thead>
+          <tbody>${costos.map(c=>`<tr>
+            <td><small>${c.fecha}</small></td>
+            <td>${c.concepto}</td>
+            <td class="text-end fw-semibold text-danger">${fmt(c.monto)}</td>
+          </tr>`).join('')||'<tr><td colspan="3" class="text-center text-muted py-2">Sin gastos</td></tr>'}
+          </tbody>
+        </table></div>
+        <div class="card-footer fw-bold d-flex justify-content-between">
+          <span>Total:</span><span class="text-danger">${fmt(tc)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header d-flex justify-content-between">
+          <span>💵 Ingresos</span>
+          <button class="btn btn-sm btn-success" onclick="agregarIngreso()">➕</button>
+        </div>
+        <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light"><tr><th>Fecha</th><th>Fuente</th><th class="text-end">Monto</th></tr></thead>
+          <tbody>${ingresos.map(i=>`<tr>
+            <td><small>${i.fecha}</small></td>
+            <td>${i.fuente}</td>
+            <td class="text-end fw-semibold text-success">${fmt(i.monto)}</td>
+          </tr>`).join('')||'<tr><td colspan="3" class="text-center text-muted py-2">Sin ingresos</td></tr>'}
+          </tbody>
+        </table></div>
+        <div class="card-footer fw-bold d-flex justify-content-between">
+          <span>Total:</span><span class="text-success">${fmt(ti)}</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-12">
+      <div class="alert ${ti-tc>=0?'alert-success':'alert-danger'} d-flex justify-content-between mb-0">
+        <strong>Saldo del proyecto (ingresos − gastos):</strong>
+        <strong>${fmt(ti-tc)}</strong>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function agregarCosto() {
+  const concepto=prompt('Concepto del gasto:'); if(!concepto) return;
+  const monto=parseFloat(prompt('Monto (COP):')); if(!monto||monto<=0) return;
+  const fecha=prompt('Fecha:',new Date().toISOString().split('T')[0]);
+  const r=await post(`/api/${_pid}/costos`,{fecha,concepto,monto});
+  if(r.ok) await recargar();
+}
+async function agregarIngreso() {
+  const fuente=prompt('Fuente (CAR, Alcaldía...):'); if(!fuente) return;
+  const monto=parseFloat(prompt('Monto (COP):')); if(!monto||monto<=0) return;
+  const fecha=prompt('Fecha:',new Date().toISOString().split('T')[0]);
+  const r=await post(`/api/${_pid}/ingresos`,{fecha,fuente,monto});
+  if(r.ok) await recargar();
+}
+
+// ── Tab Riesgos ─────────────────────────────────────────────────
+function renderRiesgos(riesgos) {
+  document.getElementById('tab-riesgos').innerHTML = `
+  <div class="d-flex justify-content-between mb-3">
+    <strong>${riesgos.length} riesgo(s)</strong>
+    <button class="btn btn-sm btn-warning" onclick="agregarRiesgo()">➕ Agregar riesgo</button>
+  </div>
+  ${riesgos.map(r=>`
+  <div class="card border mb-2 riesgo-${r.impacto==='alto'||r.impacto==='Alta'?'alto':r.impacto==='medio'?'medio':'bajo'}">
+    <div class="card-body py-2">
+      <div class="d-flex justify-content-between align-items-start">
+        <strong>${r.nombre}</strong>
+        <div class="d-flex gap-1 flex-wrap">
+          <span class="badge bg-${r.probabilidad==='alta'?'danger':r.probabilidad==='media'?'warning text-dark':'success'}">
+            P: ${r.probabilidad||'—'}
+          </span>
+          <span class="badge bg-${r.impacto==='alto'?'danger':r.impacto==='medio'?'warning text-dark':'success'}">
+            I: ${r.impacto||'—'}
+          </span>
+          <select class="form-select form-select-sm" style="width:130px;"
+                  onchange="put('/api/riesgos/${r.id}',{estado:this.value,plan_mitigacion:'${(r.plan_mitigacion||'').replace(/'/g,'\\'')}})">
+            ${['identificado','mitigado','ocurrido','cerrado'].map(s=>
+              `<option ${r.estado===s?'selected':''} value="${s}">${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      ${r.descripcion?`<div class="text-muted small mt-1">${r.descripcion}</div>`:''}
+      ${r.plan_mitigacion?`<div class="small mt-1"><strong>Plan:</strong> ${r.plan_mitigacion}</div>`:''}
+    </div>
+  </div>`).join('') || '<div class="text-center text-muted py-4">Sin riesgos registrados.</div>'}`;
+}
+
+async function agregarRiesgo() {
+  const nombre=prompt('Nombre del riesgo:'); if(!nombre) return;
+  const prob=prompt('Probabilidad (alta/media/baja):','media')||'media';
+  const imp=prompt('Impacto (alto/medio/bajo):','medio')||'medio';
+  const plan=prompt('Plan de mitigación:')||'';
+  const r=await post(`/api/${_pid}/riesgos`,{nombre,probabilidad:prob,impacto:imp,plan_mitigacion:plan});
+  if(r.ok) await recargar();
+}
+
+// ── Tab Metas PUEAA/PSMV ────────────────────────────────────────
+function renderMetas(metas) {
+  document.getElementById('tab-metas').innerHTML = `
+  <div class="d-flex justify-content-between mb-3">
+    <strong>${metas.length} meta(s) registrada(s)</strong>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-primary" onclick="agregarMeta()">➕ Nueva meta</button>
+      <a href="/proyectos2/api/${_pid}/informe_avance" target="_blank" class="btn btn-sm btn-success">
+        📊 Informe Excel
+      </a>
+    </div>
+  </div>
+  ${metas.length?`
+  <div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+  <thead class="table-dark"><tr>
+    <th>Año</th><th>Período</th><th>Meta</th><th>Cumplida</th>
+    <th>Docs soporte</th><th>Observaciones</th><th></th>
+  </tr></thead><tbody>
+  ${metas.map(m=>`<tr class="${m.cumplida?'text-muted':''}" style="${m.cumplida?'text-decoration:line-through;opacity:.6;':''}">
+    <td>${m.anio}</td>
+    <td>${m.semestre?'S'+m.semestre:'Anual'}</td>
+    <td>${m.meta}</td>
+    <td class="text-center">
+      <input type="checkbox" ${m.cumplida?'checked':''} class="form-check-input"
+             onchange="put('/api/metas/${m.id}',{cumplida:this.checked?1:0,observaciones:'${(m.observaciones||'').replace(/'/g,'\\'')}'})" style="width:18px;height:18px;">
+    </td>
+    <td>
+      <button class="btn btn-sm btn-outline-primary" style="font-size:10px;"
+              onclick="verDocsMetaModal(${m.id})">
+        📎 Gestionar
+      </button>
+    </td>
+    <td>
+      <input type="text" value="${m.observaciones||''}" class="form-control form-control-sm"
+             onblur="put('/api/metas/${m.id}',{cumplida:${m.cumplida?1:0},observaciones:this.value})">
+    </td>
+    <td>
+      <button class="btn btn-sm btn-ghost" onclick="eliminarMeta(${m.id})">🗑</button>
+    </td>
+  </tr>`).join('')}
+  </tbody></table></div>`:'<div class="text-center text-muted py-4">Sin metas. Agrega metas PUEAA o PSMV.</div>'}`;
+}
+
+async function agregarMeta() {
+  const anio=parseInt(prompt('Año:',new Date().getFullYear())); if(!anio) return;
+  const sem=prompt('Semestre (1,2 o vacío para anual):')||null;
+  const meta=prompt('Descripción de la meta:'); if(!meta) return;
+  const r=await post(`/api/${_pid}/metas`,{anio,semestre:sem?parseInt(sem):null,meta});
+  if(r.ok) await recargar();
+}
+async function eliminarMeta(mid) {
+  if(!confirm('¿Eliminar meta?')) return;
+  await del(`/api/metas/${mid}`);
+  await recargar();
+}
+
+// Gestión de documentos soporte de una meta
+async function verDocsMetaModal(mid) {
+  const docs = await api(`/api/metas/${mid}/documentos`);
+  let html = '<div style="font-size:13px;">';
+  if (docs.length) {
+    html += docs.map(d=>`
+      <div class="doc-chip">
+        <i class="bi bi-file-earmark-text text-primary"></i>
+        <div style="flex:1;"><a href="/documentos/${d.id}">${d.codigo}</a> — ${(d.asunto||'').substring(0,50)}</div>
+        <button class="btn btn-sm btn-ghost" onclick="del('/api/metas/${mid}/documentos/${d.id}').then(()=>verDocsMetaModal(${mid}))">✕</button>
+      </div>`).join('');
+  } else {
+    html += '<div class="text-muted small text-center py-2">Sin documentos soporte</div>';
+  }
+  html += '</div>';
+  html += `<div class="mt-2" style="position:relative;">
+    <input type="text" id="buscador-doc-meta-${mid}" class="form-control form-control-sm"
+           placeholder="Buscar documento por código o asunto..."
+           oninput="buscarDocParaMeta(this.value, ${mid})">
+    <div id="res-doc-meta-${mid}" class="doc-search-results"></div>
+  </div>`;
+  if (!confirm('¿Desea gestionar los documentos soporte de esta meta?\n\n' +
+               (docs.map(d=>d.codigo+' — '+d.asunto).join('\n')||'Sin documentos aún') +
+               '\n\n(Haga clic OK para abrir el buscador en el panel)')) return;
+  // Abrir como diálogo simple usando prompt
+  const codigo = prompt('Código del documento a agregar (ej. GA-OFI-2026-001):','');
+  if (!codigo) return;
+  const resultados = await fetch(`/proyectos2/api/buscar_documento?q=${encodeURIComponent(codigo)}`).then(r=>r.json());
+  if (!resultados.length) { alert('Documento no encontrado'); return; }
+  const doc = resultados[0];
+  const r = await post(`/api/metas/${mid}/documentos`, {documento_id: doc.id});
+  if (r.ok) { await recargar(); alert(`✅ Documento ${doc.codigo} agregado como soporte.`); }
+  else alert('Error: ' + (r.error||'Desconocido'));
+}
+
+// ── Tab Documentos del Proyecto ─────────────────────────────────
+function renderDocs(docs) {
+  document.getElementById('tab-docs').innerHTML = `
+  <div class="d-flex justify-content-between mb-3">
+    <strong>${docs.length} documento(s) asociado(s)</strong>
+    <button class="btn btn-sm btn-primary" onclick="asociarDocumento()">
+      🔗 Asociar documento existente
+    </button>
+  </div>
+
+  ${docs.length?`
+  <div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+  <thead class="table-dark"><tr>
+    <th>Código</th><th>Asunto</th><th>Fecha</th><th>Estado</th>
+    <th>Tipo relación</th><th></th>
+  </tr></thead>
+  <tbody>${docs.map(d=>`<tr>
+    <td><a href="/documentos/${d.id}" class="fw-semibold text-primary text-decoration-none"
+           target="_blank">${d.codigo}</a></td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+        title="${d.asunto}">${d.asunto||'—'}</td>
+    <td><small>${(d.fecha||'').substring(0,10)}</small></td>
+    <td><span class="badge bg-${d.estado==='Aprobado'?'success':d.estado==='Borrador'?'secondary':'primary'}">${d.estado||'—'}</span></td>
+    <td><span class="badge bg-info text-dark">${d.tipo_relacion||'soporte'}</span></td>
+    <td>
+      <button class="btn btn-sm btn-ghost" title="Quitar asociación"
+              onclick="desasociarDoc(${d.id})">✕</button>
+    </td>
+  </tr>`).join('')}</tbody>
+  </table></div>`
+  :'<div class="text-center text-muted py-5"><i class="bi bi-file-earmark-x" style="font-size:2.5rem;opacity:.3;"></i><div class="mt-2">No hay documentos asociados a este proyecto.</div></div>'}
+
+  <div class="mt-3 p-3 bg-light rounded" style="font-size:12px;color:#64748b;">
+    <strong>💡 Tip:</strong> También puedes asociar documentos al crear o editar un documento
+    desde el módulo <a href="/documentos/nuevo">Documentos → Nuevo</a>, seleccionando este proyecto.
+  </div>`;
+}
+
+async function asociarDocumento() {
+  const q = prompt('Buscar documento por código o asunto:','');
+  if (!q) return;
+  const resultados = await fetch(`/proyectos2/api/buscar_documento?q=${encodeURIComponent(q)}&excluir_proyecto=${_pid}`)
+    .then(r=>r.json());
+  if (!resultados.length) { alert('Sin resultados para: ' + q); return; }
+  const opts = resultados.map((d,i)=>`${i+1}. ${d.codigo} — ${d.asunto.substring(0,50)}`).join('\n');
+  const sel  = parseInt(prompt(`Seleccione el número del documento:\n\n${opts}`));
+  if (!sel || sel<1 || sel>resultados.length) return;
+  const doc  = resultados[sel-1];
+  const tipo = prompt('Tipo de relación (soporte/entregable/acta):', 'soporte') || 'soporte';
+  const r    = await post(`/api/${_pid}/documentos`, {documento_id: doc.id, tipo_relacion: tipo});
+  if (r.ok) { await recargar(); }
+  else alert('Error: ' + (r.error||'Desconocido'));
+}
+
+async function desasociarDoc(docId) {
+  if (!confirm('¿Quitar este documento del proyecto?')) return;
+  const r = await del(`/api/${_pid}/documentos/${docId}`);
+  if (r.ok) await recargar();
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+async function recargar() {
+  _data = await api(`/api/${_pid}`);
+  const p = _data.proyecto;
+  renderResumen(p);
+  renderTareas(_data.tareas);
+  renderCostos(_data.costos, _data.ingresos, p);
+  renderRiesgos(_data.riesgos);
+  renderMetas(_data.metas);
+  renderDocs(_data.documentos||[]);
+  const tabActivo = document.querySelector('.tab-pill.active')?.getAttribute('data-tab');
+  if (tabActivo==='gantt') renderGantt(_data.tareas);
+  cargarProyectos();
+}
+
+document.addEventListener('DOMContentLoaded', cargarProyectos);
+</script>
+{% endblock %}

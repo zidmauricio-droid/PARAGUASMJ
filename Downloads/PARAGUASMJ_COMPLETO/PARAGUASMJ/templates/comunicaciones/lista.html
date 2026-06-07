@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Comunicaciones Recibidas{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+    <h5><i class="bi bi-envelope me-2 text-primary"></i>Comunicaciones Recibidas</h5>
+    <a href="{{ url_for('comunicaciones.nueva') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle me-1"></i>Registrar
+    </a>
+</div>
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark"><tr>
+                <th>Entidad</th><th>Radicado</th><th>Asunto</th><th>Recibido</th><th>Limite</th><th>Estado</th>
+            </tr></thead>
+            <tbody>
+            {% for c in comunicaciones %}
+            <tr>
+                <td>{{ c.entidad_remitente }}</td>
+                <td><small>{{ c.radicado_externo or "—" }}</small></td>
+                <td class="text-truncate" style="max-width:200px;">{{ c.asunto }}</td>
+                <td><small>{{ c.fecha_recepcion }}</small></td>
+                <td><small class="{% if c.requiere_respuesta and c.fecha_limite_resp %}text-danger{% endif %}">{{ c.fecha_limite_resp or "—" }}</small></td>
+                <td><span class="badge {% if c.estado=='Pendiente' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ c.estado }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-4">Sin comunicaciones registradas.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

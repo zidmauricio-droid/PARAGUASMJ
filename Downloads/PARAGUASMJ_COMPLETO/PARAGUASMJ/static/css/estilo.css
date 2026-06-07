@@ -1,0 +1,62 @@
+/* ASUACAP SIGD 2026 — Hoja de estilos institucional */
+:root {
+    --asuacap-azul:   #1E3A8A;
+    --asuacap-verde:  #0F6E56;
+    --asuacap-agua:   #0ea5e9;
+    --asuacap-claro:  #f0f9ff;
+}
+
+/* Barra de navegacion */
+.bg-asuacap { background-color: var(--asuacap-azul) !important; }
+.bg-verde-agua { background-color: var(--asuacap-verde) !important; }
+
+/* Login */
+.bg-login { background: linear-gradient(135deg, #1E3A8A 0%, #0F6E56 100%); }
+
+/* KPI cards */
+.kpi-card:hover { transform: translateY(-2px); transition: transform .15s; box-shadow: 0 6px 20px rgba(0,0,0,.12) !important; }
+.kpi-icon { width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* Badges de estado de documentos */
+.estado-badge[data-estado="Borrador"]        { background: #6b7280; color: #fff; }
+.estado-badge[data-estado="En_revision"]     { background: #f59e0b; color: #000; }
+.estado-badge[data-estado="En_autorizacion"] { background: #3b82f6; color: #fff; }
+.estado-badge[data-estado="Aprobado"]        { background: #10b981; color: #fff; }
+.estado-badge[data-estado="Rechazado"]       { background: #ef4444; color: #fff; }
+.estado-badge[data-estado="Archivado"]       { background: #374151; color: #fff; }
+
+/* Contenido documento PDF-like */
+.contenido-doc {
+    font-family: 'Calibri', Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.6;
+    padding: 1.5rem;
+    background: #fafafa;
+    border-left: 4px solid var(--asuacap-azul);
+}
+
+/* Tabla compacta */
+.table-sm td, .table-sm th { padding: .3rem .5rem; font-size: .875rem; }
+
+/* Sidebar hover */
+.nav-link:hover { background: rgba(255,255,255,.1); border-radius: 4px; }
+
+/* Progress bar thin */
+.progress { border-radius: 10px; }
+
+/* Tarjetas con borde superior de color */
+.card-top-primary { border-top: 3px solid var(--asuacap-azul) !important; }
+.card-top-success  { border-top: 3px solid var(--asuacap-verde) !important; }
+.card-top-danger   { border-top: 3px solid #ef4444 !important; }
+
+/* Footer */
+footer { font-size: .82rem; }
+
+/* Mapa */
+#mapa_asuacap { border-radius: 0 0 6px 6px; }
+
+/* Responsive ajustes */
+@media (max-width: 768px) {
+    .kpi-card .fs-2 { font-size: 1.5rem !important; }
+    .contenido-doc  { font-size: 10pt; }
+}

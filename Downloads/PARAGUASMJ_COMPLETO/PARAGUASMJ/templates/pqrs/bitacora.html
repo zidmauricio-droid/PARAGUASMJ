@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Bitácora de Operación — ASUACAP{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h5 class="mb-0">
+      <i class="bi bi-journal-text me-2 text-primary"></i>
+      Bitácora de Operación — Archivo Digital
+    </h5>
+    <small class="text-muted">
+      Código: <strong>GA-BIT-AAAA-NNN</strong> — Gestión Ambiental
+    </small>
+  </div>
+  <a href="/pqrs/" class="btn btn-ghost btn-sm">← Volver a PQRS</a>
+</div>
+
+<!-- Aviso explicativo -->
+<div class="alert alert-warning d-flex gap-3 align-items-start mb-4">
+  <i class="bi bi-book fs-3 mt-1"></i>
+  <div>
+    <strong>¿Qué es la Bitácora de Operación?</strong>
+    <p class="mb-1 mt-1">
+      Es el <strong>libro físico</strong> que lleva el fontanero / operador de turno con sus
+      registros diarios (lecturas de caudal, cloro, presión, novedades, etc.).
+    </p>
+    <p class="mb-0">
+      Este módulo <strong>no genera datos digitales</strong>. Solo permite
+      <strong>subir el escaneo (PDF o foto)</strong> del libro para dejarlo
+      archivado en el sistema con código <strong>GA-BIT</strong> como soporte
+      documental ante la SSPD y la CAR.
+    </p>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- Formulario de subida -->
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold">
+        <i class="bi bi-upload me-2"></i>Subir Escaneo de Bitácora
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">
+              Archivo escaneado *
+              <small class="text-muted fw-normal">(PDF, JPG, PNG, TIF)</small>
+            </label>
+            <input type="file" id="archivo-bit" class="form-control"
+                   accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff">
+            <div id="preview-nombre" class="text-muted small mt-1"></div>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Fecha de la bitácora</label>
+            <input type="date" id="fecha-bit" class="form-control">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Fontanero / Operador</label>
+            <select id="fontanero-bit" class="form-select">
+              <option value="">— Seleccione —</option>
+              {% for f in fontaneros %}
+              <option value="{{ f.nombre_completo }}">{{ f.nombre_completo }}</option>
+              {% endfor %}
+              <option value="OTRO">Otro (escribir abajo)</option>
+            </select>
+          </div>
+
+          <div class="col-12" id="campo-otro-fontanero" style="display:none;">
+            <label class="form-label fw-semibold">Nombre del operador</label>
+            <input type="text" id="otro-fontanero" class="form-control"
+                   placeholder="Nombre completo del operador">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">Período que cubre</label>
+            <input type="text" id="periodo-bit" class="form-control"
+                   placeholder="Ej: Semana del 20 al 26 de mayo de 2026">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">
+              Descripción / Observaciones adicionales
+            </label>
+            <textarea id="desc-bit" class="form-control" rows="2"
+                      placeholder="Opcional — novedades relevantes del período..."></textarea>
+          </div>
+
+          <div class="col-12">
+            <button class="btn btn-primary w-100 fw-bold" onclick="subirBitacora()">
+              <i class="bi bi-cloud-upload me-2"></i>Archivar Bitácora
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Listado de bitácoras archivadas -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold">
+        <i class="bi bi-archive me-2"></i>Bitácoras Archivadas
+      </div>
+      {% if registros %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>Código</th>
+              <th>Fecha</th>
+              <th>Descripción</th>
+              <th>Archivo</th>
+              <th>Archivado por</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in registros %}
+            <tr>
+              <td>
+                <code class="text-primary fw-bold">{{ r.codigo }}</code>
+              </td>
+              <td>
+                <small>{{ r.fecha_radicacion or '—' }}</small>
+              </td>
+              <td style="max-width:200px;">
+                <small>{{ r.descripcion or '—' }}</small>
+              </td>
+              <td>
+                {% if r.nombre_archivo %}
+                <div class="d-flex align-items-center gap-1">
+                  {% if r.tipo_archivo and 'pdf' in r.tipo_archivo %}
+                  <i class="bi bi-file-earmark-pdf text-danger"></i>
+                  {% else %}
+                  <i class="bi bi-file-earmark-image text-primary"></i>
+                  {% endif %}
+                  <small class="text-muted">
+                    {{ r.nombre_archivo[:25] }}
+                    {% if r.tamano_bytes %}
+                    <br>({{ (r.tamano_bytes / 1024)|round(0)|int }} KB)
+                    {% endif %}
+                  </small>
+                </div>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <small class="text-muted">{{ r.creado_por or '—' }}</small>
+              </td>
+              <td>
+                {% if r.nombre_archivo %}
+                <a href="/pqrs/bitacora/{{ r.id }}/descargar"
+                   class="btn btn-sm btn-outline-primary" title="Descargar">
+                  <i class="bi bi-download"></i>
+                </a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="p-5 text-center text-muted">
+        <i class="bi bi-journal-x" style="font-size:2.5rem;opacity:.3;"></i>
+        <div class="mt-2">No hay bitácoras archivadas aún.</div>
+        <div class="small mt-1">
+          Escanee el libro del fontanero y súbalo con el formulario.
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Nota normativa -->
+    <div class="mt-3 p-3 rounded" style="background:#f8fafc;border:1px solid #e2e8f0;font-size:11px;color:#64748b;">
+      <strong>📌 Base normativa:</strong>
+      Art. 30 Res. 0330/2017 (manual de operación) · Res. CRA 943/2021 ·
+      Los registros físicos deben conservarse mínimo <strong>5 años</strong>.
+      Este archivo digital es el <strong>soporte electrónico</strong> del libro físico.
+      Código de archivo: <strong>GA-BIT</strong> (Gestión Ambiental — Bitácora).
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Fecha de hoy por defecto
+  document.getElementById('fecha-bit').value = new Date().toISOString().split('T')[0];
+
+  // Mostrar nombre del archivo seleccionado
+  document.getElementById('archivo-bit').addEventListener('change', function() {
+    const f = this.files[0];
+    document.getElementById('preview-nombre').textContent =
+      f ? `📄 ${f.name} (${(f.size/1024).toFixed(0)} KB)` : '';
+  });
+
+  // Mostrar campo de texto si selecciona "Otro"
+  document.getElementById('fontanero-bit').addEventListener('change', function() {
+    document.getElementById('campo-otro-fontanero').style.display =
+      this.value === 'OTRO' ? 'block' : 'none';
+  });
+});
+
+async function subirBitacora() {
+  const archivo = document.getElementById('archivo-bit').files[0];
+  if (!archivo) { alert('Seleccione el archivo escaneado'); return; }
+
+  let fontanero = document.getElementById('fontanero-bit').value;
+  if (fontanero === 'OTRO') {
+    fontanero = document.getElementById('otro-fontanero').value.trim();
+    if (!fontanero) { alert('Ingrese el nombre del operador'); return; }
+  }
+  if (!fontanero) { alert('Seleccione el fontanero / operador'); return; }
+
+  const fd = new FormData();
+  fd.append('archivo',           archivo);
+  fd.append('fecha_bitacora',    document.getElementById('fecha-bit').value);
+  fd.append('fontanero',         fontanero);
+  fd.append('periodo',           document.getElementById('periodo-bit').value);
+  fd.append('descripcion',       document.getElementById('desc-bit').value);
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Archivando...';
+
+  try {
+    const r = await fetch('/pqrs/bitacora/subir', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.ok) {
+      alert(`✅ Bitácora archivada con código ${d.codigo}`);
+      location.reload();
+    } else {
+      alert('Error: ' + d.error);
+    }
+  } catch (e) {
+    alert('Error de conexión: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-cloud-upload me-2"></i>Archivar Bitácora';
+  }
+}
+</script>
+{% endblock %}

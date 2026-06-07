@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Auditoría del Sistema — ASUACAP{% endblock %}
+{% block extra_css %}
+<style>
+.log-badge { padding:2px 8px; border-radius:12px; font-size:10px; font-weight:700; }
+.log-CREATE  { background:#d1fae5; color:#065f46; }
+.log-UPDATE  { background:#dbeafe; color:#1e40af; }
+.log-DELETE  { background:#fee2e2; color:#991b1b; }
+.log-LOGIN   { background:#ede9fe; color:#5b21b6; }
+.log-LOGIN_FAILED { background:#fee2e2; color:#991b1b; }
+.log-APPROVE { background:#d1fae5; color:#065f46; }
+.log-REJECT  { background:#fee2e2; color:#991b1b; }
+.log-default { background:#f1f5f9; color:#475569; }
+
+.stat-card { background:#fff; border-radius:12px; border:1px solid #e2e8f0; padding:16px; text-align:center; }
+.stat-num  { font-size:28px; font-weight:800; }
+.stat-lbl  { font-size:11px; color:#64748b; margin-top:2px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h5 class="mb-0"><i class="bi bi-shield-check me-2 text-primary"></i>Registro de Auditoría del Sistema</h5>
+  <a href="/auditoria/api/logs/exportar" class="btn btn-sm btn-success">
+    <i class="bi bi-file-excel me-1"></i>Exportar Excel
+  </a>
+</div>
+
+<!-- Stats rápidas -->
+<div class="row g-3 mb-4" id="stats-row">
+  <div class="col-3"><div class="stat-card">
+    <div class="stat-num text-primary" id="st-hoy">—</div>
+    <div class="stat-lbl">Acciones hoy</div>
+  </div></div>
+  <div class="col-3"><div class="stat-card">
+    <div class="stat-num text-danger" id="st-fails">—</div>
+    <div class="stat-lbl">Logins fallidos (24h)</div>
+  </div></div>
+  <div class="col-3"><div class="stat-card" id="st-modulo-card">
+    <div class="stat-num text-success" id="st-modulo">—</div>
+    <div class="stat-lbl">Módulo más activo (7d)</div>
+  </div></div>
+  <div class="col-3"><div class="stat-card">
+    <div class="stat-num text-warning" id="st-total-semana">—</div>
+    <div class="stat-lbl">Acciones esta semana</div>
+  </div></div>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <input type="text" id="filtro-q" class="form-control form-control-sm"
+               placeholder="Buscar usuario, descripción, IP...">
+      </div>
+      <div class="col-md-2">
+        <select id="filtro-modulo" class="form-select form-select-sm">
+          <option value="">Todos los módulos</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <select id="filtro-accion" class="form-select form-select-sm">
+          <option value="">Todas las acciones</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <input type="date" id="filtro-desde" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-2">
+        <input type="date" id="filtro-hasta" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-1">
+        <button class="btn btn-sm btn-primary w-100" onclick="cargarLogs()">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla de logs -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Registros de Auditoría — <strong id="total-logs">0</strong> entradas</span>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-ghost" id="btn-prev" onclick="paginar(-1)">◀ Anterior</button>
+      <span class="small text-muted" id="pag-info">Página 1</span>
+      <button class="btn btn-sm btn-ghost" id="btn-next" onclick="paginar(1)">Siguiente ▶</button>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0" id="tabla-logs">
+      <thead class="table-dark"><tr>
+        <th style="width:140px;">Fecha / Hora</th>
+        <th>Usuario</th>
+        <th>Acción</th>
+        <th>Módulo</th>
+        <th>Descripción</th>
+        <th style="width:110px;">IP</th>
+      </tr></thead>
+      <tbody id="tbody-logs">
+        <tr><td colspan="6" class="text-center text-muted py-4">Cargando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let offsetLog = 0;
+const limitLog = 100;
+let totalLog   = 0;
+
+async function cargarStats() {
+  const r = await fetch('/auditoria/api/stats');
+  const d = await r.json();
+  document.getElementById('st-hoy').textContent    = d.total_hoy;
+  document.getElementById('st-fails').textContent  = d.logins_fallidos;
+  const semana = d.por_modulo.reduce((s,m) => s + m.c, 0);
+  document.getElementById('st-total-semana').textContent = semana;
+  if (d.por_modulo.length) {
+    document.getElementById('st-modulo').textContent = d.por_modulo[0].modulo;
+  }
+}
+
+async function cargarLogs(resetOffset=true) {
+  if (resetOffset) offsetLog = 0;
+  const q      = document.getElementById('filtro-q').value.trim();
+  const modulo = document.getElementById('filtro-modulo').value;
+  const accion = document.getElementById('filtro-accion').value;
+  const desde  = document.getElementById('filtro-desde').value;
+  const hasta  = document.getElementById('filtro-hasta').value;
+
+  const params = new URLSearchParams({ limit: limitLog, offset: offsetLog });
+  if (q)      params.set('q', q);
+  if (modulo) params.set('modulo', modulo);
+  if (accion) params.set('accion', accion);
+  if (desde)  params.set('desde', desde);
+  if (hasta)  params.set('hasta', hasta);
+
+  const r = await fetch('/auditoria/api/logs?' + params);
+  const d = await r.json();
+  totalLog = d.total;
+
+  // Rellenar selectores la primera vez
+  if (!document.getElementById('filtro-modulo').options.length > 1) {
+    const selM = document.getElementById('filtro-modulo');
+    d.modulos.forEach(m => {
+      const o = new Option(m, m); selM.appendChild(o);
+    });
+    const selA = document.getElementById('filtro-accion');
+    d.acciones.forEach(a => {
+      const o = new Option(a, a); selA.appendChild(o);
+    });
+  }
+
+  document.getElementById('total-logs').textContent = totalLog;
+  document.getElementById('pag-info').textContent =
+    `Página ${Math.floor(offsetLog/limitLog)+1} de ${Math.ceil(totalLog/limitLog)}`;
+  document.getElementById('btn-prev').disabled = offsetLog === 0;
+  document.getElementById('btn-next').disabled = offsetLog + limitLog >= totalLog;
+
+  const tbody = document.getElementById('tbody-logs');
+  if (!d.logs.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Sin registros con los filtros seleccionados.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = d.logs.map(log => {
+    const cls = ['CREATE','UPDATE','DELETE','LOGIN','LOGIN_FAILED','APPROVE','REJECT']
+      .includes(log.accion) ? `log-${log.accion}` : 'log-default';
+    const ts  = log.timestamp ? log.timestamp.substring(0,16).replace('T',' ') : '—';
+    const desc = (log.descripcion || '').substring(0,80);
+    return `<tr>
+      <td><small class="text-muted">${ts}</small></td>
+      <td><strong>${log.nombre_usuario || '—'}</strong></td>
+      <td><span class="log-badge ${cls}">${log.accion}</span></td>
+      <td><span class="badge bg-secondary" style="font-size:10px;">${log.modulo}</span></td>
+      <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+          title="${log.descripcion || ''}">${desc}</td>
+      <td><small class="font-monospace text-muted">${log.ip_address || '—'}</small></td>
+    </tr>`;
+  }).join('');
+}
+
+function paginar(dir) {
+  offsetLog = Math.max(0, offsetLog + dir * limitLog);
+  cargarLogs(false);
+}
+
+// Auto-refresh cada 30 seg
+document.addEventListener('DOMContentLoaded', () => {
+  cargarStats();
+  cargarLogs();
+  setInterval(() => { cargarStats(); cargarLogs(false); }, 30000);
+  document.getElementById('filtro-q').addEventListener('keydown', e => {
+    if (e.key === 'Enter') cargarLogs();
+  });
+});
+</script>
+{% endblock %}

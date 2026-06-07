@@ -1,0 +1,53 @@
+╔══════════════════════════════════════════════════════════════╗
+║         PARAGUASMJ — GUÍA DE INSTALACIÓN             ║
+║      Sistema Integrado de Gestión Documental                 ║
+║      Acueducto El Puente — Villeta, Cundinamarca             ║
+╚══════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ OPCIÓN A: INSTALAR UNA SOLA VEZ (Recomendado)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ 1. Descomprima la carpeta PARAGUASMJ_2026 en:
+    C:\PARAGUASMJ_2026\
+
+ 2. Haga CLIC DERECHO en "INSTALAR.bat"
+
+ 3. Elija "Ejecutar como administrador"
+
+ 4. Espere ~5 minutos (instala todo automáticamente)
+
+ 5. Aparecerá el ícono "PARAGUASMJ" en el ESCRITORIO
+
+ ✅ Listo. Desde ahora solo doble clic en el ícono.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ OPCIÓN B: USO DIARIO (sin instalar)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Si ya tiene Python instalado:
+ • Doble clic en "INICIAR.bat"
+ • El navegador se abre automáticamente
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CREDENCIALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Usuario:    admin
+ Contraseña: PARAGUASMJ2026
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ REQUISITOS MÍNIMOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ • Windows 10 o Windows 11
+ • Conexión a internet (solo para la primera instalación)
+ • Navegador web: Chrome, Edge o Firefox
+ • 200 MB de espacio libre en disco
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SOPORTE TÉCNICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ Código Core: M. Jiménez Ch.
+ Sistema: PARAGUASMJ

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}PQRS — ASUACAP{% endblock %}
+{% block extra_css %}
+<style>
+.estado-Radicada     { background:#dbeafe;color:#1e40af; }
+.estado-En.proceso   { background:#fef3c7;color:#92400e; }
+.estado-Respondida   { background:#d1fae5;color:#065f46; }
+.estado-Cerrada      { background:#f1f5f9;color:#475569; }
+.estado-Archivada    { background:#f1f5f9;color:#94a3b8; }
+.badge-vencida       { background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700; }
+.badge-ok            { background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:10px; }
+.stat-card           { background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px;text-align:center; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h5 class="mb-0">
+    <i class="bi bi-envelope-exclamation me-2 text-primary"></i>
+    PQRS — Peticiones, Quejas, Reclamos y Sugerencias
+  </h5>
+  <div class="d-flex gap-2">
+    <a href="/pqrs/exportar_sspd" class="btn btn-sm btn-success">
+      <i class="bi bi-file-excel me-1"></i>Reporte SSPD
+    </a>
+    <a href="/pqrs/nueva" class="btn btn-primary">
+      <i class="bi bi-plus-circle me-1"></i>Nueva PQRS
+    </a>
+  </div>
+</div>
+
+<!-- Stats rápidas -->
+<div class="row g-3 mb-4">
+  {% for s in stats %}
+  <div class="col">
+    <div class="stat-card">
+      <div class="fw-bold fs-4">{{ s.cnt }}</div>
+      <div class="small text-muted">{{ s.estado_pqr }}</div>
+    </div>
+  </div>
+  {% endfor %}
+  {% if vencidas %}
+  <div class="col">
+    <div class="stat-card" style="background:#fee2e2;border-color:#fca5a5;">
+      <div class="fw-bold fs-4 text-danger">{{ vencidas }}</div>
+      <div class="small text-danger fw-semibold">⚠️ Vencidas</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form class="d-flex flex-wrap gap-2" method="get">
+      <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+             style="width:220px;" placeholder="Buscar radicado, usuario...">
+      <select name="estado" class="form-select form-select-sm" style="width:160px;">
+        <option value="">Todos los estados</option>
+        {% for est in ['Radicada','En proceso','Respondida','Cerrada','Archivada'] %}
+        <option {{ 'selected' if estado_sel==est }}>{{ est }}</option>
+        {% endfor %}
+      </select>
+      <select name="tipo" class="form-select form-select-sm" style="width:160px;">
+        <option value="">Todos los tipos</option>
+        {% for t in ['Peticion','Queja','Reclamo','Sugerencia','Denuncia'] %}
+        <option {{ 'selected' if tipo_sel==t }}>{{ t }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+      <a href="/pqrs/" class="btn btn-sm btn-ghost">Limpiar</a>
+    </form>
+  </div>
+</div>
+
+<!-- Tabla de PQRS -->
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Radicado</th><th>Fecha</th><th>Usuario</th>
+          <th>Tipo</th><th>Componente</th><th>Estado</th>
+          <th>Vence</th><th>OTs</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pqrs %}
+        <tr>
+          <td>
+            <a href="/pqrs/{{ p.id }}" class="fw-bold text-primary text-decoration-none">
+              {{ p.radicado }}
+            </a>
+            {% if p.requiere_visita %}
+            <span class="badge bg-warning text-dark ms-1" style="font-size:9px;">Visita</span>
+            {% endif %}
+          </td>
+          <td><small>{{ p.fecha_radicacion[:10] if p.fecha_radicacion else '—' }}</small></td>
+          <td>
+            <div class="fw-semibold" style="font-size:12px;">{{ p.usuario_nombre }}</div>
+            {% if p.telefono %}<small class="text-muted">{{ p.telefono }}</small>{% endif %}
+          </td>
+          <td><small>{{ p.tipo_pqr }}</small></td>
+          <td><small class="text-muted">{{ p.componente_afectado or '—' }}</small></td>
+          <td>
+            <span class="badge estado-{{ p.estado_pqr }} rounded-pill px-2">
+              {{ p.estado_pqr }}
+            </span>
+          </td>
+          <td>
+            {% if p.vencida %}
+            <span class="badge-vencida">VENCIDA</span>
+            {% else %}
+            <small class="text-muted">{{ p.fecha_limite }}</small>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if p.n_ordenes %}
+            <span class="badge bg-primary">{{ p.n_ordenes }} OT</span>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="/pqrs/{{ p.id }}" class="btn btn-sm btn-ghost">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted py-5">
+          No hay PQRS con los filtros seleccionados.
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Marco normativo -->
+<div class="mt-3 p-3 bg-light rounded" style="font-size:11px;color:#64748b;">
+  <strong>⚖️ Base legal:</strong>
+  Ley 142/1994 Art. 9 | Ley 1755/2015 (peticiones) |
+  Res. SSPD 20191300008895/2019 (reporte SUI) |
+  Res. CRA 943/2021 (esquemas diferenciales rurales) |
+  Plazo respuesta: 15 días hábiles (Petición/Queja/Reclamo), 30 días (Sugerencia).
+</div>
+{% endblock %}

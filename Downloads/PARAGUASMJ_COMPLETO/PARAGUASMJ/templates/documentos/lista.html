@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Documentos — ASUACAP{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5><i class="bi bi-file-earmark-text me-2 text-primary"></i>Registro Central Documental</h5>
+    <a href="{{ url_for('documentos.nuevo') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-1"></i>Nuevo Documento
+    </a>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+                       placeholder="Buscar por codigo, asunto...">
+            </div>
+            <div class="col-md-2">
+                <select name="area" class="form-select form-select-sm">
+                    <option value="">Todas las areas</option>
+                    {% for cod,nom in areas %}
+                    <option value="{{ cod }}" {% if area_sel==cod %}selected{% endif %}>{{ cod }} - {{ nom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="estado" class="form-select form-select-sm">
+                    <option value="">Todos los estados</option>
+                    {% for e in ['Borrador','En_revision','En_autorizacion','Aprobado','Rechazado','Archivado'] %}
+                    <option value="{{ e }}" {% if estado_sel==e %}selected{% endif %}>{{ e }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-search me-1"></i>Filtrar
+                </button>
+                <a href="{{ url_for('documentos.listar') }}" class="btn btn-sm btn-outline-secondary ms-1">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header d-flex justify-content-between">
+        <span>Resultados: <strong>{{ total }}</strong> documentos</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Codigo</th><th>Asunto</th><th>Contacto</th>
+                    <th>Fecha</th><th>Estado</th><th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for d in documentos %}
+            <tr>
+                <td><a href="{{ url_for('documentos.ver', registro_id=d.pk_registro_id) }}" class="fw-semibold text-primary text-decoration-none">{{ d.codigo_completo }}</a></td>
+                <td class="text-truncate" style="max-width:240px;">{{ d.asunto_resumen }}</td>
+                <td class="text-truncate" style="max-width:160px;">{{ d.contacto_nombre or "—" }}</td>
+                <td><small>{{ d.fecha_radicacion }}</small></td>
+                <td>
+                    <span class="badge estado-badge" data-estado="{{ d.estado }}">{{ d.estado }}</span>
+                </td>
+                <td>
+                    <a href="{{ url_for('documentos.ver', registro_id=d.pk_registro_id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+                    <a href="{{ url_for('documentos.generar_pdf', registro_id=d.pk_registro_id) }}" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-pdf"></i></a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-4">No hay documentos con los filtros seleccionados.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if total_pags > 1 %}
+    <div class="card-footer">
+        <nav><ul class="pagination pagination-sm mb-0 justify-content-center">
+            {% for p in range(1, total_pags+1) %}
+            <li class="page-item {% if p==pagina %}active{% endif %}">
+                <a class="page-link" href="?pagina={{ p }}&q={{ q }}&area={{ area_sel }}&estado={{ estado_sel }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+        </ul></nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

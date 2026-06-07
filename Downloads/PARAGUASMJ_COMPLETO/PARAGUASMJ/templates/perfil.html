@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Mi Perfil{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white">
+                <i class="bi bi-person-circle me-2"></i>Perfil de Usuario
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Nombre completo</dt>
+                    <dd class="col-sm-8">{{ usuario.nombre_completo }}</dd>
+                    <dt class="col-sm-4">Usuario</dt>
+                    <dd class="col-sm-8"><code>{{ usuario.nombre_usuario }}</code></dd>
+                    <dt class="col-sm-4">Rol</dt>
+                    <dd class="col-sm-8"><span class="badge bg-primary text-capitalize">{{ usuario.rol }}</span></dd>
+                    <dt class="col-sm-4">Ultimo acceso</dt>
+                    <dd class="col-sm-8">{{ usuario.ultimo_acceso or "Primera sesion" }}</dd>
+                </dl>
+                <hr>
+                <h6><i class="bi bi-lock me-1"></i>Cambiar contrasena</h6>
+                <form method="POST">
+                    <input type="hidden" name="accion" value="cambiar_clave">
+                    <div class="mb-2">
+                        <label class="form-label">Clave actual</label>
+                        <input type="password" name="clave_actual" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Nueva clave</label>
+                        <input type="password" name="clave_nueva" class="form-control" minlength="6" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confirmar nueva clave</label>
+                        <input type="password" name="clave_confirmacion" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-shield-lock me-1"></i>Actualizar clave
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

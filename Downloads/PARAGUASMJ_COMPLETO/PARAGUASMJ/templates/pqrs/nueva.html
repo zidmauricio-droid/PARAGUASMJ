@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}Nueva PQRS — ASUACAP{% endblock %}
+{% block extra_css %}
+<style>
+.seccion-tipo { border-left:4px solid #1E3A8A; padding:4px 10px;
+  background:#f8fafc; border-radius:0 8px 8px 0; margin-bottom:8px; }
+.badge-plazo { background:#dbeafe;color:#1e40af;padding:3px 10px;
+  border-radius:12px;font-size:11px;font-weight:700; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h5 class="mb-0"><i class="bi bi-plus-circle me-2 text-primary"></i>Radicar nueva PQRS</h5>
+    <small class="text-muted">GC-PQR — Gestión Comercial · Ley 1755/2015 · Res. CRA 943/2021</small>
+  </div>
+  <a href="/pqrs/" class="btn btn-ghost btn-sm">← Volver</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat,msg in messages %}
+  <div class="alert alert-{{ cat }} alert-dismissible fade show">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+{% endwith %}
+
+<div class="alert alert-info small mb-4">
+  <strong>⚖️ Base legal:</strong> Ley 142/1994 Art.9 — Ley 1755/2015 —
+  <strong>Petición/Queja/Reclamo:</strong> 15 días hábiles —
+  <strong>Consulta/Sugerencia:</strong> 30 días hábiles
+</div>
+
+<form method="POST">
+<div class="row g-3">
+
+  <!-- ── Tipo de PQRS ── -->
+  <div class="col-md-4">
+    <label class="form-label fw-semibold">Tipo de PQRS *</label>
+    <select name="tipo_pqr" id="tipo_pqr" class="form-select" required
+            onchange="actualizarPlazo(this.value)">
+      {% for tipo, cfg in tipos.items() %}
+      <option value="{{ tipo }}">{{ tipo }} ({{ cfg.plazo }} días hábiles)</option>
+      {% endfor %}
+    </select>
+    <div class="mt-1">
+      Plazo: <span id="lbl-plazo" class="badge-plazo">15 días hábiles</span>
+      &nbsp; Vence: <strong id="fecha-limite-preview" class="text-danger">—</strong>
+    </div>
+  </div>
+
+  <!-- ── Canal de recepción (código numérico SSPD) ── -->
+  <div class="col-md-4">
+    <label class="form-label fw-semibold">Canal de recepción * <small class="text-muted">(Res.54575/2015)</small></label>
+    <select name="canal_codigo" id="canal_codigo" class="form-select" required>
+      {% for cod, texto in canales.items() %}
+      <option value="{{ cod }}">{{ cod }} — {{ texto }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- ── Servicio ── -->
+  <div class="col-md-4">
+    <label class="form-label fw-semibold">Servicio afectado</label>
+    <select name="servicio_codigo" class="form-select">
+      {% for cod, texto in servicios.items() %}
+      <option value="{{ cod }}" {% if cod=='1' %}selected{% endif %}>{{ texto }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- ── SUSCRIPTOR O USUARIO (nuevo: dos opciones) ── -->
+  <div class="col-12">
+    <label class="form-label fw-semibold">Tipo de solicitante *</label>
+    <div class="d-flex gap-3 mb-2">
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="tipo_solicitante"
+               id="ts-suscriptor" value="suscriptor" checked
+               onchange="cambiarTipoSolicitante('suscriptor')">
+        <label class="form-check-label fw-semibold" for="ts-suscriptor">
+          🏠 Suscriptor registrado
+          <small class="text-muted d-block fw-normal">Titular del servicio — está en la lista de asociados</small>
+        </label>
+      </div>
+      <div class="form-check ms-4">
+        <input class="form-check-input" type="radio" name="tipo_solicitante"
+               id="ts-usuario" value="usuario"
+               onchange="cambiarTipoSolicitante('usuario')">
+        <label class="form-check-label fw-semibold" for="ts-usuario">
+          👤 Usuario libre
+          <small class="text-muted d-block fw-normal">Cualquier persona que usa el servicio</small>
+        </label>
+      </div>
+    </div>
+
+    <!-- Suscriptor registrado -->
+    <div id="bloque-suscriptor">
+      <label class="form-label fw-semibold small">Seleccionar suscriptor *</label>
+      <select name="fk_suscriptor_id" id="sel-suscriptor" class="form-select">
+        <option value="">— Seleccione el suscriptor —</option>
+        {% for s in suscriptores %}
+        <option value="{{ s.pk_contacto_id }}">
+          {{ s.codigo_interno or '—' }} · {{ s.razon_social }}
+          {% if s.telefono %} | {{ s.telefono }}{% endif %}
+          {% if s.direccion_predio %} — {{ s.direccion_predio[:30] }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      {% if not suscriptores %}
+      <div class="alert alert-warning mt-2 small">
+        <strong>⚠️ Sin suscriptores registrados.</strong>
+        <a href="/gestion_usuarios">Vaya a Gestión de Usuarios</a> para agregar suscriptores,
+        o use la opción "Usuario libre" para radicar de todas formas.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Usuario libre -->
+    <div id="bloque-usuario" style="display:none;">
+      <input type="hidden" name="fk_suscriptor_id" id="hidden-suscriptor" value="0">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold small">Nombre completo *</label>
+          <input type="text" name="usuario_nombre" id="usuario-nombre"
+                 class="form-control" placeholder="Nombre de quien radica">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold small">Cédula / ID</label>
+          <input type="text" name="usuario_cedula" class="form-control" placeholder="Número de documento">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold small">Teléfono</label>
+          <input type="text" name="usuario_telefono" class="form-control" placeholder="Celular o fijo">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold small">Dirección</label>
+          <input type="text" name="usuario_direccion" class="form-control" placeholder="Predio o vereda">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Destinatario libre (para el oficio de respuesta) ── -->
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Destinatario del oficio de respuesta</label>
+    <input type="text" name="destinatario" class="form-control"
+           placeholder="Ej: Doctor Juan Pérez, Alcaldía de Villeta, Secretaría de Salud...">
+    <small class="text-muted">Edite libremente — nombre, cargo u organismo a quien va dirigida la respuesta</small>
+  </div>
+
+  <!-- ── Componente afectado ── -->
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Componente afectado</label>
+    <select name="componente_afectado" class="form-select">
+      <option value="">— Seleccione —</option>
+      {% for comp in componentes %}
+      <option>{{ comp }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- ── Causal (código SSPD) ── -->
+  <div class="col-md-4">
+    <label class="form-label fw-semibold">Causal * <small class="text-muted">(Res.54575/2015)</small></label>
+    <select name="causal_codigo" id="causal_codigo" class="form-select" required
+            onchange="actualizarSubcausal(this.value)">
+      {% for cod, info in causales.items() %}
+      <option value="{{ cod }}">{{ cod }} — {{ info.texto }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- ── Subcausal (solo facturación) ── -->
+  <div class="col-md-4" id="bloque-subcausal" style="display:none;">
+    <label class="form-label fw-semibold">Subcausal de facturación</label>
+    <select name="subcausal_codigo" id="subcausal_codigo" class="form-select">
+      <option value="">— Seleccione —</option>
+      {% for cod, texto in subcausales.items() %}
+      <option value="{{ cod }}">{{ cod }} — {{ texto }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- ── ¿Requiere visita? ── -->
+  <div class="col-md-4 d-flex align-items-end">
+    <div class="form-check form-switch mb-2">
+      <input type="checkbox" name="requiere_visita" class="form-check-input"
+             style="width:44px;height:22px;" id="sw-visita">
+      <label class="form-check-label fw-semibold ms-2" for="sw-visita">
+        🔧 Requiere visita técnica
+        <small class="d-block text-muted fw-normal">Se generará Orden de Trabajo GA-OT</small>
+      </label>
+    </div>
+  </div>
+
+  <!-- ── Resumen ── -->
+  <div class="col-12">
+    <label class="form-label fw-semibold">Resumen / Asunto *</label>
+    <input type="text" name="resumen" class="form-control" required maxlength="120"
+           placeholder="Descripción breve en una línea">
+  </div>
+
+  <!-- ── Descripción detallada ── -->
+  <div class="col-12">
+    <label class="form-label fw-semibold">Descripción detallada *</label>
+    <textarea name="descripcion_detallada" class="form-control" rows="5" required
+              placeholder="Describa con detalle: ¿Qué ocurrió? ¿Cuándo? ¿Con qué frecuencia? ¿Qué impacto tiene? ¿Qué solicita?"></textarea>
+  </div>
+
+  <div class="col-12 d-flex gap-2">
+    <button type="submit" class="btn btn-primary fw-bold px-4">
+      <i class="bi bi-check-circle me-1"></i>Radicar PQRS
+    </button>
+    <a href="/pqrs/" class="btn btn-ghost">Cancelar</a>
+  </div>
+
+</div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+const TIPOS = {{ tipos | tojson }};
+
+function actualizarPlazo(tipo) {
+  const cfg = TIPOS[tipo] || { plazo: 15 };
+  document.getElementById('lbl-plazo').textContent = cfg.plazo + ' días hábiles';
+  // Calcular fecha límite aproximada (días calendario + 20%)
+  const d = new Date();
+  d.setDate(d.getDate() + Math.ceil(cfg.plazo * 1.4));
+  document.getElementById('fecha-limite-preview').textContent =
+    d.toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric' });
+}
+
+function actualizarSubcausal(causal) {
+  const bloque = document.getElementById('bloque-subcausal');
+  bloque.style.display = causal === '01' ? 'block' : 'none';
+}
+
+function cambiarTipoSolicitante(tipo) {
+  const bSusc = document.getElementById('bloque-suscriptor');
+  const bUser = document.getElementById('bloque-usuario');
+  const selSusc = document.getElementById('sel-suscriptor');
+  const hidSusc = document.getElementById('hidden-suscriptor');
+
+  if (tipo === 'suscriptor') {
+    bSusc.style.display = 'block';
+    bUser.style.display = 'none';
+    selSusc.required = true;
+    hidSusc.disabled = true;
+  } else {
+    bSusc.style.display = 'none';
+    bUser.style.display = 'block';
+    selSusc.required = false;
+    selSusc.value = '';
+    hidSusc.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  actualizarPlazo('Peticion');
+});
+</script>
+{% endblock %}

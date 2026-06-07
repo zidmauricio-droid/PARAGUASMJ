@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% block title %}Convenios y Contratos — PARAGUASMJ{% endblock %}
+{% block extra_css %}
+<style>
+.conv-card{border-left:4px solid #1E3A8A;transition:box-shadow .2s;}
+.conv-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.12);}
+.estado-badge{font-size:11px;padding:3px 8px;border-radius:20px;}
+.stat-card{border-radius:12px;padding:18px;color:#fff;text-align:center;}
+.kpi-num{font-size:28px;font-weight:800;}
+.empty-state{padding:60px 20px;text-align:center;color:#94a3b8;}
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h5 class="mb-0"><i class="bi bi-file-earmark-check-fill me-2 text-primary"></i>Convenios y Contratos</h5>
+    <small class="text-muted">Gestión de convenios con entidades financiadoras (PNUD, Alcaldía, Gobernación, MinVivienda)</small>
+  </div>
+  <button class="btn btn-primary fw-bold" onclick="abrirFormConvenio()">
+    <i class="bi bi-plus-circle me-1"></i>Nuevo Convenio
+  </button>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card" style="background:linear-gradient(135deg,#1E3A8A,#2563eb);">
+      <div class="kpi-num">{{ stats.total }}</div>
+      <div>Convenios totales</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card" style="background:linear-gradient(135deg,#0F6E56,#10b981);">
+      <div class="kpi-num">{{ stats.activos }}</div>
+      <div>Activos</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
+      <div class="kpi-num">$ {{ "{:,.0f}".format(stats.valor) }}</div>
+      <div>Valor total aprobado</div>
+    </div>
+  </div>
+</div>
+
+<!-- Lista de convenios -->
+<div class="row g-3" id="lista-convenios">
+  {% if convenios %}
+    {% for c in convenios %}
+    <div class="col-md-6">
+      <div class="card conv-card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <span class="badge bg-primary me-2">{{ c.codigo }}</span>
+              <span class="estado-badge badge
+                {% if c.estado=='activo' %}bg-success
+                {% elif c.estado=='suspendido' %}bg-warning text-dark
+                {% else %}bg-secondary{% endif %}">{{ c.estado }}</span>
+            </div>
+            <div class="dropdown">
+              <button class="btn btn-ghost btn-sm" data-bs-toggle="dropdown">
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="/convenios/{{ c.pk_convenio_id }}">
+                  <i class="bi bi-eye me-2"></i>Ver detalle</a></li>
+                <li><a class="dropdown-item" href="#" onclick="editarConvenio({{ c.pk_convenio_id }})">
+                  <i class="bi bi-pencil me-2"></i>Editar</a></li>
+              </ul>
+            </div>
+          </div>
+          <h6 class="fw-bold mb-1">{{ c.nombre }}</h6>
+          <div class="text-muted small mb-2">
+            <i class="bi bi-building me-1"></i>{{ c.entidad_financiadora or '—' }}
+          </div>
+          <div class="row g-2 mt-2">
+            <div class="col-6">
+              <div class="small text-muted">Valor aprobado</div>
+              <div class="fw-bold">$ {{ "{:,.0f}".format(c.valor_aprobado or 0) }}</div>
+            </div>
+            <div class="col-6">
+              <div class="small text-muted">Proyectos asociados</div>
+              <div class="fw-bold">{{ c.total_proyectos }}</div>
+            </div>
+          </div>
+          {% if c.fecha_inicio and c.fecha_fin %}
+          <div class="mt-2 small text-muted">
+            <i class="bi bi-calendar-range me-1"></i>
+            {{ c.fecha_inicio }} → {{ c.fecha_fin }}
+          </div>
+          {% endif %}
+          <div class="mt-3">
+            <a href="/convenios/{{ c.pk_convenio_id }}" class="btn btn-primary btn-sm me-1">
+              <i class="bi bi-eye me-1"></i>Ver proyectos
+            </a>
+            <button class="btn btn-outline-secondary btn-sm"
+                    onclick="verContratos({{ c.pk_convenio_id }},'{{ c.nombre }}')">
+              <i class="bi bi-file-text me-1"></i>Contratos
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="empty-state">
+        <i class="bi bi-file-earmark-x display-4 d-block mb-3 text-muted"></i>
+        <h6>Sin convenios registrados</h6>
+        <p class="text-muted small">Registre el primer convenio con PNUD, Alcaldía, Gobernación u otra entidad financiadora.</p>
+        <button class="btn btn-primary" onclick="abrirFormConvenio()">
+          <i class="bi bi-plus-circle me-1"></i>Crear primer convenio
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal: Nuevo/Editar Convenio -->
+<div class="modal fade" id="modal-convenio" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#1E3A8A;color:#fff;">
+        <h5 class="modal-title"><i class="bi bi-file-earmark-plus me-2"></i><span id="modal-conv-titulo">Nuevo Convenio</span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="conv-id">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Código único *</label>
+            <input type="text" id="conv-codigo" class="form-control text-uppercase"
+                   placeholder="Ej: PNUD-2026-001">
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-semibold small">Nombre del convenio *</label>
+            <input type="text" id="conv-nombre" class="form-control"
+                   placeholder="Ej: Optimización Sistema Acueducto Rural">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Entidad financiadora</label>
+            <input type="text" id="conv-entidad" class="form-control"
+                   list="entidades-list" placeholder="Ej: PNUD, Alcaldía, Gobernación">
+            <datalist id="entidades-list">
+              <option value="PNUD">
+              <option value="Alcaldía Municipal">
+              <option value="Gobernación de Cundinamarca">
+              <option value="MinVivienda">
+              <option value="PDA — Plan Departamental de Agua">
+              <option value="Banco Mundial">
+              <option value="BID">
+            </datalist>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small">Valor aprobado ($)</label>
+            <input type="number" id="conv-valor" class="form-control" min="0"
+                   placeholder="0">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small">Objeto del convenio</label>
+            <textarea id="conv-objeto" class="form-control" rows="2"
+                      placeholder="Descripción del objeto del convenio..."></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Fecha inicio</label>
+            <input type="date" id="conv-fecha-ini" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Fecha fin</label>
+            <input type="date" id="conv-fecha-fin" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold small">Estado</label>
+            <select id="conv-estado" class="form-select">
+              <option value="activo">Activo</option>
+              <option value="suspendido">Suspendido</option>
+              <option value="finalizado">Finalizado</option>
+              <option value="liquidado">Liquidado</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary fw-bold" onclick="guardarConvenio()">
+          <i class="bi bi-check-circle me-1"></i>Guardar convenio
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Contratos del convenio -->
+<div class="modal fade" id="modal-contratos" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#0F6E56;color:#fff;">
+        <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>Contratos — <span id="modal-cont-titulo"></span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="lista-contratos-modal"><div class="text-center py-3">Cargando...</div></div>
+        <hr>
+        <h6 class="fw-bold">Agregar contrato</h6>
+        <div class="row g-2">
+          <input type="hidden" id="cont-convenio-id">
+          <div class="col-md-2">
+            <input type="text" id="cont-numero" class="form-control form-control-sm text-uppercase" placeholder="Nro. *">
+          </div>
+          <div class="col-md-2">
+            <select id="cont-tipo" class="form-select form-select-sm">
+              <option value="">Tipo</option>
+              <option value="suministro">Suministro</option>
+              <option value="obra">Obra</option>
+              <option value="consultoria">Consultoría</option>
+              <option value="prestacion_servicios">Prestación servicios</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <input type="text" id="cont-contratista" class="form-control form-control-sm" placeholder="Contratista">
+          </div>
+          <div class="col-md-2">
+            <input type="number" id="cont-valor" class="form-control form-control-sm" placeholder="Valor">
+          </div>
+          <div class="col-md-1">
+            <input type="number" id="cont-plazo" class="form-control form-control-sm" placeholder="Meses">
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-success btn-sm w-100" onclick="guardarContrato()">
+              <i class="bi bi-plus-circle me-1"></i>Agregar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let convIdEdicion = null;
+
+function abrirFormConvenio() {
+  convIdEdicion = null;
+  document.getElementById('modal-conv-titulo').textContent = 'Nuevo Convenio';
+  ['conv-id','conv-codigo','conv-nombre','conv-entidad','conv-valor',
+   'conv-objeto','conv-fecha-ini','conv-fecha-fin'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  document.getElementById('conv-estado').value = 'activo';
+  new bootstrap.Modal(document.getElementById('modal-convenio')).show();
+}
+
+async function guardarConvenio() {
+  const id = document.getElementById('conv-id').value;
+  const payload = {
+    codigo:             document.getElementById('conv-codigo').value.trim(),
+    nombre:             document.getElementById('conv-nombre').value.trim(),
+    entidad_financiadora: document.getElementById('conv-entidad').value.trim(),
+    valor_aprobado:     document.getElementById('conv-valor').value,
+    objeto:             document.getElementById('conv-objeto').value.trim(),
+    fecha_inicio:       document.getElementById('conv-fecha-ini').value,
+    fecha_fin:          document.getElementById('conv-fecha-fin').value,
+    estado:             document.getElementById('conv-estado').value,
+  };
+  if (!payload.codigo || !payload.nombre) {
+    alert('Código y nombre son obligatorios');
+    return;
+  }
+  const url = id ? `/convenios/api/${id}` : '/convenios/api/crear';
+  const method = id ? 'PUT' : 'POST';
+  const r = await fetch(url, {
+    method, headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  }).then(r=>r.json());
+  if (r.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('modal-convenio')).hide();
+    location.reload();
+  } else {
+    alert('Error: ' + (r.error || 'No se pudo guardar'));
+  }
+}
+
+async function verContratos(cid, nombre) {
+  document.getElementById('modal-cont-titulo').textContent = nombre;
+  document.getElementById('cont-convenio-id').value = cid;
+  new bootstrap.Modal(document.getElementById('modal-contratos')).show();
+  await cargarContratos(cid);
+}
+
+async function cargarContratos(cid) {
+  const rows = await fetch(`/convenios/api/${cid}/contratos`).then(r=>r.json());
+  const div = document.getElementById('lista-contratos-modal');
+  if (!rows.length) {
+    div.innerHTML = '<div class="text-muted small text-center py-2">Sin contratos aún.</div>';
+    return;
+  }
+  div.innerHTML = `<table class="table table-sm">
+    <thead class="table-dark"><tr>
+      <th>Número</th><th>Tipo</th><th>Contratista</th><th>Valor</th><th>Plazo</th><th>Estado</th>
+    </tr></thead>
+    <tbody>${rows.map(c=>`<tr>
+      <td><code>${c.numero}</code></td>
+      <td>${c.tipo||'—'}</td>
+      <td>${c.contratista||'—'}</td>
+      <td>$ ${Number(c.valor||0).toLocaleString('es-CO')}</td>
+      <td>${c.plazo_meses||'—'} meses</td>
+      <td><span class="badge ${c.estado==='activo'?'bg-success':'bg-secondary'}">${c.estado}</span></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+async function guardarContrato() {
+  const cid = document.getElementById('cont-convenio-id').value;
+  const payload = {
+    fk_convenio_id: cid,
+    numero:         document.getElementById('cont-numero').value.trim(),
+    tipo:           document.getElementById('cont-tipo').value,
+    contratista:    document.getElementById('cont-contratista').value.trim(),
+    valor:          document.getElementById('cont-valor').value,
+    plazo_meses:    document.getElementById('cont-plazo').value,
+  };
+  if (!payload.numero) { alert('Número de contrato requerido'); return; }
+  const r = await fetch('/convenios/api/contrato/crear', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  }).then(r=>r.json());
+  if (r.ok) {
+    ['cont-numero','cont-contratista','cont-valor','cont-plazo'].forEach(id=>
+      document.getElementById(id).value='');
+    await cargarContratos(cid);
+  } else alert('Error: '+(r.error||'No se pudo guardar'));
+}
+</script>
+{% endblock %}
