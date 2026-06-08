@@ -4,6 +4,7 @@ from flask import (Blueprint, render_template, request, session,
 from werkzeug.security import check_password_hash, generate_password_hash
 from core.database_manager import get_db, registrar_log
 from core.seguridad import login_requerido, rol_requerido
+from utils.seguridad import esta_bloqueado, registrar_intento_fallo, limpiar_intentos
 from datetime import datetime
 
 auth_bp = Blueprint("autenticacion", __name__)
@@ -14,6 +15,10 @@ def login():
     if "usuario_id" in session:
         return redirect(url_for("dashboard.index"))
     if request.method == "POST":
+        ip      = request.remote_addr or "0.0.0.0"
+        if esta_bloqueado(ip):
+            flash("Acceso bloqueado temporalmente por múltiples intentos fallidos. Intente en 15 minutos.", "danger")
+            return render_template("login.html")
         usuario = request.form.get("usuario", "").strip()
         clave   = request.form.get("clave", "")
         conn    = get_db()
@@ -23,12 +28,15 @@ def login():
         ).fetchone()
         conn.close()
         if u and check_password_hash(u["password_hash"], clave):
+            limpiar_intentos(ip)
             session["usuario_id"]     = u["pk_usuario_id"]
             session["nombre_usuario"] = u["nombre_usuario"]
             session["nombre_completo"]= u["nombre_completo"]
             session["rol"]            = u["rol"]
+            session["ultimo_acceso"]  = __import__("time").time()
             registrar_log("INFO","auth",usuario,"login","","")
             return redirect(url_for("dashboard.index"))
+        registrar_intento_fallo(ip)
         flash("Usuario o contraseña incorrectos", "danger")
     return render_template("login.html")
 

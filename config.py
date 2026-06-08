@@ -23,8 +23,26 @@ def definir_ruta_base_datos():
         os.makedirs(fb, exist_ok=True)
         return os.path.join(fb, "paraguasmj.db")
 
+def _cargar_o_crear_secret():
+    """Persiste la SECRET_KEY en disco para sobrevivir reinicios del exe."""
+    if "SECRET_KEY" in os.environ:
+        return os.environ["SECRET_KEY"]
+    base = os.path.dirname(sys.executable) if hasattr(sys, "frozen") else \
+           os.path.dirname(os.path.abspath(__file__))
+    ruta = os.path.join(base, ".app_secret")
+    try:
+        if os.path.isfile(ruta):
+            clave = open(ruta).read().strip()
+            if len(clave) == 64:
+                return clave
+        clave = secrets.token_hex(32)
+        open(ruta, "w").write(clave)
+        return clave
+    except (IOError, OSError):
+        return secrets.token_hex(32)
+
 class Config:
-    SECRET_KEY               = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+    SECRET_KEY               = _cargar_o_crear_secret()
     SESSION_COOKIE_HTTPONLY  = True
     SESSION_COOKIE_SAMESITE  = "Lax"
     PERMANENT_SESSION_LIFETIME = 28800

@@ -270,19 +270,103 @@
 </form>
 {% endblock %}
 
+<!-- Modal: Insertar tabla (reemplaza prompt() bloqueante) -->
+<div class="modal fade" id="modalTabla" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-table me-2"></i>Insertar Tabla</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Filas</label>
+          <input type="number" id="tabla-filas" class="form-control" value="3" min="1" max="10">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Columnas</label>
+          <input type="number" id="tabla-cols" class="form-control" value="3" min="1" max="10">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="insertarTablaConfirmada()">Insertar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% block extra_js %}
 <script>
-// ── Helpers ──────────────────────────────────────────────────────
+// ── Helpers: formateo con Selection API (reemplaza execCommand) ──
 function c(cmd, val) {
-  document.getElementById('contenido_editor').focus();
+  // execCommand aún funciona para contenteditable en la mayoría de navegadores;
+  // se mantiene como fallback robusto para bold/italic/underline/align
+  const editor = document.getElementById('contenido_editor');
+  editor.focus();
   document.execCommand(cmd, false, val || null);
   marcarDirty();
 }
-function ins(html) {
-  document.getElementById('contenido_editor').focus();
-  document.execCommand('insertHTML', false, html);
+
+function formatear(tag) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+  const rango = sel.getRangeAt(0);
+  const envoltura = document.createElement(tag);
+  try {
+    envoltura.appendChild(rango.extractContents());
+    rango.insertNode(envoltura);
+    sel.removeAllRanges();
+  } catch (_) {
+    // Si el DOM no permite la operación (ej: rango multi-elemento), ignora
+  }
   marcarDirty();
 }
+
+function ins(html) {
+  const editor = document.getElementById('contenido_editor');
+  editor.focus();
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const rango = sel.getRangeAt(0);
+    rango.deleteContents();
+    const frag = document.createRange().createContextualFragment(html);
+    rango.insertNode(frag);
+    sel.removeAllRanges();
+  } else {
+    editor.insertAdjacentHTML('beforeend', html);
+  }
+  marcarDirty();
+}
+
+// ── Feedback de error ─────────────────────────────────────────────
+function mostrarError(msg) {
+  const el = document.getElementById('badge-estado');
+  if (!el) return;
+  el.className = 'badge bg-danger';
+  el.textContent = msg;
+  setTimeout(() => {
+    el.className = 'badge bg-secondary';
+    el.textContent = 'Sin guardar';
+  }, 3500);
+}
+
+// ── Estado offline/online ────────────────────────────────────────
+function actualizarConexion() {
+  const el = document.getElementById('badge-conexion');
+  if (navigator.onLine) {
+    el.textContent = '🌐 Conectado';
+    el.className = 'badge bg-success';
+  } else {
+    el.textContent = '📡 Modo Local';
+    el.className = 'badge bg-warning text-dark';
+  }
+}
+window.addEventListener('online', actualizarConexion);
+window.addEventListener('offline', actualizarConexion);
+
+// ── Modo simple/completo ─────────────────────────────────────────
+let _modoSimple = false;
 
 // ── Estado offline/online ────────────────────────────────────────
 function actualizarConexion() {
@@ -353,10 +437,16 @@ setInterval(function() {
   if (!_dirty) return;
   sincronizar();
   const h = document.getElementById('contenido-hidden').value;
-  try { localStorage.setItem('pgmj_borrador', h); } catch {}
-  const el = document.getElementById('badge-estado');
-  el.className = 'badge bg-success';
-  el.textContent = 'Guardado local ✓';
+  try {
+    localStorage.setItem('pgmj_borrador', h);
+    localStorage.setItem('pgmj_borrador_ts', Date.now().toString());
+    const el = document.getElementById('badge-estado');
+    el.className = 'badge bg-success';
+    el.textContent = 'Guardado local ✓';
+  } catch (lsErr) {
+    mostrarError('Error al guardar local');
+    console.warn('localStorage no disponible:', lsErr);
+  }
   _dirty = false;
 }, 30000);
 
@@ -382,11 +472,17 @@ async function guardarBorrador() {
       el.className = 'badge bg-success';
       el.textContent = 'Borrador guardado ✓';
     }
-  } catch {
-    try { localStorage.setItem('pgmj_borrador', fd.get('contenido_html') || ''); } catch {}
+  } catch (fetchErr) {
+    let guardadoLocal = false;
+    try {
+      localStorage.setItem('pgmj_borrador', fd.get('contenido_html') || '');
+      guardadoLocal = true;
+    } catch (lsErr) {
+      console.warn('localStorage no disponible:', lsErr);
+    }
     const el = document.getElementById('badge-estado');
-    el.className = 'badge bg-info';
-    el.textContent = 'Guardado local ✓';
+    el.className = guardadoLocal ? 'badge bg-info' : 'badge bg-danger';
+    el.textContent = guardadoLocal ? 'Guardado local ✓' : 'Sin conexion — no guardado';
   }
 }
 
@@ -454,12 +550,16 @@ function macroMarcoJuridico() {
   </table><br>`);
 }
 function insertarTabla() {
-  const f = parseInt(prompt('Filas:', 3) || 3);
-  const col = parseInt(prompt('Columnas:', 3) || 3);
-  let t = '<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;">';
-  for (let i = 0; i < f; i++) {
+  new bootstrap.Modal(document.getElementById('modalTabla')).show();
+}
+function insertarTablaConfirmada() {
+  const filas = Math.min(10, Math.max(1, parseInt(document.getElementById('tabla-filas').value) || 3));
+  const cols  = Math.min(10, Math.max(1, parseInt(document.getElementById('tabla-cols').value)  || 3));
+  bootstrap.Modal.getInstance(document.getElementById('modalTabla')).hide();
+  let t = '<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;margin:10px 0;">';
+  for (let i = 0; i < filas; i++) {
     t += '<tr>';
-    for (let j = 0; j < col; j++) t += '<td style="border:1px solid #ccc;padding:6px;">&nbsp;</td>';
+    for (let j = 0; j < cols; j++) t += '<td style="border:1px solid #ccc;padding:6px;">&nbsp;</td>';
     t += '</tr>';
   }
   t += '</table><br>';
@@ -467,33 +567,53 @@ function insertarTabla() {
 }
 function insertarLink() {
   const url = prompt('URL del enlace:', 'https://');
-  if (url) document.execCommand('createLink', false, url);
+  if (url && /^https?:\/\//i.test(url)) document.execCommand('createLink', false, url);
+}
+
+// ── Sanitizar para preview (evita XSS en ventana nueva) ─────────
+function sanitizarParaPreview(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  // Eliminar elementos ejecutables
+  tmp.querySelectorAll('script,iframe,object,embed,form,meta,link').forEach(el => el.remove());
+  // Eliminar atributos de evento y href javascript:
+  tmp.querySelectorAll('*').forEach(function(el) {
+    Array.from(el.attributes).forEach(function(attr) {
+      if (/^on/i.test(attr.name)) el.removeAttribute(attr.name);
+      if (attr.name === 'href' && /^javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+      if (attr.name === 'src' && /^javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+    });
+  });
+  return tmp.innerHTML;
 }
 
 // ── Previsualizar ────────────────────────────────────────────────
 function previsualizar() {
   sincronizar();
   const titulo = document.getElementById('inp-asunto')?.value || 'Documento';
-  const contenido = document.getElementById('contenido-hidden').value;
+  const contenidoRaw = document.getElementById('contenido-hidden').value;
+  const contenido = sanitizarParaPreview(contenidoRaw);
   const v = window.open('', '_blank');
-  v.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title>
-    <style>
-      body{font-family:'Calibri',Arial,sans-serif;padding:40px;max-width:900px;margin:0 auto;font-size:11pt;line-height:1.7;}
-      .hdr{border-bottom:2px solid #1E3A8A;margin-bottom:24px;padding-bottom:10px;}
-      .ftr{border-top:1px solid #ccc;margin-top:40px;padding-top:12px;font-size:10px;text-align:center;color:#64748b;}
-      table{border-collapse:collapse;width:100%;margin:12px 0;}
-      th,td{border:1px solid #ddd;padding:7px 10px;text-align:left;}th{background:#f1f5f9;}
-    </style></head><body>
-    <div class="hdr">
-      <strong style="font-size:13pt;color:#1E3A8A;">ASUACAP — Acueducto Comunitario El Puente</strong><br>
-      <span style="font-size:10pt;color:#64748b;">NIT: 832.001.389-2 | Villeta, Cundinamarca</span>
-      <h3 style="margin:10px 0 2px;">${titulo}</h3>
-      <small>Fecha: ${new Date().toLocaleDateString('es-CO')}</small>
-    </div>
-    ${contenido}
-    <div class="ftr">PARAGUASMJ — Sistema de Gestión Documental</div>
-  </body></html>`);
-  v.document.close();
+  if (!v) { alert('El navegador bloqueó la ventana emergente. Permita ventanas emergentes para esta aplicación.'); return; }
+  const css = `body{font-family:'Calibri',Arial,sans-serif;padding:40px;max-width:900px;margin:0 auto;font-size:11pt;line-height:1.7;}
+    .hdr{border-bottom:2px solid #1E3A8A;margin-bottom:24px;padding-bottom:10px;}
+    .ftr{border-top:1px solid #ccc;margin-top:40px;padding-top:12px;font-size:10px;text-align:center;color:#64748b;}
+    table{border-collapse:collapse;width:100%;margin:12px 0;}
+    th,td{border:1px solid #ddd;padding:7px 10px;text-align:left;}th{background:#f1f5f9;}`;
+  const doc = v.document;
+  doc.open();
+  doc.write('<!DOCTYPE html><html><head><meta charset="utf-8">');
+  doc.write('<title>' + titulo.replace(/</g,'&lt;') + '</title>');
+  doc.write('<style>' + css + '</style></head><body>');
+  doc.write('<div class="hdr">');
+  doc.write('<strong style="font-size:13pt;color:#1E3A8A;">ASUACAP — Acueducto Comunitario El Puente</strong><br>');
+  doc.write('<span style="font-size:10pt;color:#64748b;">NIT: 832.001.389-2 | Villeta, Cundinamarca</span>');
+  doc.write('<h3 style="margin:10px 0 2px;">' + titulo.replace(/</g,'&lt;') + '</h3>');
+  doc.write('<small>Fecha: ' + new Date().toLocaleDateString('es-CO') + '</small></div>');
+  doc.write(contenido);
+  doc.write('<div class="ftr">PARAGUASMJ — Sistema de Gestion Documental</div>');
+  doc.write('</body></html>');
+  doc.close();
 }
 
 // ── Código de verificación offline ──────────────────────────────
@@ -517,14 +637,22 @@ document.addEventListener('DOMContentLoaded', function() {
   // Detectar cambios en el editor
   document.getElementById('contenido_editor').addEventListener('input', marcarDirty);
 
-  // Cargar borrador local si existe y no hay contenido del servidor
-  const borrador = localStorage.getItem('pgmj_borrador');
-  const editor = document.getElementById('contenido_editor');
-  const tieneContenido = editor.innerHTML.trim().replace(/<[^>]+>/g,'').trim().length > 10;
-  if (borrador && !tieneContenido && confirm('Hay un borrador guardado localmente. ¿Cargarlo?')) {
-    editor.innerHTML = borrador;
-    localStorage.removeItem('pgmj_borrador');
-  }
+  // Cargar borrador local si es más reciente que el contenido del servidor
+  try {
+    const borrador   = localStorage.getItem('pgmj_borrador');
+    const tsLocal    = parseInt(localStorage.getItem('pgmj_borrador_ts') || '0');
+    // Fecha del servidor viene como string ISO; la parseamos de forma segura
+    const fechaServ  = {{ ('"' + (contenido.fecha_edicion | string) + '"') if contenido and contenido.fecha_edicion else 'null' }};
+    const tsServidor = fechaServ ? new Date(fechaServ).getTime() : 0;
+    const editor     = document.getElementById('contenido_editor');
+    const tieneContenido = editor.innerHTML.trim().replace(/<[^>]+>/g,'').trim().length > 10;
+    if (borrador && tsLocal > tsServidor && !tieneContenido &&
+        confirm('Hay un borrador local más reciente que el documento guardado. ¿Cargarlo?')) {
+      editor.innerHTML = borrador;
+      localStorage.removeItem('pgmj_borrador');
+      localStorage.removeItem('pgmj_borrador_ts');
+    }
+  } catch (_) {}
 });
 </script>
 {% endblock %}
