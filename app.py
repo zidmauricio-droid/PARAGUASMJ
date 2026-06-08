@@ -39,6 +39,7 @@ from routes.auditoria        import aud_bp
 from routes.proyectos_v2     import proy2_bp
 from routes.emergencias      import em_bp
 from routes.convenios        import conv_bp
+from routes.carpetas_bp      import carpetas_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(dash_bp)
@@ -55,6 +56,7 @@ app.register_blueprint(aud_bp)
 app.register_blueprint(proy2_bp)
 app.register_blueprint(em_bp)
 app.register_blueprint(conv_bp)
+app.register_blueprint(carpetas_bp)
 
 # ── Filtros Jinja2 ──────────────────────────────────────────────────
 from utils.helpers import formatear_moneda, truncar
