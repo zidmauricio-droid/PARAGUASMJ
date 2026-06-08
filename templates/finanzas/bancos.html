@@ -50,6 +50,7 @@
         <td>
           <form method="POST" action="{{ url_for('finanzas.banco_eliminar', bid=c.pk_banco_id) }}"
                 onsubmit="return confirm('¿Inactivar esta cuenta?');" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="btn btn-ghost btn-sm text-danger" title="Inactivar">
               <i class="bi bi-x-circle"></i>
             </button>
@@ -73,6 +74,7 @@
   </div>
   <div class="card-body">
     <form method="POST" action="{{ url_for('finanzas.banco_crear') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-3">
         <div class="col-md-2">
           <label class="form-label fw-semibold">Código *</label>

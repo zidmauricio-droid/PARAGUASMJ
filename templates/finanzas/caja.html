@@ -64,6 +64,7 @@
   <div class="card-header bg-primary text-white"><i class="bi bi-plus-circle me-2"></i>Registrar Movimiento</div>
   <div class="card-body">
     <form method="POST" action="{{ url_for('finanzas.caja_nuevo') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-3">
         <div class="col-md-2">
           <label class="form-label fw-semibold">Fecha</label>

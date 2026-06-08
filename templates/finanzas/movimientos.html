@@ -58,6 +58,7 @@
   <div class="card-header bg-primary text-white">Registrar Movimiento</div>
   <div class="card-body">
     <form method="POST" action="{{ url_for('finanzas.movimiento_nuevo') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-3">
         <div class="col-md-2"><label class="form-label fw-semibold">Fecha</label>
           <input type="date" name="fecha" class="form-control" required value="{{ fecha_hasta }}"></div>

@@ -15,6 +15,8 @@ TABLAS_PERMITIDAS = frozenset({
     "control_consecutivos", "logs_sistema", "usuarios", "pqrs",
     "fallas_gis", "puntos_gis", "balance_hidrico", "proyectos",
     "finanzas_movimientos", "convenios", "emergencias", "suscriptores",
+    # Tablas financieras — agregadas RC5.5
+    "caja_chica", "bancos", "movimientos_financieros",
 })
 
 
@@ -151,3 +153,26 @@ def obtener_estadisticas_bd() -> Dict:
         "indexes":    indices,
         "journal_mode": journal,
     }
+
+
+# ── Alias RC5.5 — compatibilidad con call sites existentes ──────────
+# atomic  = db_connection con autocommit=True  (escritura transaccional)
+# readonly = db_connection con autocommit=False (solo lectura, sin commit)
+atomic   = db_connection            # atomic(autocommit=True) es el default
+
+
+def readonly():
+    """Context manager de solo lectura — no emite COMMIT al salir."""
+    return db_connection(autocommit=False)
+
+
+def validar_columnas(tabla: str, columnas: list) -> list:
+    """
+    Filtra columnas contra el esquema real de la tabla.
+    Previene inyeccion via nombres de columna dinamicos.
+    Retorna solo las columnas que existen en la tabla.
+    """
+    with db_connection(autocommit=False) as conn:
+        info = conn.execute(f"PRAGMA table_info({tabla})").fetchall()
+        cols_validas = {r["name"] for r in info}
+    return [c for c in columnas if c in cols_validas]
