@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+{% block title %}Expedientes — PARAGUASMJ{% endblock %}
+
+{% block extra_css %}
+<style>
+.fase-badge { font-size: .75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-folder2-open me-2"></i>Gestion de Expedientes</h4>
+    <button class="btn btn-success btn-sm" onclick="mostrarModalNuevo()">
+      <i class="bi bi-plus-lg me-1"></i>Nuevo Expediente
+    </button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <input type="text" id="filtroBuscar" class="form-control form-control-sm"
+                 placeholder="Buscar por codigo o nombre...">
+        </div>
+        <div class="col-md-3">
+          <select id="filtroEstado" class="form-select form-select-sm">
+            <option value="">Todos los estados</option>
+            <option value="Activo">Activo</option>
+            <option value="Cerrado">Cerrado</option>
+            <option value="Archivado">Archivado</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select id="filtroFase" class="form-select form-select-sm">
+            <option value="">Todas las fases</option>
+            <option value="Gestion">Gestion</option>
+            <option value="Central">Archivo Central</option>
+            <option value="Historico">Archivo Historico</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-primary btn-sm w-100" onclick="cargarExpedientes()">
+            <i class="bi bi-search me-1"></i>Buscar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>Codigo</th>
+              <th>Nombre</th>
+              <th>Estado</th>
+              <th>Fase</th>
+              <th class="text-center">Docs</th>
+              <th>Creacion</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-expedientes">
+            <tr><td colspan="7" class="text-center py-3">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer bg-light d-flex justify-content-between align-items-center py-1">
+      <small id="info-paginacion" class="text-muted"></small>
+      <ul class="pagination pagination-sm mb-0" id="pagination-links"></ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Nuevo -->
+<div class="modal fade" id="modalNuevo" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-folder-plus me-1"></i>Nuevo Expediente</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label form-label-sm fw-semibold">Codigo *</label>
+          <input type="text" id="n_codigo" class="form-control form-control-sm"
+                 placeholder="Ej: EXP-2026-001" maxlength="30">
+          <div class="form-text">Codigo unico del expediente</div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label form-label-sm fw-semibold">Nombre *</label>
+          <input type="text" id="n_nombre" class="form-control form-control-sm" maxlength="200">
+        </div>
+        <div class="mb-2">
+          <label class="form-label form-label-sm fw-semibold">Descripcion</label>
+          <textarea id="n_descripcion" class="form-control form-control-sm" rows="2" maxlength="500"></textarea>
+        </div>
+        <div class="mb-1">
+          <label class="form-label form-label-sm fw-semibold">Estado inicial</label>
+          <select id="n_estado" class="form-select form-select-sm">
+            <option value="Activo">Activo</option>
+            <option value="Cerrado">Cerrado</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-success btn-sm" onclick="crearExpediente()">Crear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Editar -->
+<div class="modal fade" id="modalEditar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-pencil me-1"></i>Editar Expediente</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="e_id">
+        <div class="mb-2">
+          <label class="form-label form-label-sm fw-semibold">Codigo</label>
+          <input type="text" id="e_codigo" class="form-control form-control-sm" disabled>
+        </div>
+        <div class="mb-2">
+          <label class="form-label form-label-sm fw-semibold">Nombre *</label>
+          <input type="text" id="e_nombre" class="form-control form-control-sm" maxlength="200">
+        </div>
+        <div class="mb-2">
+          <label class="form-label form-label-sm fw-semibold">Descripcion</label>
+          <textarea id="e_descripcion" class="form-control form-control-sm" rows="2" maxlength="500"></textarea>
+        </div>
+        <div class="mb-2">
+          <label class="form-label form-label-sm fw-semibold">Estado</label>
+          <select id="e_estado" class="form-select form-select-sm">
+            <option value="Activo">Activo</option>
+            <option value="Cerrado">Cerrado</option>
+            <option value="Archivado">Archivado</option>
+          </select>
+        </div>
+        <div class="mb-1">
+          <label class="form-label form-label-sm fw-semibold">Fase archivistica</label>
+          <select id="e_fase" class="form-select form-select-sm">
+            <option value="Gestion">Gestion</option>
+            <option value="Central">Archivo Central</option>
+            <option value="Historico">Archivo Historico</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="actualizarExpediente()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Ver -->
+<div class="modal fade" id="modalVer" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white py-2">
+        <h6 class="modal-title mb-0"><i class="bi bi-folder2 me-1"></i>Detalle del Expediente</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="detalle-expediente">
+        <p class="text-center">Cargando...</p>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="abrirHojaControl()">
+          <i class="bi bi-printer me-1"></i>Hoja de Control
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+
+  const CSRF  = {{ csrf_token() | tojson }};
+  let pagina  = 1;
+  let expActual = null;
+
+  const $ = id => document.getElementById(id);
+
+  // ── helpers ──────────────────────────────────────────────────────────────
+
+  function esc(t) {
+    if (!t) return '';
+    const d = document.createElement('div');
+    d.textContent = t;
+    return d.innerHTML;
+  }
+
+  function badgeEstado(e) {
+    const map = { Activo: 'success', Cerrado: 'secondary', Archivado: 'warning' };
+    return `<span class="badge bg-${map[e] || 'secondary'}">${esc(e)}</span>`;
+  }
+
+  function api(url, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF };
+    return fetch(url, { ...opts, headers: { ...headers, ...(opts.headers || {}) } })
+      .then(r => r.json());
+  }
+
+  // ── carga ─────────────────────────────────────────────────────────────────
+
+  function cargarExpedientes() {
+    const buscar = $('filtroBuscar').value;
+    const estado = $('filtroEstado').value;
+    const fase   = $('filtroFase').value;
+    const url    = `/expedientes/api/expedientes?pagina=${pagina}&buscar=${encodeURIComponent(buscar)}&estado=${estado}&fase=${fase}`;
+
+    $('tabla-expedientes').innerHTML = '<tr><td colspan="7" class="text-center py-3">Cargando...</td></tr>';
+
+    api(url, { method: 'GET' })
+      .then(data => {
+        if (!data.success) throw new Error(data.error || 'Error al cargar');
+        renderTabla(data.expedientes);
+        renderPaginacion(data);
+      })
+      .catch(err => {
+        $('tabla-expedientes').innerHTML =
+          `<tr><td colspan="7" class="text-center text-danger py-3">Error: ${esc(err.message)}</td></tr>`;
+      });
+  }
+
+  function renderTabla(lista) {
+    if (!lista || !lista.length) {
+      $('tabla-expedientes').innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted">Sin resultados</td></tr>';
+      return;
+    }
+    $('tabla-expedientes').innerHTML = lista.map(exp => `
+      <tr>
+        <td><strong>${esc(exp.codigo_expediente)}</strong></td>
+        <td>${esc(exp.nombre)}</td>
+        <td>${badgeEstado(exp.estado)}</td>
+        <td><span class="fase-badge badge bg-light text-dark border">${esc(exp.fase_archivo || 'Gestion')}</span></td>
+        <td class="text-center"><span class="badge bg-info text-dark">${exp.total_documentos || 0}</span></td>
+        <td><small>${exp.fecha_creacion ? exp.fecha_creacion.substring(0,10) : '-'}</small></td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-outline-info py-0" onclick="verExpediente(${exp.pk_expediente_id})" title="Ver">
+            <i class="bi bi-eye"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-primary py-0" onclick="editarExpediente(${exp.pk_expediente_id})" title="Editar">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger py-0"
+                  onclick="eliminarExpediente(${exp.pk_expediente_id}, '${esc(exp.codigo_expediente)}')" title="Eliminar">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function renderPaginacion(data) {
+    $('info-paginacion').textContent = `Mostrando ${data.desde || 0}-${data.hasta || 0} de ${data.total || 0}`;
+    const ul = $('pagination-links');
+    ul.innerHTML = '';
+    if (data.total_paginas <= 1) return;
+    for (let i = 1; i <= data.total_paginas; i++) {
+      const li = document.createElement('li');
+      li.className = `page-item ${i === pagina ? 'active' : ''}`;
+      li.innerHTML = `<a class="page-link" href="#" onclick="cambiarPagina(${i});return false">${i}</a>`;
+      ul.appendChild(li);
+    }
+  }
+
+  window.cambiarPagina = function (p) { pagina = p; cargarExpedientes(); };
+
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+
+  window.mostrarModalNuevo = function () {
+    ['n_codigo','n_nombre','n_descripcion'].forEach(id => $(id).value = '');
+    $('n_estado').value = 'Activo';
+    new bootstrap.Modal($('modalNuevo')).show();
+  };
+
+  window.crearExpediente = function () {
+    const codigo = $('n_codigo').value.trim();
+    const nombre = $('n_nombre').value.trim();
+    if (!codigo || !nombre) { alert('Codigo y nombre son obligatorios'); return; }
+
+    api('/expedientes/api/expedientes', {
+      method: 'POST',
+      body: JSON.stringify({
+        codigo, nombre,
+        descripcion: $('n_descripcion').value,
+        estado: $('n_estado').value,
+      }),
+    }).then(data => {
+      if (data.success) {
+        bootstrap.Modal.getInstance($('modalNuevo')).hide();
+        cargarExpedientes();
+      } else {
+        alert('Error: ' + (data.error || 'desconocido'));
+      }
+    }).catch(err => alert('Error de red: ' + err.message));
+  };
+
+  window.editarExpediente = function (id) {
+    api(`/expedientes/api/expedientes/${id}`, { method: 'GET' })
+      .then(data => {
+        if (!data.success) { alert('Error: ' + data.error); return; }
+        const e = data.expediente;
+        $('e_id').value          = e.pk_expediente_id;
+        $('e_codigo').value      = e.codigo_expediente;
+        $('e_nombre').value      = e.nombre;
+        $('e_descripcion').value = e.descripcion || '';
+        $('e_estado').value      = e.estado || 'Activo';
+        $('e_fase').value        = e.fase_archivo || 'Gestion';
+        new bootstrap.Modal($('modalEditar')).show();
+      })
+      .catch(err => alert('Error: ' + err.message));
+  };
+
+  window.actualizarExpediente = function () {
+    const nombre = $('e_nombre').value.trim();
+    if (!nombre) { alert('El nombre es obligatorio'); return; }
+    const id = $('e_id').value;
+
+    api(`/expedientes/api/expedientes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        nombre,
+        descripcion:  $('e_descripcion').value,
+        estado:       $('e_estado').value,
+        fase_archivo: $('e_fase').value,
+      }),
+    }).then(data => {
+      if (data.success) {
+        bootstrap.Modal.getInstance($('modalEditar')).hide();
+        cargarExpedientes();
+      } else {
+        alert('Error: ' + (data.error || 'desconocido'));
+      }
+    }).catch(err => alert('Error de red: ' + err.message));
+  };
+
+  window.verExpediente = function (id) {
+    expActual = id;
+    $('detalle-expediente').innerHTML = '<p class="text-center">Cargando...</p>';
+    new bootstrap.Modal($('modalVer')).show();
+
+    api(`/expedientes/api/expedientes/${id}`, { method: 'GET' })
+      .then(data => {
+        if (!data.success) { $('detalle-expediente').innerHTML = `<p class="text-danger">${esc(data.error)}</p>`; return; }
+        const e = data.expediente;
+        const docs = data.documentos || [];
+        const filasDocs = docs.length
+          ? docs.map(d => `<tr>
+              <td>${esc(d.codigo_completo)}</td>
+              <td>${esc((d.asunto_resumen || '').substring(0,60))}</td>
+              <td>${d.fecha_radicacion ? d.fecha_radicacion.substring(0,10) : '-'}</td>
+            </tr>`).join('')
+          : '<tr><td colspan="3" class="text-muted text-center">Sin documentos asociados</td></tr>';
+
+        $('detalle-expediente').innerHTML = `
+          <dl class="row mb-2">
+            <dt class="col-sm-4">Codigo</dt><dd class="col-sm-8">${esc(e.codigo_expediente)}</dd>
+            <dt class="col-sm-4">Nombre</dt><dd class="col-sm-8">${esc(e.nombre)}</dd>
+            <dt class="col-sm-4">Estado</dt><dd class="col-sm-8">${badgeEstado(e.estado)}</dd>
+            <dt class="col-sm-4">Fase</dt><dd class="col-sm-8">${esc(e.fase_archivo)}</dd>
+            <dt class="col-sm-4">Descripcion</dt><dd class="col-sm-8">${esc(e.descripcion || '-')}</dd>
+          </dl>
+          <h6 class="mt-3">Documentos asociados (${docs.length})</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+              <thead class="table-light"><tr><th>Codigo</th><th>Asunto</th><th>Fecha</th></tr></thead>
+              <tbody>${filasDocs}</tbody>
+            </table>
+          </div>`;
+      })
+      .catch(err => { $('detalle-expediente').innerHTML = `<p class="text-danger">Error: ${esc(err.message)}</p>`; });
+  };
+
+  window.eliminarExpediente = function (id, codigo) {
+    if (!confirm(`Eliminar el expediente "${codigo}"?\nEsta accion no se puede deshacer.`)) return;
+    api(`/expedientes/api/expedientes/${id}`, { method: 'DELETE' })
+      .then(data => {
+        if (data.success) { cargarExpedientes(); }
+        else { alert('Error: ' + (data.error || 'desconocido')); }
+      })
+      .catch(err => alert('Error de red: ' + err.message));
+  };
+
+  window.abrirHojaControl = function () {
+    if (expActual) window.open(`/expedientes/${expActual}/hoja_control`, '_blank');
+  };
+
+  // ── iniciar ───────────────────────────────────────────────────────────────
+
+  cargarExpedientes();
+  $('filtroBuscar').addEventListener('keypress', e => { if (e.key === 'Enter') cargarExpedientes(); });
+
+  // exponer para botones globales
+  window.cargarExpedientes = cargarExpedientes;
+})();
+</script>
+{% endblock %}

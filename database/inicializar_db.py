@@ -815,6 +815,26 @@ def inicializar_base_datos():
         firma_id INTEGER, actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )""")
     conn.execute("INSERT OR IGNORE INTO config_aprobador_formato (id,nombre,cargo) VALUES (1,'José Humberto Ramírez','Representante Legal')")
+
+    # Tabla expedientes (Ley 594/2000)
+    conn.execute("""CREATE TABLE IF NOT EXISTS expedientes (
+        pk_expediente_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo_expediente TEXT    NOT NULL UNIQUE,
+        nombre            TEXT    NOT NULL,
+        descripcion       TEXT,
+        estado            TEXT    NOT NULL DEFAULT 'Activo'
+                          CHECK(estado IN ('Activo', 'Cerrado', 'Archivado')),
+        fase_archivo      TEXT    NOT NULL DEFAULT 'Gestion'
+                          CHECK(fase_archivo IN ('Gestion', 'Central', 'Historico')),
+        creado_por        TEXT,
+        fecha_creacion    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+    )""")
+    try:
+        conn.execute("ALTER TABLE registro_central ADD COLUMN fk_expediente_id INTEGER REFERENCES expedientes(pk_expediente_id) ON DELETE SET NULL")
+    except Exception:
+        pass  # columna ya existe
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_expedientes_estado ON expedientes(estado)")
+
     conn.commit()
     conn.close()
     print("  -> 31 tablas + indices + datos semilla listos.")

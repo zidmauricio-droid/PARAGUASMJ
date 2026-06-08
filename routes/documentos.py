@@ -20,6 +20,7 @@ from flask import (Blueprint, render_template, request, redirect, url_for,
 from werkzeug.utils import secure_filename
 from core.database_manager import get_db, atomic, readonly, validar_columnas, obtener_consecutivo, registrar_log
 from core.seguridad import login_requerido
+from utils.seguridad import verificar_token_csrf
 from core.auditoria import auditar, registrar_evento
 from core.gestor_trd import gestor_trd
 from core.forensic_saneamiento import SaneadorForense
@@ -282,6 +283,9 @@ def nuevo():
         conn = get_db()
 
         if request.method == "POST":
+            if not verificar_token_csrf():
+                flash("Token de seguridad invalido. Recargue la pagina.", "danger")
+                return redirect(url_for("documentos.nuevo"))
             area        = request.form["area"]
             tipo        = request.form["tipo_documento"]
             anio        = datetime.now().year
@@ -478,6 +482,9 @@ def editar(registro_id):
             return redirect(url_for("documentos.ver", registro_id=registro_id))
 
         if request.method == "POST":
+            if not verificar_token_csrf():
+                flash("Token de seguridad invalido. Recargue la pagina.", "danger")
+                return redirect(url_for("documentos.editar", registro_id=registro_id))
             contenido = sanitizar_html(request.form.get("contenido_html",""))
             asunto    = request.form.get("asunto_resumen", doc["asunto_resumen"]).strip()
             notas     = request.form.get("notas_internas", doc["notas_internas"] or "")
@@ -534,6 +541,9 @@ def editar(registro_id):
 @docs_bp.route("/<int:registro_id>/cambiar_estado", methods=["POST"])
 @login_requerido
 def cambiar_estado(registro_id):
+    if not verificar_token_csrf():
+        flash("Token de seguridad invalido.", "danger")
+        return redirect(url_for("documentos.ver", registro_id=registro_id))
     nuevo_estado = request.form.get("nuevo_estado")
     observacion  = request.form.get("observacion","")
     estados_ok   = ("Borrador","En_revision","En_autorizacion","Aprobado","Rechazado","Archivado")
