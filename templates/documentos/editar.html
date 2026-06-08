@@ -639,14 +639,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Cargar borrador local si es más reciente que el contenido del servidor
   try {
-    const borrador   = localStorage.getItem('pgmj_borrador');
-    const tsLocal    = parseInt(localStorage.getItem('pgmj_borrador_ts') || '0');
-    // Fecha del servidor viene como string ISO; la parseamos de forma segura
-    // fecha_servidor llega en ms desde el backend (ya convertido de ISO string)
-    const tsServidor = {{ fecha_servidor | default(0) }};
-    const editor     = document.getElementById('contenido_editor');
+    const borrador     = localStorage.getItem('pgmj_borrador');
+    const tsLocalMs    = parseInt(localStorage.getItem('pgmj_borrador_ts') || '0');
+    // Backend entrega segundos Unix; *1000 para comparar con Date.now() en ms
+    const tsServidorMs = {{ fecha_servidor_segundos | default(0) }} * 1000;
+    const editor       = document.getElementById('contenido_editor');
     const tieneContenido = editor.innerHTML.trim().replace(/<[^>]+>/g,'').trim().length > 10;
-    if (borrador && tsLocal > tsServidor && !tieneContenido &&
+    if (borrador && tsLocalMs > tsServidorMs && !tieneContenido &&
         confirm('Hay un borrador local más reciente que el documento guardado. ¿Cargarlo?')) {
       editor.innerHTML = borrador;
       localStorage.removeItem('pgmj_borrador');

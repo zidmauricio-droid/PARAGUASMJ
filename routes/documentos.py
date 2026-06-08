@@ -444,6 +444,23 @@ def ver(registro_id):
         if conn: conn.close()
 
 
+def _obtener_timestamp_seguro(fecha_edicion) -> int:
+    """
+    Convierte fecha_edicion a timestamp Unix en segundos.
+    Maneja string SQLite ("2026-06-07 08:36:55"), ISO 8601 con T,
+    microsegundos, y objetos datetime. Devuelve 0 ante cualquier fallo.
+    """
+    if not fecha_edicion:
+        return 0
+    try:
+        if isinstance(fecha_edicion, datetime):
+            return int(fecha_edicion.timestamp())
+        s = str(fecha_edicion).replace("T", " ").split(".")[0].strip()
+        return int(datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timestamp())
+    except Exception:
+        return 0
+
+
 # ── Editar contenido ──────────────────────────────────────────────────
 @docs_bp.route("/<int:registro_id>/editar", methods=["GET","POST"])
 @login_requerido
@@ -499,25 +516,16 @@ def editar(registro_id):
             "SELECT pk_firmante_id,nombre_completo,cargo FROM firmantes WHERE activo=1"
         ).fetchall()
 
-        # Timestamp calculado en backend para evitar .timestamp() en Jinja2
-        # (SQLite devuelve fecha_edicion como string ISO, no como datetime)
-        fecha_servidor = 0
-        if contenido:
-            fe = dict(contenido).get("fecha_edicion") or dict(doc).get("fecha_modificacion")
-            if fe:
-                try:
-                    from datetime import datetime as _dt
-                    fecha_servidor = int(_dt.fromisoformat(
-                        str(fe).replace("Z", "+00:00")
-                    ).timestamp()) * 1000   # ms para comparar con Date.now()
-                except Exception:
-                    fecha_servidor = 0
+        fe = (dict(contenido).get("fecha_edicion") if contenido else None) \
+             or dict(doc).get("fecha_modificacion")
+        # Segundos Unix → JS multiplica por 1000 para comparar con Date.now()
+        fecha_servidor_segundos = _obtener_timestamp_seguro(fe)
 
         return render_template("documentos/editar.html",
             doc=doc, contenido=contenido, areas=AREAS, tipos=TIPOS,
             contactos=contactos, firmantes=firmantes,
             plantillas=PLANTILLAS, hoy=date.today().isoformat(),
-            fecha_servidor=fecha_servidor)
+            fecha_servidor_segundos=fecha_servidor_segundos)
     finally:
         if conn: conn.close()
 
