@@ -92,7 +92,7 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{{ url_for('reportes_normativos.panel') }}">
                             <i class="bi bi-bar-chart-fill me-2"></i>Reportes CAR/SSPD/CRA</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('crear_backup_manual') }}">
+                        <li><a class="dropdown-item" href="{{ url_for('reportes_normativos.hacer_backup') }}">
                             <i class="bi bi-hdd me-2"></i>Crear Backup</a></li>
                     </ul>
                 </li>
@@ -148,25 +148,37 @@
 
 <!-- CONTENIDO PRINCIPAL -->
 <main class="container-fluid py-3 px-4">
+    {% if session.usuario_id and modulo_actual is defined and modulo_actual %}
+    <div class="modulo-header modulo-{{ modulo_actual.clase }}">
+        <i class="bi {{ modulo_actual.icono }}"></i>
+        <span>{{ modulo_actual.nombre }}</span>
+        <span class="modulo-user">
+            <i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}
+        </span>
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
 </main>
 
 <!-- PIE DE PAGINA INSTITUCIONAL -->
-<footer class="bg-dark text-white text-center py-3 mt-5 border-top border-primary">
+<footer class="text-center py-3 mt-5">
     <div class="container">
-        <p class="mb-1 small">
+        <p class="mb-1">
             <i class="bi bi-building me-1"></i>
-            Asociacion de Suscriptores del Acueducto Comunitario El Puente - ASUACAP
-            &nbsp;·&nbsp; NIT 832.001.389-2
+            Asociacion de Suscriptores del Acueducto Comunitario El Puente &mdash; ASUACAP
+            &nbsp;&middot;&nbsp; NIT 832.001.389-2
         </p>
-        <p class="mb-0 text-muted" style="font-size:0.82rem;">
-            Villeta, Cundinamarca &nbsp;·&nbsp;
-            Sistema de Informacion y Gestion de Datos (SIGD) &nbsp;·&nbsp;
-            Licencia Local de Operacion &copy; 2026
+        <p class="mb-0" style="font-size:.82rem;opacity:.75;">
+            Villeta, Cundinamarca &nbsp;&middot;&nbsp;
+            PARAGUASMJ v2026.1 &nbsp;&middot;&nbsp;
+            &copy; 2026 &mdash; Licencia Local de Operacion
         </p>
-        <div class="mt-2 text-info small" style="font-size:0.78rem;">
-            <span>Soporte Tecnico y Codigo Core: <b>M. Jimenez Ch.</b></span>
-        </div>
+        <p class="mb-0 mt-1" style="font-size:.75rem;opacity:.6;">
+            <span id="footer-sync">
+                <i class="bi bi-clock me-1"></i>
+                Ultima sincronizacion: <span id="ultima-sync">{{ hoy }}</span>
+            </span>
+        </p>
     </div>
 </footer>
 

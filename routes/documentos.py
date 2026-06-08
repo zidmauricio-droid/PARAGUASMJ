@@ -18,7 +18,7 @@ import secrets
 from flask import (Blueprint, render_template, request, redirect, url_for,
                    flash, session, send_file, abort, jsonify)
 from werkzeug.utils import secure_filename
-from core.database_manager import get_db, atomic, readonly, validar_columnas, obtener_consecutivo, registrar_log
+from core.database_manager import get_db, atomic, readonly, validar_columnas, obtener_consecutivo, registrar_log, db_connection
 from core.seguridad import login_requerido
 from utils.seguridad import verificar_token_csrf
 from core.capability_registry import CapabilityRegistry
