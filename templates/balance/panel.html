@@ -117,7 +117,7 @@
 
 <div id="tab-quebrada" style="display:none;" class="tab-pane">
   <div class="alert alert-info small mb-3">
-    📊 Comportamiento mensual del nivel de la quebrada Santiбáñez.
+    📊 Comportamiento mensual del nivel de la quebrada Santibáñez.
     Línea roja discontinua = <strong>Umbral Crítico (30 cm)</strong>.
     Por debajo → riesgo de desabastecimiento.
   </div>
@@ -282,7 +282,7 @@ async function renderGraficoQuebrada() {
     data:{
       labels: serie.map(s=>s.mes_nombre.substring(0,3)),
       datasets:[{
-        label:'Nivel Cuenca Santiбáñez (cm)',
+        label:'Nivel Cuenca Santibáñez (cm)',
         data: niveles,
         borderColor:'#1E3A8A',
         backgroundColor:'rgba(30,58,138,0.08)',
@@ -298,7 +298,7 @@ async function renderGraficoQuebrada() {
       responsive:true,
       plugins:{
         legend:{position:'bottom'},
-        title:{display:true, text:`${ANIO} — Nivel Cuenca Santiбáñez`,
+        title:{display:true, text:`${ANIO} — Nivel Cuenca Santibáñez`,
                font:{size:16,weight:'bold'},color:'#1E3A8A'},
         tooltip:{callbacks:{
           afterLabel: ctx => {
