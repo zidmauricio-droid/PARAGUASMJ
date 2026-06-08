@@ -404,6 +404,19 @@ function toggleSeccion(bodyId, header) {
   if (ico) ico.textContent = oculto ? '▼' : '▶';
 }
 
+// ── Claves localStorage unificadas ───────────────────────────────
+const _LS_CONTENIDO  = 'pgmj_borrador';
+const _LS_ASUNTO     = 'pgmj_borrador_asunto';
+const _LS_TIMESTAMP  = 'pgmj_borrador_ts';
+
+function limpiarBorradorLocal() {
+  try {
+    localStorage.removeItem(_LS_CONTENIDO);
+    localStorage.removeItem(_LS_ASUNTO);
+    localStorage.removeItem(_LS_TIMESTAMP);
+  } catch (_) {}
+}
+
 // ── Dirty tracking ───────────────────────────────────────────────
 let _dirty = false;
 function marcarDirty() {
@@ -437,9 +450,11 @@ setInterval(function() {
   if (!_dirty) return;
   sincronizar();
   const h = document.getElementById('contenido-hidden').value;
+  const a = document.getElementById('inp-asunto')?.value || '';
   try {
-    localStorage.setItem('pgmj_borrador', h);
-    localStorage.setItem('pgmj_borrador_ts', Date.now().toString());
+    localStorage.setItem(_LS_CONTENIDO, h);
+    localStorage.setItem(_LS_ASUNTO, a);
+    localStorage.setItem(_LS_TIMESTAMP, Date.now().toString());
     const el = document.getElementById('badge-estado');
     el.className = 'badge bg-success';
     el.textContent = 'Guardado local ✓';
@@ -475,7 +490,9 @@ async function guardarBorrador() {
   } catch (fetchErr) {
     let guardadoLocal = false;
     try {
-      localStorage.setItem('pgmj_borrador', fd.get('contenido_html') || '');
+      localStorage.setItem(_LS_CONTENIDO, fd.get('contenido_html') || '');
+      localStorage.setItem(_LS_ASUNTO, fd.get('asunto_resumen') || '');
+      localStorage.setItem(_LS_TIMESTAMP, Date.now().toString());
       guardadoLocal = true;
     } catch (lsErr) {
       console.warn('localStorage no disponible:', lsErr);
@@ -491,6 +508,7 @@ document.addEventListener('keydown', function(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
     sincronizar();
+    limpiarBorradorLocal();
     document.getElementById('form-doc').submit();
   }
 });
@@ -639,8 +657,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Cargar borrador local si es más reciente que el contenido del servidor
   try {
-    const borrador     = localStorage.getItem('pgmj_borrador');
-    const tsLocalMs    = parseInt(localStorage.getItem('pgmj_borrador_ts') || '0');
+    const borrador     = localStorage.getItem(_LS_CONTENIDO);
+    const tsLocalMs    = parseInt(localStorage.getItem(_LS_TIMESTAMP) || '0');
     // Backend entrega segundos Unix; *1000 para comparar con Date.now() en ms
     const tsServidorMs = {{ fecha_servidor_segundos | default(0) }} * 1000;
     const editor       = document.getElementById('contenido_editor');
@@ -648,8 +666,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (borrador && tsLocalMs > tsServidorMs && !tieneContenido &&
         confirm('Hay un borrador local más reciente que el documento guardado. ¿Cargarlo?')) {
       editor.innerHTML = borrador;
-      localStorage.removeItem('pgmj_borrador');
-      localStorage.removeItem('pgmj_borrador_ts');
+      const asuntoGuardado = localStorage.getItem(_LS_ASUNTO);
+      if (asuntoGuardado) {
+        const inp = document.getElementById('inp-asunto');
+        if (inp && !inp.value.trim()) inp.value = asuntoGuardado;
+      }
+      // No limpiar aquí — el usuario aún no ha guardado en el servidor
     }
   } catch (_) {}
 });

@@ -457,7 +457,7 @@ def _obtener_timestamp_seguro(fecha_edicion) -> int:
             return int(fecha_edicion.timestamp())
         s = str(fecha_edicion).replace("T", " ").split(".")[0].strip()
         return int(datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timestamp())
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         return 0
 
 
