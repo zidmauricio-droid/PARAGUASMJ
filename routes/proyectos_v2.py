@@ -99,7 +99,7 @@ def api_subir_evidencia(pid):
             VALUES (?,?,?,?,?)
         """, (pid, fn, ruta, request.form.get("descripcion",""), session.get("usuario_id")))
         conn.commit()
-        log_action("UPLOAD_EVIDENCIA","proyectos2",f"Proyecto {pid} — {fn}")
+        log_action(accion="UPLOAD_EVIDENCIA", modulo="proyectos2", descripcion=f"Proyecto {pid} — {fn}")
         return jsonify({"ok": True, "id": cur.lastrowid}), 201
     except Exception as e:
         conn.rollback()
@@ -126,28 +126,6 @@ def _recalcular_avance(conn, proyecto_id: int):
 
 
 # ── Panel HTML ────────────────────────────────────────────────────────
-
-
-# ── Decorador reintentos ─────────────────────────────────────────
-def with_retry(max_retries: int = 3, base_delay: float = 0.25):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exc = None
-            for attempt in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
-                except sqlite3.OperationalError as e:
-                    last_exc = e
-                    if "database is locked" in str(e).lower() and attempt < max_retries - 1:
-                        time.sleep(base_delay * (2 ** attempt))
-                        continue
-                    break
-                except Exception:
-                    raise
-            raise last_exc
-        return wrapper
-    return decorator
 
 @proy2_bp.route("/")
 @login_requerido

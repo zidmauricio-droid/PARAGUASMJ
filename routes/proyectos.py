@@ -106,7 +106,7 @@ def nuevo():
                   session.get("usuario_id")))
             new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             conn.commit()
-            log_action("CREATE_PROYECTO","proyectos",f"{codigo} — {nombre}")
+            log_action(accion="CREATE_PROYECTO", modulo="proyectos", descripcion=f"{codigo} — {nombre}")
             flash(f"✅ Proyecto creado: {codigo}", "success")
             return redirect(url_for("proyectos.ver", pid=new_id))
         except Exception as e:
@@ -176,7 +176,7 @@ def agregar_tarea(pid):
               data.get("fecha_inicio"), data.get("fecha_fin"),
               float(data.get("costo_estimado",0))))
         conn.commit()
-        log_action("ADD_TAREA","proyectos",f"Proyecto {pid}")
+        log_action(accion="ADD_TAREA", modulo="proyectos", descripcion=f"Proyecto {pid}")
         return jsonify({"ok": True}), 201
     except Exception as e:
         conn.rollback()
@@ -208,7 +208,7 @@ def subir_evidencia(pid):
             VALUES (?,?,?,?,?,datetime('now'))
         """, (pid, fn, ruta, request.form.get("descripcion",""), session.get("usuario_id")))
         conn.commit()
-        log_action("UPLOAD_EVIDENCIA","proyectos",f"Proyecto {pid} — {fn}")
+        log_action(accion="UPLOAD_EVIDENCIA", modulo="proyectos", descripcion=f"Proyecto {pid} — {fn}")
         return jsonify({"ok": True}), 201
     except Exception as e:
         conn.rollback()
