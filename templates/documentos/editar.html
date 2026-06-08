@@ -8,41 +8,51 @@
   border-radius: 8px;
   padding: 20px 24px;
   min-height: 420px;
-  max-height: 600px;
+  max-height: 620px;
   overflow-y: auto;
-  background: #ffffff;
-  font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+  background: #fff;
+  font-family: 'Calibri','Segoe UI',Arial,sans-serif;
   font-size: 14px;
   line-height: 1.7;
   color: #212529;
   outline: none;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,.06);
-  transition: border-color .2s;
+  transition: border-color .2s, box-shadow .2s;
 }
-#contenido_editor:focus { border-color: #1E3A8A; box-shadow: 0 0 0 3px rgba(30,58,138,.12); }
+#contenido_editor:focus {
+  border-color: #1E3A8A;
+  box-shadow: 0 0 0 3px rgba(30,58,138,.12);
+}
 #contenido_editor table { border-collapse: collapse; width: 100%; margin: 10px 0; }
 #contenido_editor td, #contenido_editor th { border: 1px solid #94a3b8; padding: 6px 10px; }
 #contenido_editor th { background: #f1f5f9; font-weight: 700; }
 #contenido_editor blockquote { border-left: 3px solid #1E3A8A; margin: 8px 0; padding: 4px 14px; color: #64748b; }
-.tb-btn { border: 1px solid #ced4da; border-radius: 4px; padding: 4px 9px; background: #fff; cursor: pointer; font-size: 13px; color: #334155; }
+.tb-btn {
+  border: 1px solid #ced4da; border-radius: 4px; padding: 4px 9px;
+  background: #fff; cursor: pointer; font-size: 13px; color: #334155;
+}
 .tb-btn:hover { background: #e2e8f0; }
 .tb-sep { display: inline-block; width: 1px; height: 22px; background: #dee2e6; margin: 0 4px; vertical-align: middle; }
-.firmante-chip { display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 4px 10px; margin: 3px; font-size: 12px; }
+.seccion-header { cursor: pointer; user-select: none; }
+.seccion-header:hover { background: #e9ecef !important; }
 </style>
 {% endblock %}
 
 {% block content %}
 <form method="POST" id="form-doc" enctype="multipart/form-data">
+<input type="hidden" name="contenido_html" id="contenido-hidden">
+
 <div class="container-fluid mt-3">
 
   <!-- Cabecera -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0 text-primary fw-bold">
-      <i class="bi bi-pencil-square me-2"></i>Editar Documento
-    </h5>
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center rounded mb-3" style="padding:12px 18px;">
+    <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Editar Documento</h5>
     <div class="d-flex gap-2 align-items-center">
-      <span id="badge-estado" class="badge bg-warning text-dark">Sin guardar</span>
-      <a href="{{ url_for('documentos.listar') }}" class="btn btn-sm btn-outline-secondary">
+      <span id="badge-conexion" class="badge bg-warning text-dark">📡 Local</span>
+      <span id="badge-estado" class="badge bg-secondary">Sin guardar</span>
+      <button type="button" class="btn btn-sm btn-outline-light" onclick="toggleModoSimple()" id="btn-modo">
+        🔧 Modo Simple
+      </button>
+      <a href="{{ url_for('documentos.listar') }}" class="btn btn-sm btn-outline-light">
         <i class="bi bi-arrow-left me-1"></i>Volver
       </a>
     </div>
@@ -53,16 +63,24 @@
     <!-- ── COLUMNA PRINCIPAL ─────────────────────────────── -->
     <div class="col-lg-8">
 
-      <!-- Metadatos -->
+      <!-- Asunto (siempre visible) -->
       <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header" style="background:#1E3A8A;color:#fff;">
-          <i class="bi bi-info-circle me-2"></i>Datos del Documento
-          <span id="codigo-preview" class="ms-3 font-monospace"
-                style="background:rgba(255,255,255,.15);padding:2px 10px;border-radius:6px;font-size:12px;">
-            {{ doc.codigo_completo if doc else '— — —' }}
-          </span>
+        <div class="card-body py-3">
+          <label class="form-label fw-bold">Asunto / Título <span class="text-danger">*</span></label>
+          <input type="text" name="asunto_resumen" id="inp-asunto" class="form-control form-control-lg" required
+                 maxlength="500" value="{{ doc.asunto_resumen if doc else '' }}"
+                 placeholder="Ej: Respuesta a requerimiento CAR sobre PUEAA...">
         </div>
-        <div class="card-body">
+      </div>
+
+      <!-- Metadatos (colapsable) -->
+      <div class="card border-0 shadow-sm mb-3" id="card-metadatos">
+        <div class="card-header bg-light seccion-header d-flex justify-content-between"
+             onclick="toggleSeccion('body-metadatos', this)">
+          <span class="fw-semibold"><i class="bi bi-info-circle me-2"></i>Metadatos del Documento</span>
+          <span id="ico-metadatos">▼</span>
+        </div>
+        <div class="card-body" id="body-metadatos">
           <div class="row g-3">
             <div class="col-md-3">
               <label class="form-label fw-semibold">Área <span class="text-danger">*</span></label>
@@ -91,23 +109,16 @@
                      value="{{ doc.fecha_vencimiento if doc else '' }}">
             </div>
             <div class="col-md-8">
-              <label class="form-label fw-semibold">Asunto <span class="text-danger">*</span></label>
-              <input type="text" name="asunto_resumen" id="inp-asunto" class="form-control" required
-                     maxlength="500" value="{{ doc.asunto_resumen if doc else '' }}"
-                     placeholder="Ej: Respuesta a requerimiento CAR sobre PUEAA...">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Destinatario <small class="text-muted fw-normal">(libre)</small></label>
+              <label class="form-label fw-semibold">Destinatario</label>
               <input type="text" name="destinatario_texto" class="form-control"
-                     placeholder="Nombre, entidad o cargo"
-                     list="lista-contactos">
+                     placeholder="Nombre, entidad o cargo" list="lista-contactos">
               <datalist id="lista-contactos">
                 {% for c in contactos %}
                 <option value="{{ c.razon_social }}">
                 {% endfor %}
               </datalist>
             </div>
-            <div class="col-12">
+            <div class="col-md-4">
               <label class="form-label fw-semibold">Notas internas</label>
               <input type="text" name="notas_internas" class="form-control" maxlength="300"
                      value="{{ doc.notas_internas if doc else '' }}"
@@ -117,67 +128,57 @@
         </div>
       </div>
 
-      <!-- Editor -->
+      <!-- Editor (siempre visible) -->
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-header d-flex align-items-center gap-2">
           <i class="bi bi-pencil-square me-1"></i>
           <span class="fw-semibold">Contenido del Documento</span>
-          <small class="ms-auto text-muted"><i class="bi bi-clock me-1"></i>Auto-guardado cada 30 s</small>
+          <small class="ms-auto text-muted">Auto-guardado cada 30 s | Ctrl+S</small>
         </div>
         <div class="card-body p-0">
 
           <!-- Toolbar -->
           <div style="background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:7px 12px;display:flex;flex-wrap:wrap;gap:3px;align-items:center;">
-
             <select onchange="document.execCommand('formatBlock',false,this.value);this.value='';"
                     class="tb-btn" style="width:90px;" title="Estilo">
               <option value="">Estilo</option>
-              <option value="h1">Título 1</option>
-              <option value="h2">Título 2</option>
-              <option value="h3">Título 3</option>
-              <option value="p">Párrafo</option>
+              <option value="h1">Título 1</option><option value="h2">Título 2</option>
+              <option value="h3">Título 3</option><option value="p">Párrafo</option>
             </select>
             <select onchange="document.execCommand('fontSize',false,this.value);this.value='';"
                     class="tb-btn" style="width:52px;" title="Tamaño">
               <option value="">Pt</option>
               <option value="1">8</option><option value="2">10</option>
-              <option value="3" selected>12</option><option value="4">14</option>
-              <option value="5">18</option><option value="6">24</option><option value="7">36</option>
+              <option value="3">12</option><option value="4">14</option>
+              <option value="5">18</option><option value="6">24</option>
             </select>
             <span class="tb-sep"></span>
-
-            <button type="button" class="tb-btn" onclick="document.execCommand('bold')" title="Negrita"><b>N</b></button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('italic')" title="Cursiva"><i>K</i></button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('underline')" title="Subrayado"><u>S</u></button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('strikeThrough')" title="Tachado"><s>S</s></button>
-            <label class="tb-btn" title="Color texto" style="padding:3px 6px;cursor:pointer;position:relative;">
+            <button type="button" class="tb-btn" onclick="c('bold')"><b>N</b></button>
+            <button type="button" class="tb-btn" onclick="c('italic')"><i>K</i></button>
+            <button type="button" class="tb-btn" onclick="c('underline')"><u>S</u></button>
+            <button type="button" class="tb-btn" onclick="c('strikeThrough')"><s>S</s></button>
+            <label class="tb-btn" title="Color" style="padding:3px 6px;cursor:pointer;position:relative;">
               <span style="font-weight:700;border-bottom:3px solid #1E3A8A;">A</span>
-              <input type="color" value="#000000"
-                     onchange="document.execCommand('foreColor',false,this.value)"
+              <input type="color" value="#000000" onchange="c('foreColor',this.value)"
                      style="position:absolute;opacity:0;width:100%;height:100%;top:0;left:0;cursor:pointer;">
             </label>
             <span class="tb-sep"></span>
-
-            <button type="button" class="tb-btn" onclick="document.execCommand('justifyLeft')" title="Izquierda">⬅</button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('justifyCenter')" title="Centro">⬌</button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('justifyRight')" title="Derecha">➡</button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('justifyFull')" title="Justificar" style="font-size:11px;">☰☰</button>
+            <button type="button" class="tb-btn" onclick="c('justifyLeft')">⬅</button>
+            <button type="button" class="tb-btn" onclick="c('justifyCenter')">⬌</button>
+            <button type="button" class="tb-btn" onclick="c('justifyRight')">➡</button>
+            <button type="button" class="tb-btn" onclick="c('justifyFull')" style="font-size:11px;">☰☰</button>
             <span class="tb-sep"></span>
-
-            <button type="button" class="tb-btn" onclick="document.execCommand('insertUnorderedList')" title="Lista viñetas">• ≡</button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('insertOrderedList')" title="Lista numerada">1.</button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('indent')" title="Sangría →">→</button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('outdent')" title="Sangría ←">←</button>
+            <button type="button" class="tb-btn" onclick="c('insertUnorderedList')">• ≡</button>
+            <button type="button" class="tb-btn" onclick="c('insertOrderedList')">1.</button>
+            <button type="button" class="tb-btn" onclick="c('indent')">→</button>
+            <button type="button" class="tb-btn" onclick="c('outdent')">←</button>
             <span class="tb-sep"></span>
-
-            <button type="button" class="tb-btn" onclick="insertarTabla()" title="Tabla">📊 Tbl</button>
-            <button type="button" class="tb-btn" onclick="insertarLink()" title="Enlace">🔗</button>
-            <button type="button" class="tb-btn" onclick="insertarImagen()" title="Imagen">🖼</button>
+            <button type="button" class="tb-btn" onclick="insertarTabla()">📊 Tbl</button>
+            <button type="button" class="tb-btn" onclick="insertarLink()">🔗</button>
             <span class="tb-sep"></span>
-
-            <button type="button" class="tb-btn" onclick="document.execCommand('undo')" title="Deshacer">↩</button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('redo')" title="Rehacer">↪</button>
-            <button type="button" class="tb-btn" onclick="document.execCommand('removeFormat')" title="Limpiar formato" style="font-size:10px;">🧹</button>
+            <button type="button" class="tb-btn" onclick="c('undo')">↩</button>
+            <button type="button" class="tb-btn" onclick="c('redo')">↪</button>
+            <button type="button" class="tb-btn" onclick="c('removeFormat')" style="font-size:10px;">🧹</button>
           </div>
 
           <!-- Área de edición SIEMPRE VISIBLE -->
@@ -188,17 +189,17 @@
               <p>Escribe aquí el contenido del documento...</p>
             {% endif %}
           </div>
-          <input type="hidden" name="contenido_html" id="contenido-hidden">
 
           <!-- Macros -->
-          <div style="padding:10px 16px;border-top:1px solid #f1f5f9;display:flex;flex-wrap:wrap;gap:6px;">
+          <div style="padding:10px 14px;border-top:1px solid #f1f5f9;display:flex;flex-wrap:wrap;gap:5px;">
             <span style="font-size:11px;font-weight:700;color:#64748b;margin-right:4px;align-self:center;">Insertar:</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertarFecha()">📅 Fecha</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertarFirma()">✍️ Firma</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertarEncabezado()">🏢 Encabezado</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertarTablaIndicadores()">📊 Indicadores</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="insertarMarcoJuridico()">⚖️ Marco jurídico</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="previsualizar()">👁️ Previsualizar</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="macroFecha()">📅 Fecha</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="macroFirma()">✍️ Firma</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="macroEncabezado()">🏢 Encabezado</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="macroIndicadores()">📊 Indicadores</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="macroMarcoJuridico()">⚖️ Marco jurídico</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="previsualizar()">👁️ Ver</button>
+            <button type="button" class="btn btn-sm btn-outline-warning ms-auto" onclick="codigoVerificacion()" title="Genera código hash local del documento">🔐 Código</button>
           </div>
         </div>
       </div>
@@ -208,13 +209,16 @@
     <!-- ── COLUMNA LATERAL ─────────────────────────────── -->
     <div class="col-lg-4">
 
-      <!-- Firmantes -->
-      <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header">
-          <i class="bi bi-pen me-2"></i>Firmantes
-          <span class="badge bg-secondary ms-2" id="cnt-firm">0</span>
+      <!-- Firmantes (colapsable) -->
+      <div class="card border-0 shadow-sm mb-3" id="card-firmantes">
+        <div class="card-header bg-light seccion-header d-flex justify-content-between"
+             onclick="toggleSeccion('body-firmantes', this)">
+          <span class="fw-semibold"><i class="bi bi-pen me-2"></i>Firmantes
+            <span class="badge bg-secondary ms-1" id="cnt-firm">0</span>
+          </span>
+          <span id="ico-firmantes">▼</span>
         </div>
-        <div class="card-body" style="max-height:220px;overflow-y:auto;">
+        <div class="card-body" id="body-firmantes" style="max-height:220px;overflow-y:auto;">
           {% for f in firmantes %}
           <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;">
             <input type="checkbox" name="firmantes_sel" value="{{ f.pk_firmante_id }}"
@@ -234,16 +238,16 @@
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-header"><i class="bi bi-paperclip me-2"></i>Adjuntos</div>
         <div class="card-body">
-          <div id="lista-adjuntos" style="font-size:12px;margin-bottom:6px;"></div>
+          <div id="lista-adj" style="font-size:12px;margin-bottom:6px;"></div>
           <label class="btn btn-outline-secondary btn-sm w-100">
             <i class="bi bi-file-earmark-plus me-1"></i>Adjuntar archivo
             <input type="file" name="adjuntos" multiple style="display:none"
-                   onchange="previewAdjuntos(this)">
+                   onchange="previewAdj(this)">
           </label>
         </div>
       </div>
 
-      <!-- Botones -->
+      <!-- Botones de acción -->
       <div class="card border-0 shadow-sm">
         <div class="card-body d-flex flex-column gap-2">
           <button type="button" class="btn btn-outline-secondary fw-semibold"
@@ -268,55 +272,95 @@
 
 {% block extra_js %}
 <script>
-// ── Sincronizar contenido antes de enviar ───────────────
+// ── Helpers ──────────────────────────────────────────────────────
+function c(cmd, val) {
+  document.getElementById('contenido_editor').focus();
+  document.execCommand(cmd, false, val || null);
+  marcarDirty();
+}
+function ins(html) {
+  document.getElementById('contenido_editor').focus();
+  document.execCommand('insertHTML', false, html);
+  marcarDirty();
+}
+
+// ── Estado offline/online ────────────────────────────────────────
+function actualizarConexion() {
+  const el = document.getElementById('badge-conexion');
+  if (navigator.onLine) {
+    el.textContent = '🌐 Conectado';
+    el.className = 'badge bg-success';
+  } else {
+    el.textContent = '📡 Modo Local';
+    el.className = 'badge bg-warning text-dark';
+  }
+}
+window.addEventListener('online', actualizarConexion);
+window.addEventListener('offline', actualizarConexion);
+
+// ── Modo simple/completo ─────────────────────────────────────────
+let _modoSimple = false;
+function toggleModoSimple() {
+  _modoSimple = !_modoSimple;
+  ['body-metadatos','body-firmantes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = _modoSimple ? 'none' : '';
+  });
+  document.getElementById('btn-modo').textContent = _modoSimple ? '🔧 Modo Completo' : '🔧 Modo Simple';
+}
+
+// ── Secciones colapsables ────────────────────────────────────────
+function toggleSeccion(bodyId, header) {
+  if (_modoSimple) return;
+  const body = document.getElementById(bodyId);
+  const ico = header.querySelector('[id^="ico-"]');
+  if (!body) return;
+  const oculto = body.style.display === 'none';
+  body.style.display = oculto ? '' : 'none';
+  if (ico) ico.textContent = oculto ? '▼' : '▶';
+}
+
+// ── Dirty tracking ───────────────────────────────────────────────
+let _dirty = false;
+function marcarDirty() {
+  _dirty = true;
+  const el = document.getElementById('badge-estado');
+  el.className = 'badge bg-warning text-dark';
+  el.textContent = 'Sin guardar';
+}
+
+// ── Sincronizar hidden antes de enviar ───────────────────────────
 function sincronizar() {
   document.getElementById('contenido-hidden').value =
     document.getElementById('contenido_editor').innerHTML;
 }
+document.getElementById('form-doc').addEventListener('submit', sincronizar);
 
-// ── Contar firmantes ─────────────────────────────────────
+// ── Contar firmantes ─────────────────────────────────────────────
 function contarFirmantes() {
-  const n = document.querySelectorAll('[name="firmantes_sel"]:checked').length;
-  document.getElementById('cnt-firm').textContent = n;
+  document.getElementById('cnt-firm').textContent =
+    document.querySelectorAll('[name="firmantes_sel"]:checked').length;
 }
 
-// ── Preview adjuntos ─────────────────────────────────────
-function previewAdjuntos(input) {
-  const el = document.getElementById('lista-adjuntos');
-  el.innerHTML = Array.from(input.files)
-    .map(f => `<div style="font-size:12px;color:#475569;">📎 ${f.name}</div>`)
-    .join('');
+// ── Preview adjuntos ─────────────────────────────────────────────
+function previewAdj(input) {
+  document.getElementById('lista-adj').innerHTML =
+    Array.from(input.files).map(f => `<div style="font-size:12px;color:#475569;">📎 ${f.name}</div>`).join('');
 }
 
-// ── Autosave badge ───────────────────────────────────────
-let _dirty = false;
-document.getElementById('contenido_editor').addEventListener('input', function() {
-  _dirty = true;
-  document.getElementById('badge-estado').className = 'badge bg-warning text-dark';
-  document.getElementById('badge-estado').textContent = 'Sin guardar';
-});
-
+// ── Autosave ─────────────────────────────────────────────────────
 setInterval(function() {
-  if (_dirty) {
-    const h = document.getElementById('contenido-hidden');
-    h.value = document.getElementById('contenido_editor').innerHTML;
-    localStorage.setItem('pgmj_borrador', h.value);
-    document.getElementById('badge-estado').className = 'badge bg-success';
-    document.getElementById('badge-estado').textContent = 'Guardado local ✓';
-    _dirty = false;
-  }
+  if (!_dirty) return;
+  sincronizar();
+  const h = document.getElementById('contenido-hidden').value;
+  try { localStorage.setItem('pgmj_borrador', h); } catch {}
+  const el = document.getElementById('badge-estado');
+  el.className = 'badge bg-success';
+  el.textContent = 'Guardado local ✓';
+  _dirty = false;
 }, 30000);
 
-// ── Ctrl+S ───────────────────────────────────────────────
-document.addEventListener('keydown', function(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-    e.preventDefault();
-    sincronizar();
-    document.getElementById('form-doc').submit();
-  }
-});
-
-// ── Guardar borrador vía fetch ───────────────────────────
+// ── Guardar borrador vía fetch ───────────────────────────────────
 async function guardarBorrador() {
   sincronizar();
   const fd = new FormData(document.getElementById('form-doc'));
@@ -325,45 +369,48 @@ async function guardarBorrador() {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        asunto: fd.get('asunto_resumen') || '',
-        area:   fd.get('area') || 'GA',
-        tipo:   fd.get('tipo_documento') || 'OFI',
-        fecha:  fd.get('fecha_radicacion') || '',
+        asunto:    fd.get('asunto_resumen') || '',
+        area:      fd.get('area') || 'GA',
+        tipo:      fd.get('tipo_documento') || 'OFI',
+        fecha:     fd.get('fecha_radicacion') || '',
         contenido: fd.get('contenido_html') || '',
       })
     });
     const d = await r.json();
     if (d.ok) {
-      document.getElementById('badge-estado').className = 'badge bg-success';
-      document.getElementById('badge-estado').textContent = 'Borrador guardado ✓';
+      const el = document.getElementById('badge-estado');
+      el.className = 'badge bg-success';
+      el.textContent = 'Borrador guardado ✓';
     }
   } catch {
-    localStorage.setItem('pgmj_borrador', fd.get('contenido_html') || '');
-    document.getElementById('badge-estado').className = 'badge bg-info';
-    document.getElementById('badge-estado').textContent = 'Guardado local ✓';
+    try { localStorage.setItem('pgmj_borrador', fd.get('contenido_html') || ''); } catch {}
+    const el = document.getElementById('badge-estado');
+    el.className = 'badge bg-info';
+    el.textContent = 'Guardado local ✓';
   }
 }
 
-// ── Macros de inserción ──────────────────────────────────
-function ins(html) {
-  document.getElementById('contenido_editor').focus();
-  document.execCommand('insertHTML', false, html);
-  _dirty = true;
-}
+// ── Ctrl+S ───────────────────────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    sincronizar();
+    document.getElementById('form-doc').submit();
+  }
+});
 
-function insertarFecha() {
+// ── Macros ───────────────────────────────────────────────────────
+function macroFecha() {
   ins('<strong>' + new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'}) + '</strong>');
 }
-
-function insertarFirma() {
+function macroFirma() {
   ins(`<br><div style="margin-top:30px;">
     <p>Cordialmente,</p><br>
     <p>___________________________</p>
     <p><strong>José Humberto Ramírez</strong><br>Representante Legal — ASUACAP<br>Villeta, Cundinamarca</p>
   </div>`);
 }
-
-function insertarEncabezado() {
+function macroEncabezado() {
   const area = document.getElementById('sel-area')?.value || 'GA';
   const tipo = document.getElementById('sel-tipo')?.value || 'OFI';
   const anio = new Date().getFullYear();
@@ -371,22 +418,21 @@ function insertarEncabezado() {
     <tr>
       <td style="padding:6px;border:1px solid #94a3b8;" colspan="3">
         <strong style="color:#1E3A8A;font-size:11px;">ASOCIACIÓN DE SUSCRIPTORES DEL ACUEDUCTO COMUNITARIO EL PUENTE — ASUACAP</strong><br>
-        <span>NIT: 832.001.389-2 | Caserío El Puente, Villeta, Cundinamarca</span>
+        NIT: 832.001.389-2 | Caserío El Puente, Villeta, Cundinamarca
       </td>
       <td style="padding:6px;border:1px solid #94a3b8;text-align:center;width:70px;">
         <strong style="font-size:20px;color:#1E3A8A;">A</strong>
       </td>
     </tr>
     <tr>
-      <td style="padding:5px 6px;border:1px solid #94a3b8;"><strong>Código:</strong> ${area}-${tipo}-${anio}-###</td>
-      <td style="padding:5px 6px;border:1px solid #94a3b8;"><strong>Versión:</strong> 1.0</td>
-      <td style="padding:5px 6px;border:1px solid #94a3b8;"><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-CO')}</td>
-      <td style="padding:5px 6px;border:1px solid #94a3b8;"><strong>Página:</strong> 1</td>
+      <td style="padding:5px;border:1px solid #94a3b8;"><strong>Código:</strong> ${area}-${tipo}-${anio}-###</td>
+      <td style="padding:5px;border:1px solid #94a3b8;"><strong>Versión:</strong> 1.0</td>
+      <td style="padding:5px;border:1px solid #94a3b8;"><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-CO')}</td>
+      <td style="padding:5px;border:1px solid #94a3b8;"><strong>Página:</strong> 1</td>
     </tr>
   </table><br>`);
 }
-
-function insertarTablaIndicadores() {
+function macroIndicadores() {
   ins(`<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;">
     <tr style="background:#1E3A8A;color:#fff;">
       <th>Indicador</th><th>Meta</th><th>Actual</th><th>Cumplimiento</th><th>Observación</th>
@@ -397,8 +443,7 @@ function insertarTablaIndicadores() {
     <tr><td>Micromedición (%)</td><td>100%</td><td></td><td></td><td></td></tr>
   </table><br>`);
 }
-
-function insertarMarcoJuridico() {
+function macroMarcoJuridico() {
   ins(`<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;">
     <tr style="background:#1E3A8A;color:#fff;"><th>Norma</th><th>Entidad</th><th>Aplicación</th></tr>
     <tr><td>Ley 142/1994</td><td>Congreso</td><td>Régimen servicios públicos</td></tr>
@@ -408,64 +453,78 @@ function insertarMarcoJuridico() {
     <tr><td>Res. CRA 943/2021</td><td>CRA</td><td>Esquemas diferenciales rurales</td></tr>
   </table><br>`);
 }
-
 function insertarTabla() {
   const f = parseInt(prompt('Filas:', 3) || 3);
-  const c = parseInt(prompt('Columnas:', 3) || 3);
+  const col = parseInt(prompt('Columnas:', 3) || 3);
   let t = '<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;">';
   for (let i = 0; i < f; i++) {
     t += '<tr>';
-    for (let j = 0; j < c; j++) t += '<td style="border:1px solid #ccc;padding:6px;">&nbsp;</td>';
+    for (let j = 0; j < col; j++) t += '<td style="border:1px solid #ccc;padding:6px;">&nbsp;</td>';
     t += '</tr>';
   }
   t += '</table><br>';
   ins(t);
 }
-
 function insertarLink() {
   const url = prompt('URL del enlace:', 'https://');
   if (url) document.execCommand('createLink', false, url);
 }
 
-function insertarImagen() {
-  const url = prompt('URL de la imagen (o deje en blanco para subir):');
-  if (url) ins(`<img src="${url}" style="max-width:100%;">`);
-}
-
-// ── Previsualizar ────────────────────────────────────────
+// ── Previsualizar ────────────────────────────────────────────────
 function previsualizar() {
   sincronizar();
   const titulo = document.getElementById('inp-asunto')?.value || 'Documento';
   const contenido = document.getElementById('contenido-hidden').value;
-  const ventana = window.open('', '_blank');
-  ventana.document.write(`<!DOCTYPE html><html><head>
-    <meta charset="utf-8"><title>${titulo}</title>
+  const v = window.open('', '_blank');
+  v.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title>
     <style>
       body{font-family:'Calibri',Arial,sans-serif;padding:40px;max-width:900px;margin:0 auto;font-size:11pt;line-height:1.7;}
-      .header{border-bottom:2px solid #1E3A8A;margin-bottom:24px;padding-bottom:10px;}
-      .footer{border-top:1px solid #ccc;margin-top:40px;padding-top:12px;font-size:10px;text-align:center;color:#64748b;}
+      .hdr{border-bottom:2px solid #1E3A8A;margin-bottom:24px;padding-bottom:10px;}
+      .ftr{border-top:1px solid #ccc;margin-top:40px;padding-top:12px;font-size:10px;text-align:center;color:#64748b;}
       table{border-collapse:collapse;width:100%;margin:12px 0;}
-      th,td{border:1px solid #ddd;padding:7px 10px;text-align:left;}
-      th{background:#f1f5f9;}
+      th,td{border:1px solid #ddd;padding:7px 10px;text-align:left;}th{background:#f1f5f9;}
     </style></head><body>
-    <div class="header">
+    <div class="hdr">
       <strong style="font-size:13pt;color:#1E3A8A;">ASUACAP — Acueducto Comunitario El Puente</strong><br>
       <span style="font-size:10pt;color:#64748b;">NIT: 832.001.389-2 | Villeta, Cundinamarca</span>
       <h3 style="margin:10px 0 2px;">${titulo}</h3>
       <small>Fecha: ${new Date().toLocaleDateString('es-CO')}</small>
     </div>
     ${contenido}
-    <div class="footer">PARAGUASMJ — Sistema de Gestión Documental</div>
+    <div class="ftr">PARAGUASMJ — Sistema de Gestión Documental</div>
   </body></html>`);
-  ventana.document.close();
+  v.document.close();
 }
 
-// ── Inicializar ──────────────────────────────────────────
+// ── Código de verificación offline ──────────────────────────────
+function codigoVerificacion() {
+  const texto = document.getElementById('contenido_editor').innerText +
+                (document.getElementById('inp-asunto')?.value || '');
+  let hash = 0;
+  for (let i = 0; i < texto.length; i++) {
+    hash = ((hash << 5) - hash) + texto.charCodeAt(i);
+    hash = hash & hash;
+  }
+  const codigo = Math.abs(hash).toString(16).toUpperCase().padStart(8,'0');
+  alert(`CÓDIGO DE VERIFICACIÓN DEL DOCUMENTO:\n\n${codigo}\n\nEste código cambia si el contenido cambia.\nAnótelo para verificar integridad.`);
+}
+
+// ── Inicialización ───────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
+  actualizarConexion();
   contarFirmantes();
 
-  // Sincronizar antes de enviar el formulario
-  document.getElementById('form-doc').addEventListener('submit', sincronizar);
+  // Detectar cambios en el editor
+  document.getElementById('contenido_editor').addEventListener('input', marcarDirty);
+
+  // Cargar borrador local si existe y no hay contenido del servidor
+  const borrador = localStorage.getItem('pgmj_borrador');
+  const editor = document.getElementById('contenido_editor');
+  const tieneContenido = editor.innerHTML.trim().replace(/<[^>]+>/g,'').trim().length > 10;
+  if (borrador && !tieneContenido && confirm('Hay un borrador guardado localmente. ¿Cargarlo?')) {
+    editor.innerHTML = borrador;
+    localStorage.removeItem('pgmj_borrador');
+  }
 });
 </script>
 {% endblock %}
