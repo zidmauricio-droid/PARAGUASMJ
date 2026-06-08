@@ -109,30 +109,24 @@ if errorlevel 1 (
     echo  [!] Advertencia: no se pudo actualizar pip. Continuando...
 )
 
-:: Instalar desde requirements.txt
-%PY_CMD% -m pip install -r "%SCRIPT_DIR%requirements.txt" --quiet --no-warn-script-location
-if errorlevel 1 (
-    echo  [!] Error con requirements.txt. Instalando uno por uno...
-    %PY_CMD% -m pip install "Flask>=3.1.0" --quiet
-    %PY_CMD% -m pip install "waitress>=3.0.0" --quiet
-    %PY_CMD% -m pip install "pandas>=2.1.0" --quiet
-    %PY_CMD% -m pip install "openpyxl>=3.1.0" --quiet
-    %PY_CMD% -m pip install "reportlab>=4.1.0" --quiet
-    %PY_CMD% -m pip install "Pillow>=10.0.0" --quiet
-    %PY_CMD% -m pip install "APScheduler>=3.10.0" --quiet
-    %PY_CMD% -m pip install "requests>=2.32.0" --quiet
-    %PY_CMD% -m pip install "python-docx>=1.1.0" --quiet
-)
+:: Instalar dependencias principales
+%PY_CMD% -m pip install "Flask>=3.1.0" --quiet --no-warn-script-location
+%PY_CMD% -m pip install "waitress>=3.0.0" --quiet --no-warn-script-location
+%PY_CMD% -m pip install "pandas>=2.1.0" --quiet --no-warn-script-location
+%PY_CMD% -m pip install "openpyxl>=3.1.0" --quiet --no-warn-script-location
+%PY_CMD% -m pip install "reportlab>=4.1.0" --quiet --no-warn-script-location
+%PY_CMD% -m pip install "Pillow>=10.0.0" --quiet --no-warn-script-location
+%PY_CMD% -m pip install "APScheduler>=3.10.0" --quiet --no-warn-script-location
+%PY_CMD% -m pip install "requests>=2.32.0" --quiet --no-warn-script-location
+%PY_CMD% -m pip install "python-docx>=1.1.0" --quiet --no-warn-script-location
 
 echo  [OK] Dependencias instaladas.
 
 :: ============================================================
-:: [3/5] INSTALAR PYINSTALLER Y COMPILAR EXE
+:: [3/5] INSTALAR PYINSTALLER Y COMPILAR EXE (opcional)
 :: ============================================================
 echo.
 echo  [3/5] Preparando ejecutable PARAGUASMJ_2026.exe...
-echo        (Primera vez puede tardar 5-10 minutos)
-echo.
 
 %PY_CMD% -m pip install "pyinstaller>=6.0.0" --quiet --no-warn-script-location
 if errorlevel 1 (
@@ -146,12 +140,6 @@ cd /d "%SCRIPT_DIR%"
 if exist "build" rmdir /s /q "build" >nul 2>&1
 if exist "dist"  rmdir /s /q "dist"  >nul 2>&1
 if exist "*.spec" del /q "*.spec" >nul 2>&1
-
-:: Crear icono institucional
-if not exist "icon.ico" (
-    echo  Creando icono...
-    powershell -Command "Add-Type -AssemblyName System.Drawing; try { $bmp=New-Object System.Drawing.Bitmap(256,256); $g=[System.Drawing.Graphics]::FromImage($bmp); $g.Clear([System.Drawing.Color]::FromArgb(30,58,138)); $font=New-Object System.Drawing.Font('Arial',80,[System.Drawing.FontStyle]::Bold); $g.DrawString('A',$font,[System.Drawing.Brushes]::White,50,60); $bmp.Save('icon.bmp',[System.Drawing.Imaging.ImageFormat]::Bmp); } catch { }" >nul 2>&1
-)
 
 echo  Compilando (puede tardar varios minutos, no cierre esta ventana)...
 
@@ -170,13 +158,10 @@ echo  Compilando (puede tardar varios minutos, no cierre esta ventana)...
     --hidden-import=waitress.server ^
     --hidden-import=flask ^
     --hidden-import=flask.cli ^
-    --hidden-import=flask.json ^
     --hidden-import=jinja2 ^
     --hidden-import=pandas ^
-    --hidden-import=pandas._libs.tslibs.np_datetime ^
     --hidden-import=openpyxl ^
     --hidden-import=openpyxl.styles ^
-    --hidden-import=openpyxl.utils ^
     --hidden-import=reportlab ^
     --hidden-import=reportlab.platypus ^
     --hidden-import=reportlab.graphics ^
@@ -185,16 +170,13 @@ echo  Compilando (puede tardar varios minutos, no cierre esta ventana)...
     --hidden-import=apscheduler.schedulers.background ^
     --hidden-import=apscheduler.triggers.cron ^
     --hidden-import=requests ^
-    --hidden-import=urllib3 ^
     --hidden-import=docx ^
     --hidden-import=docx.oxml ^
-    --hidden-import=docx.oxml.ns ^
     --hidden-import=werkzeug.security ^
     --hidden-import=werkzeug.routing ^
     --hidden-import=sqlite3 ^
     --hidden-import=PIL ^
     --hidden-import=PIL.Image ^
-    --hidden-import=pkg_resources ^
     --hidden-import=routes.autenticacion ^
     --hidden-import=routes.dashboard ^
     --hidden-import=routes.documentos ^
@@ -228,35 +210,6 @@ echo  Compilando (puede tardar varios minutos, no cierre esta ventana)...
     --clean ^
     run.py
 
-if not exist "dist\PARAGUASMJ_2026.exe" (
-    echo.
-    echo  [!] Compilacion con interfaz grafica fallo.
-    echo      Intentando version con consola (para ver errores)...
-    echo.
-    %PY_CMD% -m PyInstaller ^
-        --onefile ^
-        --console ^
-        --name="PARAGUASMJ_2026" ^
-        --add-data "templates;templates" ^
-        --add-data "static;static" ^
-        --add-data "routes;routes" ^
-        --add-data "database;database" ^
-        --add-data "core;core" ^
-        --add-data "utils;utils" ^
-        --add-data "config.py;." ^
-        --hidden-import=waitress --hidden-import=flask --hidden-import=jinja2 ^
-        --hidden-import=pandas --hidden-import=openpyxl --hidden-import=reportlab ^
-        --hidden-import=apscheduler --hidden-import=apscheduler.schedulers.background ^
-        --hidden-import=requests --hidden-import=docx --hidden-import=werkzeug.security ^
-        --hidden-import=sqlite3 --hidden-import=PIL --hidden-import=PIL.Image ^
-        --hidden-import=routes.autenticacion --hidden-import=routes.dashboard ^
-        --hidden-import=routes.documentos --hidden-import=routes.pqrs ^
-        --hidden-import=routes.proyectos --hidden-import=routes.convenios ^
-        --collect-all=reportlab --collect-all=apscheduler --collect-all=jinja2 ^
-        --clean ^
-        run.py
-)
-
 if exist "dist\PARAGUASMJ_2026.exe" (
     echo  [OK] Ejecutable creado: dist\PARAGUASMJ_2026.exe
     goto :INSTALAR_EXE
@@ -274,9 +227,8 @@ echo  [4/5] Instalando en Archivos de programa...
 
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 copy /Y "dist\PARAGUASMJ_2026.exe" "%INSTALL_DIR%\" >nul
-if exist "icon.ico" copy /Y "icon.ico" "%INSTALL_DIR%\" >nul
 
-:: Crear carpetas necesarias dentro del directorio de instalacion
+:: Crear carpetas necesarias
 for %%d in (uploads pdfs database logs static templates) do (
     if not exist "%INSTALL_DIR%\%%d" mkdir "%INSTALL_DIR%\%%d" >nul 2>&1
 )
@@ -285,7 +237,7 @@ echo  [OK] Instalado en: %INSTALL_DIR%
 goto :CREAR_ACCESO
 
 :: ============================================================
-:: MODO SCRIPT: sin compilar, ejecuta Python directamente
+:: MODO SCRIPT: sin compilar
 :: ============================================================
 :MODO_SCRIPT
 echo.
@@ -293,20 +245,10 @@ echo  [4/5] Configurando modo script (sin compilar)...
 
 set "INSTALL_DIR=%SCRIPT_DIR%"
 
-:: Crear launcher .bat que usara Python directamente
-echo @echo off > "%SCRIPT_DIR%iniciar_asuacap.bat"
-echo title PARAGUASMJ >> "%SCRIPT_DIR%iniciar_asuacap.bat"
-echo cd /d "%%~dp0" >> "%SCRIPT_DIR%iniciar_asuacap.bat"
-echo echo Iniciando PARAGUASMJ... >> "%SCRIPT_DIR%iniciar_asuacap.bat"
-echo start "" /B python run.py >> "%SCRIPT_DIR%iniciar_asuacap.bat"
-echo timeout /t 4 /nobreak ^>nul >> "%SCRIPT_DIR%iniciar_asuacap.bat"
-echo start http://localhost:5000 >> "%SCRIPT_DIR%iniciar_asuacap.bat"
-echo timeout /t 60 /nobreak ^>nul >> "%SCRIPT_DIR%iniciar_asuacap.bat"
-
 echo  [OK] Modo script configurado.
 
 :: ============================================================
-:: [5/5] CREAR ACCESO DIRECTO EN EL ESCRITORIO
+:: [5/5] CREAR ACCESO DIRECTO
 :: ============================================================
 :CREAR_ACCESO
 echo.
@@ -320,16 +262,7 @@ if exist "%INSTALL_DIR%\PARAGUASMJ_2026.exe" (
     set "WORKDIR=%SCRIPT_DIR%"
 )
 
-set "ICON_PATH=%INSTALL_DIR%\icon.ico"
-if not exist "%ICON_PATH%" set "ICON_PATH=%TARGET%"
-
 powershell -Command "$WS=New-Object -ComObject WScript.Shell; $S=$WS.CreateShortcut('%DESKTOP%\PARAGUASMJ.lnk'); $S.TargetPath='%TARGET%'; $S.WorkingDirectory='%WORKDIR%'; $S.Description='ASUACAP - Sistema de Gestion Documental 2026'; $S.Save()" >nul 2>&1
-
-:: Menu inicio
-if not exist "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\ASUACAP" (
-    mkdir "%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\ASUACAP" >nul 2>&1
-)
-powershell -Command "$WS=New-Object -ComObject WScript.Shell; $S=$WS.CreateShortcut('%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\ASUACAP\PARAGUASMJ.lnk'); $S.TargetPath='%TARGET%'; $S.WorkingDirectory='%WORKDIR%'; $S.Description='ASUACAP - Sistema de Gestion Documental 2026'; $S.Save()" >nul 2>&1
 
 echo  [OK] Acceso directo creado en el escritorio.
 
@@ -340,15 +273,13 @@ echo.
 echo  Inicializando base de datos...
 cd /d "%SCRIPT_DIR%"
 %PY_CMD% -c "
-from database.inicializar_db import inicializar_base_datos, inicializar_tablas_extra, inicializar_tablas_prog3_prog4
-inicializar_base_datos()
-inicializar_tablas_extra()
-inicializar_tablas_prog3_prog4()
-print('  Base de datos lista.')
+from database.inicializar_db import inicializar_base_datos
+try:
+    inicializar_base_datos()
+    print('  Base de datos lista.')
+except Exception as e:
+    print('  La base de datos se creara al iniciar por primera vez.')
 " 2>&1
-if errorlevel 1 (
-    echo  [!] La base de datos se creara al iniciar por primera vez.
-)
 
 :: ============================================================
 :: RESULTADO FINAL
@@ -383,5 +314,5 @@ if errorlevel 1 (
 :FIN
 echo.
 echo  Puede cerrar esta ventana.
-timeout /t 8 /nobreak >nul
+timeout /t 5 /nobreak >nul
 exit /b 0
