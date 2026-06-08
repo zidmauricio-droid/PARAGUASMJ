@@ -32,8 +32,11 @@
 </div>
 
 <div class="card border-0 shadow-sm mb-3">
-  <div class="card-header">
+  <div class="card-header d-flex justify-content-between align-items-center">
     <span>Saldo anterior al período: <strong class="text-primary">{{ saldo_anterior | moneda }}</strong></span>
+    {% if total_paginas > 1 %}
+    <span class="text-muted small">Página {{ pagina }} de {{ total_paginas }} ({{ total }} registros)</span>
+    {% endif %}
   </div>
   <div class="table-responsive">
     <table class="table table-sm table-hover mb-0">
@@ -52,6 +55,18 @@
       </tbody>
     </table>
   </div>
+  {% if total_paginas > 1 %}
+  <div class="card-footer d-flex gap-2 justify-content-end">
+    {% if pagina > 1 %}
+    <a href="?cuenta_id={{ cuenta_id or '' }}&fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}&pagina={{ pagina - 1 }}"
+       class="btn btn-sm btn-outline-secondary">← Anterior</a>
+    {% endif %}
+    {% if pagina < total_paginas %}
+    <a href="?cuenta_id={{ cuenta_id or '' }}&fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}&pagina={{ pagina + 1 }}"
+       class="btn btn-sm btn-outline-primary">Siguiente →</a>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -75,7 +90,7 @@
             <option value="EGRESO">❤️ Egreso</option>
           </select></div>
         <div class="col-md-2"><label class="form-label fw-semibold">Importe</label>
-          <input type="number" name="importe" class="form-control" required min="0" step="100"></div>
+          <input type="number" name="importe" class="form-control" required min="1" step="100"></div>
         <div class="col-md-1 d-flex align-items-end">
           <button type="submit" class="btn btn-primary w-100"><i class="bi bi-floppy"></i></button>
         </div>
