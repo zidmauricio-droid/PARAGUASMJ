@@ -553,7 +553,21 @@ window.initEditor = function() {
       <div id="membrete-editor-preview" style="margin-bottom:8px;">
         <!-- Se llena con JS al cargar la página -->
       </div>
-<div id="editor-tiptap"></div>
+<div id="editor-tiptap" style="
+  min-height: 420px;
+  padding: 20px 24px;
+  background: #fff;
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.7;
+  color: #1e293b;
+  outline: none;
+  border-bottom: 1px solid #f1f5f9;
+">
+  <p id="editor-placeholder" style="color:#94a3b8;pointer-events:none;user-select:none;">
+    Cargando editor... Si no aparece en 5 segundos se activará el modo offline.
+  </p>
+</div>
         <input type="hidden" name="contenido_html" id="contenido-hidden">
 
         <!-- Upload imagen oculto -->
@@ -890,6 +904,10 @@ function initEditor() {
   if (HL   && HL.Highlight)    exts.push(HL.Highlight.configure({multicolor:true}));
   if (FF   && FF.FontFamily)   exts.push(FF.FontFamily);
 
+  // Quitar placeholder de carga
+  const ph = document.getElementById('editor-placeholder');
+  if (ph) ph.remove();
+
   editor = new Editor({
     element: document.getElementById('editor-tiptap'),
     extensions: exts,
@@ -916,6 +934,9 @@ function initEditor() {
 }
 
 function fallbackEditor() {
+  // Quitar placeholder de carga
+  const ph = document.getElementById('editor-placeholder');
+  if (ph) ph.remove();
   // Editor contenteditable completo — funciona sin internet
   document.getElementById('toolbar').innerHTML = `
     <div style="background:#f8f9fa;border-bottom:1px solid #dee2e6;padding:6px 8px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
@@ -1529,11 +1550,23 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarProyectosSelector();
   contarFirmantes();
 
-  // Editor TipTap: esperar que los scripts UMD carguen
+  // Editor TipTap: esperar máx 5s, si no carga → fallback garantizado
   (async function() {
-    if (window._tiptapReady) { try { await window._tiptapReady; } catch(e){} }
-    await new Promise(r => setTimeout(r, 300));
+    const timeout = new Promise(r => setTimeout(r, 5000));
+    if (window._tiptapReady) {
+      try { await Promise.race([window._tiptapReady, timeout]); } catch(e){}
+    } else {
+      await timeout;
+    }
+    await new Promise(r => setTimeout(r, 200));
     initEditor();
+    // Verificar que el editor quedó activo después de 1s más
+    setTimeout(() => {
+      if (!editor) {
+        const ce = document.getElementById('ce-editor');
+        if (!ce) fallbackEditor();
+      }
+    }, 1000);
   })();
 
   // Actualizar membrete al cambiar campos
