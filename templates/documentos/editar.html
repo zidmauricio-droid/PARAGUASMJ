@@ -807,25 +807,6 @@ function cargarTiposDocumento() {
     `<option value="${c}">${c} — ${n}</option>`).join('');
   return Promise.resolve();
 }
-  } catch(e) {
-    console.warn('Tipos desde servidor no disponibles, usando lista local:', e);
-    // Lista de emergencia si la API falla
-    const tiposLocal = [
-      ['OFI','Oficio'],['ACT','Acta'],['RES','Resolución'],['INF','Informe'],
-      ['OT','Orden de Trabajo'],['OC','Orden de Compra'],['PQR','PQRS'],
-      ['CON','Convenio / Contrato'],['COT','Cotización'],['CIR','Circular'],
-      ['MEM','Memorando'],['CER','Certificado'],['FOR','Formulario'],
-      ['MAN','Manual'],['P','Procedimiento'],['POL','Política'],
-      ['CCB','Cuenta de Cobro'],['CDP','Disponibilidad Presupuestal'],
-      ['CRP','Cert. Registro Presupuestal'],['EST','Estudio'],
-      ['ACP','Acuerdo de Pago'],['SOL','Solicitud'],['RAL','Respuesta Alcaldía'],
-      ['RCAR','Respuesta CAR'],['RSSPD','Respuesta SSPD']
-    ];
-    sel.innerHTML = tiposLocal.map(([c,n]) =>
-      `<option value="${c}">${c} — ${n}</option>`
-    ).join('');
-  }
-}
 
 
 // ── Plantillas institucionales ──────────────────────────────────────
@@ -1372,6 +1353,171 @@ async function cargarMembreteEditor() {
   } catch(e) { console.warn('membrete:', e); }
 }
 
+// ── Sincronizar contenido antes de enviar el formulario ────────────
+function sincronizarContenido() {
+  const h = document.getElementById('contenido-hidden');
+  if (!h) return;
+  if (editor) {
+    h.value = editor.getHTML();
+  } else {
+    const ce = document.getElementById('ce-editor');
+    if (ce) h.value = ce.innerHTML;
+  }
+}
+
+// ── Contar firmantes seleccionados ──────────────────────────────────
+function contarFirmantes() {
+  const n = document.querySelectorAll('input[name="firmantes_sel"]:checked').length;
+  const el = document.getElementById('cnt-firmantes');
+  if (el) el.textContent = n;
+}
+
+// ── Preview adjuntos ────────────────────────────────────────────────
+function previewAdjuntos(input) {
+  const el = document.getElementById('lista-adjuntos-preview');
+  if (!el) return;
+  el.innerHTML = Array.from(input.files)
+    .map(f => `<div style="font-size:12px;color:#475569;">📎 ${f.name}</div>`)
+    .join('');
+}
+
+// ── Revisar ortografía (básico) ─────────────────────────────────────
+function revisarOrtografia() {
+  const el = document.getElementById('corrector-resultados');
+  if (!el) return;
+  const texto = editor ? editor.getText() :
+    (document.getElementById('ce-editor')?.innerText || '');
+  const palabrasCortas = texto.split(/\s+/).filter(p => p.length < 3 && /[a-z]/i.test(p));
+  if (palabrasCortas.length === 0) {
+    el.innerHTML = '<div class="text-success small">Sin problemas detectados.</div>';
+  } else {
+    el.innerHTML = '<div class="text-muted small">Revisión automática no disponible offline. Use Ctrl+A para copiar y revisar en Word.</div>';
+  }
+}
+
+// ── Macros de representante y encabezado ───────────────────────────
+async function macroRepresentante() {
+  if (!editor) return;
+  try {
+    const d = await fetch('/documentos/api/representante').then(r => r.json());
+    const html = `<p><strong>${d.representante_legal || 'José Humberto Ramírez'}</strong><br>
+${d.cargo_representante || 'Representante Legal'}<br>
+${d.nombre_asociacion || 'ASUACAP'}<br>
+NIT: ${d.nit || '832.001.389-2'}</p>`;
+    editor.chain().focus().insertContent(html).run();
+  } catch {
+    editor.chain().focus().insertContent(
+      '<p><strong>José Humberto Ramírez</strong><br>Representante Legal<br>ASUACAP — NIT 832.001.389-2</p>'
+    ).run();
+  }
+}
+
+function macroEncabezado() {
+  if (!editor) return;
+  const area = document.getElementById('sel-area')?.value || 'GA';
+  const tipo = document.getElementById('sel-tipo')?.value || 'OFI';
+  const anio = new Date().getFullYear();
+  editor.chain().focus().insertContent(`
+    <table style="width:100%;border-collapse:collapse;border:1px solid #94a3b8;font-size:10px;font-family:Calibri,Arial;">
+      <tr>
+        <td style="padding:6px;border:1px solid #94a3b8;" colspan="3">
+          <strong style="color:#1E3A8A;font-size:11px;">ASOCIACIÓN DE SUSCRIPTORES DEL ACUEDUCTO COMUNITARIO EL PUENTE — ASUACAP</strong><br>
+          <span style="color:#475569;">NIT: 832.001.389-2 | Caserío El Puente, Villeta, Cundinamarca</span>
+        </td>
+        <td style="padding:6px;border:1px solid #94a3b8;text-align:center;width:70px;">
+          <strong style="font-size:16px;color:#1E3A8A;">A</strong>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:5px 6px;border:1px solid #94a3b8;"><strong>Código:</strong> ${area}-${tipo}-${anio}-###</td>
+        <td style="padding:5px 6px;border:1px solid #94a3b8;"><strong>Versión:</strong> 1.0</td>
+        <td style="padding:5px 6px;border:1px solid #94a3b8;"><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-CO')}</td>
+        <td style="padding:5px 6px;border:1px solid #94a3b8;"><strong>Página:</strong> 1</td>
+      </tr>
+    </table><br>
+  `).run();
+}
+
+async function macroBalanceHidrico() {
+  if (!editor) return;
+  const anio = new Date().getFullYear();
+  try {
+    const d = await fetch(`/documentos/api/balance_hidrico_tabla?anio=${anio}`).then(r => r.json());
+    if (d.ok) { editor.chain().focus().insertContent(d.html).run(); return; }
+  } catch {}
+  // Fallback tabla vacía
+  editor.chain().focus().insertContent(`
+    <table border="1" cellpadding="6" style="width:100%;border-collapse:collapse;">
+      <tr style="background:#1E3A8A;color:white;">
+        <th>Mes</th><th>Producido m³</th><th>Facturado m³</th><th>Pérdidas m³</th><th>IANC %</th>
+      </tr>
+      ${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+        .map(m => `<tr><td>${m}</td><td></td><td></td><td></td><td></td></tr>`).join('')}
+    </table>
+  `).run();
+}
+
+async function macroFirmantes() {
+  if (!editor) return;
+  try {
+    const lista = await fetch('/documentos/api/firmantes_activos').then(r => r.json());
+    const cols = lista.slice(0, 3);
+    const w = cols.length > 0 ? Math.floor(100 / cols.length) : 33;
+    const html = `<br><table style="width:100%;border-collapse:collapse;margin-top:40px;">
+      <tr>${cols.map(f => `
+        <td style="width:${w}%;text-align:center;border-top:1px solid #000;padding-top:8px;font-size:10px;">
+          ___________________________<br>
+          <strong>${f.nombre}</strong><br>
+          ${f.cargo}
+        </td>`).join('<td style="width:2%;"></td>')}
+      </tr>
+    </table>`;
+    editor.chain().focus().insertContent(html).run();
+  } catch {
+    editor.chain().focus().insertContent(`
+      <br><table style="width:100%;border-collapse:collapse;margin-top:40px;">
+        <tr>
+          <td style="width:45%;text-align:center;border-top:1px solid #000;padding-top:8px;font-size:10px;">
+            ___________________________<br><strong>Nombre</strong><br>Cargo
+          </td>
+          <td style="width:10%;"></td>
+          <td style="width:45%;text-align:center;border-top:1px solid #000;padding-top:8px;font-size:10px;">
+            ___________________________<br><strong>Nombre</strong><br>Cargo
+          </td>
+        </tr>
+      </table>
+    `).run();
+  }
+}
+
+function macroSaltoLegal() {
+  if (!editor) return;
+  editor.chain().focus().insertContent(`
+    <p>Cordialmente,</p>
+    <p>&nbsp;</p>
+    <p>Notificaciones jurídicas y legales remitir a:</p>
+    <p><strong>ASUACAP — Asociación de Suscriptores del Acueducto Comunitario El Puente</strong><br>
+    Caserío El Puente, Villeta, Cundinamarca<br>
+    Correo: aacueductoelpuente@yahoo.com<br>
+    NIT: 832.001.389-2</p>
+  `).run();
+}
+
+// ── Cargar proyectos en el selector ────────────────────────────────
+async function cargarProyectosSelector() {
+  const sel = document.getElementById('doc-proyecto-id');
+  if (!sel) return;
+  try {
+    const lista = await fetch('/proyectos2/api').then(r => r.json());
+    lista.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.codigo} — ${p.nombre}`;
+      sel.appendChild(opt);
+    });
+  } catch {}
+}
+
 // ── Inicialización ──────────────────────────────────────────────────
 document.getElementById('ma-opacidad').addEventListener('input',function(){
   document.getElementById('ma-opacidad-val').textContent=this.value;
@@ -1380,6 +1526,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Tipos de documento: cargar INMEDIATAMENTE (no depende de TipTap)
   cargarTiposDocumento().then(() => actualizarCodigo());
   cargarMembreteEditor();
+  cargarProyectosSelector();
+  contarFirmantes();
 
   // Editor TipTap: esperar que los scripts UMD carguen
   (async function() {
