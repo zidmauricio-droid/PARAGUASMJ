@@ -1,26 +1,25 @@
 @echo off
-title PARAGUASMJ — Actualizar GitHub (Rapido)
+title PARAGUASMJ - Actualizar GitHub
 color 0A
-
 echo.
-echo  Actualizando codigo en GitHub...
+echo ================================================
+echo    PARAGUASMJ - Actualizar GitHub
+echo ================================================
 echo.
-
-cd /d "%~dp0"
-
+:: Datos fijos
+set USUARIO=zidmauricio-droid
+:: Agregar cambios
 git add .
-git commit -m "Actualizacion %date% %time%"
+git commit -m "Actualizacion automatica %date%"
+:: Subir
 git push origin main
-
 if errorlevel 1 (
     echo.
-    echo  Error al subir. Intentando sincronizar primero...
+    echo Error al subir. Intentando pull primero...
     git pull origin main --rebase
     git push origin main
 )
-
 echo.
-echo  OK Codigo actualizado: https://github.com/zidmauricio-droid/PARAGUASMJ
-echo.
-
+echo OK - Codigo actualizado
+echo https://github.com/%USUARIO%/PARAGUASMJ
 pause
