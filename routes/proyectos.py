@@ -162,7 +162,6 @@ def ver(pid):
             "SELECT COALESCE(AVG(porcentaje_avance),0) as avg FROM tareas_proyecto WHERE proyecto_id=?",
             (pid,)
         ).fetchone()["avg"]
-        # LIMIT 50 en evidencias — con cientos de archivos puede congelar PC con poca RAM
         evidencias = conn.execute("""
             SELECT e.*, u.nombre_completo as subido_por_nombre
             FROM evidencias_proyecto e
@@ -182,7 +181,6 @@ def ver(pid):
 @rol_requerido("admin", "coordinador", "director")
 @with_retry()
 def agregar_tarea(pid):
-    # CSRF: acepta token en header X-CSRFToken o en body JSON
     csrf_ok = (
         verificar_token_csrf()
         or request.headers.get("X-CSRFToken") == session.get("csrf_token")
@@ -243,7 +241,6 @@ def subir_evidencia(pid):
     ruta = os.path.join(UPLOAD_EVIDENCIAS, fn)
     conn = get_db()
     try:
-        # INSERT primero — si falla, no guardamos archivo huérfano en disco
         conn.execute("""
             INSERT INTO evidencias_proyecto
             (proyecto_id, nombre_archivo, ruta, descripcion, subido_por, fecha_subida)
@@ -259,7 +256,6 @@ def subir_evidencia(pid):
         return jsonify({"ok": True}), 201
     except Exception as e:
         conn.rollback()
-        # Si el archivo ya fue guardado pero el commit falló, intentar limpieza
         if os.path.exists(ruta):
             try:
                 os.remove(ruta)

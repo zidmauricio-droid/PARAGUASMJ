@@ -24,10 +24,6 @@ def _validar_tabla(tabla: str) -> None:
 
 
 def _saldo_anterior(conn, tabla: str, fecha_desde, cuenta_id=None) -> float:
-    """
-    Calcula saldo anterior a fecha_desde usando queries parametrizadas.
-    Patron de VBA: SaldoAnt + ObtenerSaldo traducido a SQLite.
-    """
     _validar_tabla(tabla)
     params = [fecha_desde]
     where = "WHERE fecha < ?"
@@ -46,10 +42,6 @@ def _saldo_anterior(conn, tabla: str, fecha_desde, cuenta_id=None) -> float:
 
 def _movimientos_con_saldo(conn, tabla: str, fecha_desde: str, fecha_hasta: str,
                             cuenta_id=None, limit: int = None, offset: int = 0) -> tuple:
-    """
-    Retorna (lista_movimientos_con_saldo, saldo_anterior, total_sin_paginar).
-    limit=None retorna todos los registros (para exportacion).
-    """
     _validar_tabla(tabla)
     saldo_ant = _saldo_anterior(conn, tabla, fecha_desde, cuenta_id)
 
@@ -61,7 +53,6 @@ def _movimientos_con_saldo(conn, tabla: str, fecha_desde: str, fecha_hasta: str,
 
     pk_col = "pk_mov_id" if tabla == "movimientos_financieros" else "pk_caja_id"
 
-    # Total sin paginar — para UI de paginacion
     total = conn.execute(
         f"SELECT COUNT(*) FROM {tabla} {where}", params
     ).fetchone()[0]
@@ -79,7 +70,6 @@ def _movimientos_con_saldo(conn, tabla: str, fecha_desde: str, fecha_hasta: str,
     try:
         filas = conn.execute(sql, pag_params).fetchall()
     except Exception:
-        # Fallback a rowid si pk_col no existe
         sql_fb = sql.replace(f"{pk_col} as _id", "rowid as _id").replace(
             f"ORDER BY fecha ASC, {pk_col} ASC", "ORDER BY fecha ASC, rowid ASC"
         )
@@ -111,7 +101,6 @@ def _movimientos_con_saldo(conn, tabla: str, fecha_desde: str, fecha_hasta: str,
 
 
 def _verificar_csrf_o_abortar():
-    """Verifica CSRF y retorna True si OK, False si invalido (con flash)."""
     if not verificar_token_csrf():
         flash("Solicitud inválida. Por favor recargue la página e intente de nuevo.", "danger")
         return False
@@ -194,7 +183,6 @@ def caja_eliminar(mov_id):
 
     conn = get_db()
     try:
-        # Leer registro ANTES de eliminar — trazabilidad WORM
         reg = conn.execute(
             "SELECT fecha, concepto, tipo_mov, importe FROM caja_chica WHERE pk_caja_id=?",
             (mov_id,)
@@ -240,7 +228,6 @@ def caja_exportar():
                          download_name=f"CajaMenor_ASUACAP_{fd}_{fh}.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except ImportError:
-        # Fallback CSV sin dependencias externas
         buf = StringIO()
         writer = csv.DictWriter(buf, fieldnames=["fecha", "concepto", "ingreso", "egreso", "saldo", "usuario"])
         writer.writeheader()
@@ -254,7 +241,7 @@ def caja_exportar():
         )
 
 
-# ── Bancos ──────────────────────────────────────────────────────────
+# ── Bancos ───────────────────────────────────────────────────────────
 @fin_bp.route("/bancos")
 @login_requerido
 def bancos():
@@ -268,7 +255,6 @@ def bancos():
 @login_requerido
 @rol_requerido("admin", "tesorera")
 def banco_crear():
-    """Crear una nueva cuenta bancaria."""
     if not _verificar_csrf_o_abortar():
         return redirect(url_for("finanzas.bancos"))
 
@@ -326,7 +312,6 @@ def banco_eliminar(bid):
 
     conn = get_db()
     try:
-        # Leer estado previo — trazabilidad WORM
         banco = conn.execute(
             "SELECT banco_nombre, codigo_cuenta, saldo_actual FROM bancos WHERE pk_banco_id=?",
             (bid,)
@@ -335,7 +320,6 @@ def banco_eliminar(bid):
             flash("Cuenta no encontrada.", "warning")
             return redirect(url_for("finanzas.bancos"))
 
-        # Advertir si tiene movimientos activos
         n_movs = conn.execute(
             "SELECT COUNT(*) FROM movimientos_financieros WHERE fk_banco_id=?", (bid,)
         ).fetchone()[0]
@@ -363,7 +347,7 @@ def banco_eliminar(bid):
     return redirect(url_for("finanzas.bancos"))
 
 
-# ── Movimientos Bancarios ────────────────────────────────────────────
+# ── Movimientos Bancarios ──────────────────────────────────────────
 @fin_bp.route("/movimientos")
 @login_requerido
 def movimientos():
@@ -434,7 +418,6 @@ def movimiento_nuevo():
 
             saldo_banco_anterior = float(banco["saldo_actual"])
 
-            # Bloquear EGRESO si supera saldo disponible
             if tipo_mov == "EGRESO" and importe > saldo_banco_anterior:
                 flash(
                     f"Fondos insuficientes. El egreso (${importe:,.0f}) supera el saldo "
@@ -443,7 +426,6 @@ def movimiento_nuevo():
                 )
                 return redirect(url_for("finanzas.movimientos"))
 
-        # Escritura atómica: INSERT + UPDATE saldo en una sola transacción
         conn.execute("BEGIN IMMEDIATE")
         conn.execute("""
             INSERT INTO movimientos_financieros
@@ -484,7 +466,7 @@ def movimiento_nuevo():
     return redirect(url_for("finanzas.movimientos"))
 
 
-# ── Ruta legada banco_nuevo (compatibilidad) ─────────────────────────
+# ── Ruta legada banco_nuevo (compatibilidad) ─────────────────────────────
 @fin_bp.route("/bancos/nuevo", methods=["POST"])
 @login_requerido
 @rol_requerido("admin", "tesorera")

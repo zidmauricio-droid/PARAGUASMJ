@@ -3,7 +3,7 @@
    Usuarios rurales · Accesibilidad · Contraste WCAG AA
    ================================================================ */
 
-/* ── Variables globales ────────────────────────────────────── */
+/* ── Variables globales ───────────────────────────────────── */
 :root {
     /* Colores por módulo */
     --color-documental:      #1a6e3c;
@@ -45,7 +45,7 @@
     --shadow-card:           0 2px 8px rgba(0,0,0,.10);
 }
 
-/* ── Reset y base ─────────────────────────────────────────── */
+/* ── Reset y base ──────────────────────────────────────── */
 body {
     background-color: var(--color-fondo) !important;
     color: var(--color-texto) !important;
@@ -55,7 +55,7 @@ body {
 }
 small, .small { font-size: 0.875rem !important; }
 
-/* ── Barra de navegación ────────────────────────────────────────── */
+/* ── Barra de navegación ──────────────────────────────────── */
 .bg-asuacap   { background-color: var(--asuacap-azul) !important; }
 .bg-verde-agua{ background-color: var(--asuacap-verde) !important; }
 
@@ -70,7 +70,7 @@ small, .small { font-size: 0.875rem !important; }
     background: rgba(255,255,255,.15);
 }
 
-/* ── Encabezado de módulo ───────────────────────────────────────── */
+/* ── Encabezado de módulo ─────────────────────────────────── */
 .modulo-header {
     padding: .75rem 1.25rem;
     border-radius: var(--radius);
@@ -102,7 +102,7 @@ small, .small { font-size: 0.875rem !important; }
 .modulo-balance    { background-color: #00838f; }
 .modulo-dashboard  { background-color: #37474f; }
 
-/* ── Botones — mínimo 44px táctil ────────────────────────────────── */
+/* ── Botones — mínimo 44px táctil ─────────────────────────── */
 .btn {
     min-height: var(--btn-min-height);
     padding: .5rem 1.25rem;
@@ -130,7 +130,7 @@ small, .small { font-size: 0.875rem !important; }
 .btn-reportes            { background: var(--color-reportes);   color:#fff; border:none; }
 .btn-reportes:hover      { background: var(--color-reportes-dark);   color:#fff; }
 
-/* ── Formularios accesibles ───────────────────────────────────────── */
+/* ── Formularios accesibles ────────────────────────────────── */
 label, .form-label {
     font-size: var(--font-min) !important;
     font-weight: 500;
@@ -154,7 +154,7 @@ label, .form-label {
 }
 textarea.form-control { min-height: 100px; }
 
-/* ── Mensajes flash / alertas ──────────────────────────────────────── */
+/* ── Mensajes flash / alertas ──────────────────────────────── */
 .alert {
     font-size: var(--font-min) !important;
     border-radius: var(--radius);
@@ -187,7 +187,7 @@ textarea.form-control { min-height: 100px; }
 .card-top-success { border-top: 3px solid var(--asuacap-verde) !important; }
 .card-top-danger  { border-top: 3px solid #ef4444              !important; }
 
-/* ── Tablas ────────────────────────────────────────────────────── */
+/* ── Tablas ───────────────────────────────────────────────────── */
 .table {
     font-size: var(--font-min) !important;
     color: var(--color-texto);
@@ -203,7 +203,7 @@ textarea.form-control { min-height: 100px; }
 .table tbody tr:hover { background-color: rgba(30,58,138,.05); }
 .table-sm td, .table-sm th { padding: .45rem .75rem; font-size: 0.9rem !important; }
 
-/* ── KPI Cards ────────────────────────────────────────────────── */
+/* ── KPI Cards ──────────────────────────────────────────────── */
 .kpi-card {
     border-radius: var(--radius);
     background: #fff;
@@ -218,7 +218,7 @@ textarea.form-control { min-height: 100px; }
     border-radius: 50%; flex-shrink: 0;
 }
 
-/* ── Badges de estado ─────────────────────────────────────────────── */
+/* ── Badges de estado ──────────────────────────────────────────── */
 .estado-badge {
     display: inline-block; padding: .25em .65em;
     border-radius: 20px; font-size: .82rem; font-weight: 600;
@@ -230,11 +230,11 @@ textarea.form-control { min-height: 100px; }
 .estado-badge[data-estado="Rechazado"]       { background: #ef4444; color: #fff; }
 .estado-badge[data-estado="Archivado"]       { background: #374151; color: #fff; }
 
-/* ── Login ────────────────────────────────────────────────────────── */
+/* ── Login ─────────────────────────────────────────────────────────── */
 .bg-login { background: linear-gradient(135deg, #1E3A8A 0%, #0F6E56 100%); }
 .login-card { border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,.22); }
 
-/* ── Documento PDF-like ────────────────────────────────────────────── */
+/* ── Documento PDF-like ───────────────────────────────────────── */
 .contenido-doc {
     font-family: 'Calibri', Arial, sans-serif;
     font-size: 12pt;
@@ -244,7 +244,7 @@ textarea.form-control { min-height: 100px; }
     border-left: 4px solid var(--asuacap-azul);
 }
 
-/* ── Sidebar nav ──────────────────────────────────────────────────── */
+/* ── Sidebar nav ──────────────────────────────────────────────── */
 .sidebar-nav .nav-link {
     font-size: var(--font-min) !important;
     padding: .6rem 1rem;
@@ -255,13 +255,13 @@ textarea.form-control { min-height: 100px; }
 }
 .sidebar-nav .nav-link:hover { background: rgba(30,58,138,.08); }
 
-/* ── Contenido centrado máx. 900px ───────────────────────────────────── */
+/* ── Contenido centrado máx. 900px ────────────────────────────── */
 .contenido-modulo { max-width: 900px; margin: 0 auto; }
 
-/* ── Progress ────────────────────────────────────────────────────── */
+/* ── Progress ──────────────────────────────────────────────────────── */
 .progress { border-radius: 10px; }
 
-/* ── Footer ──────────────────────────────────────────────────────── */
+/* ── Footer ─────────────────────────────────────────────────────────── */
 footer {
     font-size: .85rem;
     background: #1a1a2e !important;
@@ -269,16 +269,16 @@ footer {
     border-top: 3px solid var(--asuacap-azul) !important;
 }
 
-/* ── Mapa GIS ─────────────────────────────────────────────────────── */
+/* ── Mapa GIS ────────────────────────────────────────────────────────── */
 #mapa_asuacap { border-radius: 0 0 var(--radius) var(--radius); }
 
-/* ── Focus accesible ───────────────────────────────────────────────── */
+/* ── Focus accesible ───────────────────────────────────────────── */
 :focus-visible {
     outline: 3px solid var(--asuacap-agua);
     outline-offset: 2px;
 }
 
-/* ── Responsive ────────────────────────────────────────────────────── */
+/* ── Responsive ───────────────────────────────────────────────────── */
 @media (max-width: 768px) {
     body { font-size: 15px !important; }
     .kpi-card .fs-2 { font-size: 1.5rem !important; }
