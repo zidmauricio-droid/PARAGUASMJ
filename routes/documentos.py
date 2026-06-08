@@ -770,16 +770,12 @@ def api_upload_imagen():
     ext = f.filename.rsplit(".",1)[-1].lower() if "." in f.filename else ""
     if ext not in IMG_EXTS:
         return jsonify({"error": "Tipo no permitido"}), 400
-    dir_ = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "..", "static", "uploads", "docs")
-    os.makedirs(dir_, exist_ok=True)
+    dir_ = os.path.normpath(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "static", "uploads", "docs"
+    ))
     try:
-        from utils.compresor_imagen import comprimir_imagen, nombre_upload_seguro
-        datos = comprimir_imagen(f)
-        fn    = nombre_upload_seguro(f.filename)
-        ruta  = os.path.join(dir_, fn)
-        with open(ruta, "wb") as out:
-            out.write(datos)
+        from utils.compresor_imagen import guardar_imagen_comprimida
+        _, fn = guardar_imagen_comprimida(f, dir_, prefix="img")
     except Exception:
         fn   = secure_filename(f"editor_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.filename}")
         ruta = os.path.join(dir_, fn)

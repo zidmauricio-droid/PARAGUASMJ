@@ -35,20 +35,42 @@ def crear_backup() -> str:
 def _limpiar_backups_antiguos():
     """
     Elimina backups por dos criterios (el más estricto gana):
-    1. Más de BACKUPS_A_MANTENER archivos (por conteo, más recientes primero)
-    2. Más de 30 días de antigüedad (por tiempo — relevante para auditoría)
+    1. Índice >= BACKUPS_A_MANTENER (lista ordenada por mtime desc — más recientes primero)
+    2. Más de 30 días de antigüedad
     """
     import time
+    carpeta      = Config.BACKUP_FOLDER
     limite_tiempo = time.time() - (30 * 24 * 3600)
-    archivos = sorted([
-        f for f in os.listdir(Config.BACKUP_FOLDER)
-        if f.startswith("paraguasmj_") and f.endswith(".db")
-    ])
-    for nombre in archivos:
-        ruta = os.path.join(Config.BACKUP_FOLDER, nombre)
-        antiguo_por_tiempo  = os.path.getmtime(ruta) < limite_tiempo
-        excede_conteo       = len(archivos) > Config.BACKUPS_A_MANTENER
-        if antiguo_por_tiempo or excede_conteo:
+    archivos     = sorted(
+        [f for f in os.listdir(carpeta) if f.startswith("paraguasmj_") and f.endswith(".db")],
+        key=lambda n: os.path.getmtime(os.path.join(carpeta, n)),
+        reverse=True,   # más reciente primero — los primeros N se preservan
+    )
+    for i, nombre in enumerate(archivos):
+        ruta = os.path.join(carpeta, nombre)
+        if i >= Config.BACKUPS_A_MANTENER or os.path.getmtime(ruta) < limite_tiempo:
             os.remove(ruta)
-            archivos.remove(nombre)
             logger.info(f"Backup eliminado: {nombre}")
+
+
+def restaurar_backup(backup_path: str) -> dict:
+    """
+    Restaura la BD desde un backup verificando integridad primero.
+    Retorna dict con success, path y mensaje.
+    """
+    import shutil
+    ruta_backup = backup_path
+    if not os.path.isfile(ruta_backup):
+        return {"success": False, "error": f"Archivo no encontrado: {ruta_backup}"}
+    try:
+        chk = sqlite3.connect(ruta_backup)
+        resultado = chk.execute("PRAGMA integrity_check").fetchone()[0]
+        chk.close()
+        if resultado != "ok":
+            return {"success": False, "error": f"Integridad fallida: {resultado}"}
+        shutil.copy2(ruta_backup, Config.DB_PATH)
+        logger.info(f"BD restaurada desde: {ruta_backup}")
+        return {"success": True, "path": Config.DB_PATH, "restored_from": ruta_backup}
+    except Exception as e:
+        logger.error(f"Error restaurando backup: {e}")
+        return {"success": False, "error": str(e)}
