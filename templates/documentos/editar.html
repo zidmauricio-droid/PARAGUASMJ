@@ -642,8 +642,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const borrador   = localStorage.getItem('pgmj_borrador');
     const tsLocal    = parseInt(localStorage.getItem('pgmj_borrador_ts') || '0');
     // Fecha del servidor viene como string ISO; la parseamos de forma segura
-    const fechaServ  = {{ ('"' + (contenido.fecha_edicion | string) + '"') if contenido and contenido.fecha_edicion else 'null' }};
-    const tsServidor = fechaServ ? new Date(fechaServ).getTime() : 0;
+    // fecha_servidor llega en ms desde el backend (ya convertido de ISO string)
+    const tsServidor = {{ fecha_servidor | default(0) }};
     const editor     = document.getElementById('contenido_editor');
     const tieneContenido = editor.innerHTML.trim().replace(/<[^>]+>/g,'').trim().length > 10;
     if (borrador && tsLocal > tsServidor && !tieneContenido &&

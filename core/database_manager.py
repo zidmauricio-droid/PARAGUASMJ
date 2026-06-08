@@ -89,6 +89,38 @@ def ejecutar_transaccion(queries: List[Tuple[str, tuple]]) -> bool:
     return True
 
 
+def limpiar_borradores_antiguos(dias: int = 30) -> int:
+    """Elimina documentos en estado Borrador con más de `dias` días de antigüedad."""
+    with db_connection() as conn:
+        cur = conn.execute("""
+            DELETE FROM documentos
+            WHERE estado = 'Borrador'
+            AND julianday('now') - julianday(fecha_creacion) > ?
+        """, (dias,))
+        return cur.rowcount
+
+
+def limpiar_por_tabla(tabla: str, campo_pk: str, valor: Any) -> int:
+    """
+    Elimina registros por PK con validación de whitelist.
+    Solo opera sobre tablas declaradas en TABLAS_PERMITIDAS.
+    """
+    if tabla not in TABLAS_PERMITIDAS:
+        raise ValueError(f"Tabla '{tabla}' no permitida para borrado")
+    with db_connection() as conn:
+        cur = conn.execute(f"DELETE FROM {tabla} WHERE {campo_pk} = ?", (valor,))
+        return cur.rowcount
+
+
+def obtener_tablas() -> List[str]:
+    """Lista las tablas del esquema actual. Útil para diagnóstico."""
+    with db_connection(autocommit=False) as conn:
+        rows = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+        ).fetchall()
+        return [r["name"] for r in rows]
+
+
 def verificar_conexion() -> bool:
     """Verifica que la base de datos sea accesible."""
     try:

@@ -499,10 +499,25 @@ def editar(registro_id):
             "SELECT pk_firmante_id,nombre_completo,cargo FROM firmantes WHERE activo=1"
         ).fetchall()
 
+        # Timestamp calculado en backend para evitar .timestamp() en Jinja2
+        # (SQLite devuelve fecha_edicion como string ISO, no como datetime)
+        fecha_servidor = 0
+        if contenido:
+            fe = dict(contenido).get("fecha_edicion") or dict(doc).get("fecha_modificacion")
+            if fe:
+                try:
+                    from datetime import datetime as _dt
+                    fecha_servidor = int(_dt.fromisoformat(
+                        str(fe).replace("Z", "+00:00")
+                    ).timestamp()) * 1000   # ms para comparar con Date.now()
+                except Exception:
+                    fecha_servidor = 0
+
         return render_template("documentos/editar.html",
             doc=doc, contenido=contenido, areas=AREAS, tipos=TIPOS,
             contactos=contactos, firmantes=firmantes,
-            plantillas=PLANTILLAS, hoy=date.today().isoformat())
+            plantillas=PLANTILLAS, hoy=date.today().isoformat(),
+            fecha_servidor=fecha_servidor)
     finally:
         if conn: conn.close()
 
