@@ -1008,6 +1008,21 @@ def inicializar_tablas_extra(conn=None):
     c2 = conn or _sq.connect(DB)
     c2.execute("PRAGMA foreign_keys=ON")
 
+    # ── Firmantes por documento (tabla faltante) ─────────────────────
+    c2.execute("""CREATE TABLE IF NOT EXISTS documento_firmantes (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        documento_id     INTEGER NOT NULL,
+        firmante_id      INTEGER NOT NULL,
+        orden_firma      INTEGER DEFAULT 1,
+        estado           TEXT DEFAULT 'pendiente'
+                         CHECK(estado IN('pendiente','aprobado','rechazado','omitido')),
+        fecha_aprobacion TEXT,
+        observacion      TEXT,
+        UNIQUE(documento_id, firmante_id),
+        FOREIGN KEY(documento_id) REFERENCES registro_central(pk_registro_id) ON DELETE CASCADE,
+        FOREIGN KEY(firmante_id) REFERENCES firmantes(pk_firmante_id)
+    )""")
+
     # ── PROGRAMA_2.doc: Juego de reciclaje comunitario ──────────────
     c2.execute("""CREATE TABLE IF NOT EXISTS juego_config (
         id INTEGER PRIMARY KEY DEFAULT 1,

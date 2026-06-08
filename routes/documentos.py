@@ -196,13 +196,17 @@ def nuevo():
     conn = get_db()
 
     if request.method == "POST":
-        area        = request.form["area"]
-        tipo        = request.form["tipo_documento"]
+        area        = request.form.get("area","GA")
+        tipo        = request.form.get("tipo_documento","OFI")
         anio        = datetime.now().year
-        asunto      = request.form["asunto_resumen"].strip()
+        asunto      = (request.form.get("asunto_resumen") or "Sin título").strip()
         fecha_rad   = request.form.get("fecha_radicacion") or date.today().isoformat()
         fk_contacto = request.form.get("fk_contacto_id") or None
         notas       = request.form.get("notas_internas","")
+        # Validar área
+        areas_ok = ('GA','GC','GF','GE','GL')
+        if area not in areas_ok:
+            area = 'GA'
         contenido   = request.form.get("contenido_html","")
         fecha_venc  = request.form.get("fecha_vencimiento") or None
         # Firmantes seleccionados manualmente en el editor
@@ -640,6 +644,24 @@ def api_upload_imagen():
     ruta = os.path.join(dir_, fn)
     f.save(ruta)
     return jsonify({"url": f"/static/uploads/docs/{fn}"})
+
+
+@docs_bp.route("/api/upload_image", methods=["POST"])
+@login_requerido
+def api_upload_image_tinymce():
+    """Upload de imagen compatible con TinyMCE (retorna {location:url})."""
+    key = "file" if "file" in request.files else ("imagen" if "imagen" in request.files else None)
+    if not key:
+        return jsonify({"error": "Sin archivo"}), 400
+    f   = request.files[key]
+    ext = f.filename.rsplit(".",1)[-1].lower() if "." in f.filename else ""
+    if ext not in {"jpg","jpeg","png","gif","webp","svg"}:
+        return jsonify({"error": "Tipo no permitido"}), 400
+    fn  = secure_filename(f"editor_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.filename}")
+    dir_= os.path.join("static","uploads","docs")
+    os.makedirs(dir_, exist_ok=True)
+    f.save(os.path.join(dir_, fn))
+    return jsonify({"location": f"/static/uploads/docs/{fn}"})
 
 
 @docs_bp.route("/api/plantilla/<nombre>")

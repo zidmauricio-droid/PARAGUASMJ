@@ -935,14 +935,84 @@ function initEditor() {
 }
 
 function fallbackEditor() {
-  document.getElementById('toolbar').innerHTML =
-    '<div class="alert alert-warning m-2 small">Editor avanzado requiere conexión a internet. '
-    +'Se usa modo texto simple.</div>';
-  document.getElementById('editor-tiptap').innerHTML =
-    `<textarea id="ta-fallback" rows="20"
-      style="width:100%;border:none;padding:20px 24px;resize:vertical;
-             font-family:Calibri,Arial,sans-serif;font-size:11pt;outline:none;"
-      placeholder="Redacte aquí el contenido del documento..."></textarea>`;
+  // Editor contenteditable completo — funciona sin internet
+  document.getElementById('toolbar').innerHTML = `
+    <div style="background:#f8f9fa;border-bottom:1px solid #dee2e6;padding:6px 8px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+      <span style="font-size:11px;color:#6c757d;margin-right:4px;">✏️ Modo offline</span>
+      <button type="button" onclick="document.execCommand('bold')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;font-weight:bold;" title="Negrita">N</button>
+      <button type="button" onclick="document.execCommand('italic')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;font-style:italic;" title="Cursiva">K</button>
+      <button type="button" onclick="document.execCommand('underline')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;text-decoration:underline;" title="Subrayado">S</button>
+      <span style="width:1px;background:#ced4da;margin:0 3px;height:20px;display:inline-block;"></span>
+      <button type="button" onclick="document.execCommand('justifyLeft')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Izquierda">⬅</button>
+      <button type="button" onclick="document.execCommand('justifyCenter')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Centrar">≡</button>
+      <button type="button" onclick="document.execCommand('justifyRight')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Derecha">➡</button>
+      <button type="button" onclick="document.execCommand('justifyFull')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Justificar">☰</button>
+      <span style="width:1px;background:#ced4da;margin:0 3px;height:20px;display:inline-block;"></span>
+      <button type="button" onclick="document.execCommand('insertUnorderedList')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Lista">• Lista</button>
+      <button type="button" onclick="document.execCommand('insertOrderedList')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Numerada">1. Lista</button>
+      <span style="width:1px;background:#ced4da;margin:0 3px;height:20px;display:inline-block;"></span>
+      <button type="button" onclick="insertarTablaOffline()" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Tabla">📊 Tabla</button>
+      <span style="width:1px;background:#ced4da;margin:0 3px;height:20px;display:inline-block;"></span>
+      <select onchange="document.execCommand('formatBlock',false,this.value);this.value='';" style="border:1px solid #ced4da;border-radius:3px;padding:3px;background:#fff;cursor:pointer;">
+        <option value="">Estilo</option>
+        <option value="h1">Título 1</option>
+        <option value="h2">Título 2</option>
+        <option value="h3">Título 3</option>
+        <option value="p">Párrafo</option>
+      </select>
+      <select onchange="document.execCommand('fontSize',false,this.value);this.value='';" style="border:1px solid #ced4da;border-radius:3px;padding:3px;background:#fff;cursor:pointer;">
+        <option value="">Tamaño</option>
+        <option value="1">8pt</option><option value="2">10pt</option>
+        <option value="3">12pt</option><option value="4">14pt</option>
+        <option value="5">18pt</option><option value="6">24pt</option>
+      </select>
+      <input type="color" onchange="document.execCommand('foreColor',false,this.value)" title="Color texto" style="width:28px;height:28px;border:1px solid #ced4da;border-radius:3px;cursor:pointer;padding:1px;">
+      <span style="width:1px;background:#ced4da;margin:0 3px;height:20px;display:inline-block;"></span>
+      <button type="button" onclick="document.execCommand('undo')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Deshacer">↩</button>
+      <button type="button" onclick="document.execCommand('redo')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Rehacer">↪</button>
+      <button type="button" onclick="document.execCommand('removeFormat')" style="border:1px solid #ced4da;border-radius:3px;padding:3px 8px;background:#fff;cursor:pointer;" title="Limpiar formato">🧹</button>
+    </div>
+  `;
+
+  const edDiv = document.getElementById('editor-tiptap');
+  const prevContent = edDiv.innerHTML || '<p>Escribe aquí el contenido del documento...</p>';
+  edDiv.innerHTML = '';
+  const ce = document.createElement('div');
+  ce.id = 'ce-editor';
+  ce.contentEditable = 'true';
+  ce.style.cssText = 'min-height:400px;max-height:65vh;overflow-y:auto;padding:20px 24px;background:#fff;font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.6;outline:none;';
+  ce.innerHTML = prevContent;
+  edDiv.appendChild(ce);
+
+  // Sincronizar con el campo oculto del formulario
+  ce.addEventListener('input', function() {
+    const h = document.getElementById('contenido-hidden');
+    if (h) h.value = ce.innerHTML;
+    marcarUnsaved && marcarUnsaved();
+  });
+
+  // Función global para tabla en fallback
+  window.insertarTablaOffline = function() {
+    const f = parseInt(prompt('Número de filas:', 3) || 3);
+    const c = parseInt(prompt('Número de columnas:', 3) || 3);
+    let t = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin:10px 0;">';
+    for (let i = 0; i < f; i++) {
+      t += '<tr>';
+      for (let j = 0; j < c; j++) t += '<td style="border:1px solid #ccc;padding:6px;">&nbsp;</td>';
+      t += '</tr>';
+    }
+    t += '</table><br>';
+    document.execCommand('insertHTML', false, t);
+  };
+
+  // Cargar contenido previo
+  if (window._contenidoParaEditar) {
+    ce.innerHTML = window._contenidoParaEditar;
+    const h = document.getElementById('contenido-hidden');
+    if (h) h.value = window._contenidoParaEditar;
+  }
+
+  console.info('Editor offline (contenteditable) activo.');
 }
 
 // ── Comandos del toolbar ────────────────────────────────────────────
