@@ -139,12 +139,11 @@ echo Compilando (puede tardar varios minutos, no cierre esta ventana)...
 
 %PY_CMD% -m PyInstaller ^
     --onefile ^
-    --windowed ^
+    --console ^
     --name="PARAGUASMJ_2026" ^
     --add-data "templates;templates" ^
     --add-data "static;static" ^
     --add-data "routes;routes" ^
-    --add-data "database;database" ^
     --add-data "core;core" ^
     --add-data "utils;utils" ^
     --add-data "config.py;." ^
@@ -203,6 +202,11 @@ echo Compilando (puede tardar varios minutos, no cierre esta ventana)...
     --hidden-import=utils.auditoria ^
     --hidden-import=utils.seguridad ^
     --hidden-import=utils.file_manager ^
+    --hidden-import=utils.compresor_imagen ^
+    --hidden-import=docx ^
+    --hidden-import=docx.oxml ^
+    --exclude-module=matplotlib ^
+    --exclude-module=numpy ^
     --collect-all=reportlab ^
     --collect-all=apscheduler ^
     --collect-all=jinja2 ^

@@ -33,12 +33,22 @@ def crear_backup() -> str:
 
 
 def _limpiar_backups_antiguos():
-    """Mantiene solo los N backups mas recientes."""
+    """
+    Elimina backups por dos criterios (el más estricto gana):
+    1. Más de BACKUPS_A_MANTENER archivos (por conteo, más recientes primero)
+    2. Más de 30 días de antigüedad (por tiempo — relevante para auditoría)
+    """
+    import time
+    limite_tiempo = time.time() - (30 * 24 * 3600)
     archivos = sorted([
         f for f in os.listdir(Config.BACKUP_FOLDER)
         if f.startswith("paraguasmj_") and f.endswith(".db")
     ])
-    while len(archivos) > Config.BACKUPS_A_MANTENER:
-        a_borrar = os.path.join(Config.BACKUP_FOLDER, archivos.pop(0))
-        os.remove(a_borrar)
-        logger.info(f"Backup antiguo eliminado: {a_borrar}")
+    for nombre in archivos:
+        ruta = os.path.join(Config.BACKUP_FOLDER, nombre)
+        antiguo_por_tiempo  = os.path.getmtime(ruta) < limite_tiempo
+        excede_conteo       = len(archivos) > Config.BACKUPS_A_MANTENER
+        if antiguo_por_tiempo or excede_conteo:
+            os.remove(ruta)
+            archivos.remove(nombre)
+            logger.info(f"Backup eliminado: {nombre}")

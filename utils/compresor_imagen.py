@@ -40,8 +40,16 @@ def comprimir_imagen(
     if fmt == "JPEG" and img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
 
+    # Reducción adaptativa de calidad hasta alcanzar max_kb
+    max_bytes = 300 * 1024
     buf = io.BytesIO()
-    img.save(buf, format=fmt, quality=quality, optimize=True)
+    q = quality
+    while q >= 20:
+        buf.seek(0); buf.truncate()
+        img.save(buf, format=fmt, quality=q, optimize=True)
+        if buf.tell() <= max_bytes:
+            break
+        q -= 10
     return buf.getvalue()
 
 
