@@ -21,6 +21,7 @@ from werkzeug.utils import secure_filename
 from core.database_manager import get_db, atomic, readonly, validar_columnas, obtener_consecutivo, registrar_log
 from core.seguridad import login_requerido
 from utils.seguridad import verificar_token_csrf
+from core.capability_registry import CapabilityRegistry
 from core.auditoria import auditar, registrar_evento
 from core.gestor_trd import gestor_trd
 from core.forensic_saneamiento import SaneadorForense
@@ -312,14 +313,18 @@ def nuevo():
                 ).fetchone()
                 fk_trd = trd_row["pk_trd_id"] if trd_row else None
 
+                _baseline_meta = json.dumps(
+                    CapabilityRegistry().get_document_metadata(),
+                    ensure_ascii=False, separators=(",", ":")
+                )
                 conn.execute("""
                     INSERT INTO registro_central
                     (codigo_completo,area,tipo_documento,anio,consecutivo,fecha_radicacion,
                      fecha_vencimiento,fk_contacto_id,asunto_resumen,notas_internas,estado,creado_por,
-                     indicador_activo,fase_archivo,fecha_ingreso_fase,fk_trd_id,activo)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,'Borrador',?,1,'Gestion',?,?,1)
+                     indicador_activo,fase_archivo,fecha_ingreso_fase,fk_trd_id,activo,baseline_metadata)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,'Borrador',?,1,'Gestion',?,?,1,?)
                 """,(codigo,area,tipo,anio,consec,fecha_rad,fecha_venc,fk_contacto,asunto,notas,
-                     session.get("nombre_usuario"), date.today().isoformat(), fk_trd))
+                     session.get("nombre_usuario"), date.today().isoformat(), fk_trd, _baseline_meta))
                 reg_id = conn.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
 
                 plain = re.sub(r"<[^<]+?>","",contenido)
@@ -656,14 +661,18 @@ def api_guardar_borrador():
             tipo   = data.get("tipo","OFI")
             consec = obtener_consecutivo(area, tipo, anio)
             codigo = f"{area}-{tipo}-{anio}-{consec:03d}"
+            _bm = json.dumps(
+                CapabilityRegistry().get_document_metadata(),
+                ensure_ascii=False, separators=(",", ":")
+            )
             conn.execute("""
                 INSERT INTO registro_central
                 (codigo_completo,area,tipo_documento,anio,consecutivo,
-                 fecha_radicacion,asunto_resumen,estado,creado_por)
-                VALUES(?,?,?,?,?,?,?,'Borrador',?)
+                 fecha_radicacion,asunto_resumen,estado,creado_por,baseline_metadata)
+                VALUES(?,?,?,?,?,?,?,'Borrador',?,?)
             """,(codigo,area,tipo,anio,consec,
                  data.get("fecha",date.today().isoformat()),
-                 asunto, session.get("nombre_usuario")))
+                 asunto, session.get("nombre_usuario"), _bm))
             reg_id = conn.execute("SELECT last_insert_rowid() as id").fetchone()["id"]
             conn.execute("""
                 INSERT INTO contenido_documento(fk_registro_id,contenido_html,contenido_plain,editado_por)

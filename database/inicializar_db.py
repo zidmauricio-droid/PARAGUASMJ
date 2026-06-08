@@ -835,6 +835,15 @@ def inicializar_base_datos():
         pass  # columna ya existe
     conn.execute("CREATE INDEX IF NOT EXISTS idx_expedientes_estado ON expedientes(estado)")
 
+    # baseline_metadata: JSON de trazabilidad arquitectonica RC5.5
+    try:
+        conn.execute(
+            "ALTER TABLE registro_central ADD COLUMN baseline_metadata TEXT"
+            " DEFAULT '{\"baseline_id\":\"PARAGUASMJ-RC5.5-20260607\",\"core_version\":\"RC5.5\",\"extensions_enabled\":[]}'"
+        )
+    except Exception:
+        pass  # columna ya existe
+
     conn.commit()
     conn.close()
     print("  -> 31 tablas + indices + datos semilla listos.")

@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, request, jsonify, abort, Response
 from core.database_manager import get_db, db_connection
 from core.seguridad import login_requerido
 from core.auditoria import auditar
+from core.capability_registry import BASELINE_ID, BASELINE_VERSION
 from datetime import datetime
 from html import escape
 
@@ -222,7 +223,7 @@ def hoja_control(exp_id):
 <thead><tr><th>N.</th><th>Codigo</th><th>Asunto</th><th>Fecha</th><th>Estado</th></tr></thead>
 <tbody>{filas_html}</tbody>
 </table>
-<div class="footer">PARAGUASMJ - Sistema de Gestion Documental | Baseline RC5.5</div>
+<div class="footer">PARAGUASMJ &mdash; Sistema de Gestion Documental | Baseline {escape(BASELINE_ID)} | Version {escape(BASELINE_VERSION)}</div>
 </body>
 </html>"""
 

@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request, session
 from core.database_manager import get_db
 from core.otp_manager import OTPManager
 from core.seguridad import login_requerido
+from core.capability_registry import CapabilityRegistry
 from datetime import datetime
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -202,6 +203,14 @@ def dashboard_kpis():
     }
     conn.close()
     return jsonify(data)
+
+
+# ── Baseline RC5.5 — estado arquitectonico ──────────────────────────
+@api_bp.route("/baseline/status")
+@login_requerido
+def baseline_status():
+    """Estado del baseline RC5.5: perfil activo, capas, integridad."""
+    return jsonify(CapabilityRegistry().get_baseline_info())
 
 
 # ── Firmantes disponibles para asignar ──────────────────────────────
