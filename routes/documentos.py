@@ -881,6 +881,24 @@ def api_tipos_documento():
     return jsonify([{"codigo": c, "nombre": n} for c, n in TIPOS])
 
 
+@docs_bp.route("/api/areas")
+@login_requerido
+def api_areas():
+    """Lista áreas: primero BD, fallback a AREAS hardcodeado."""
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT codigo, nombre FROM areas WHERE activo=1 ORDER BY nombre"
+        ).fetchall()
+        if rows:
+            return jsonify([dict(r) for r in rows])
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    return jsonify([{"codigo": c, "nombre": n} for c, n in AREAS])
+
+
 @docs_bp.route("/api/ia_proxy", methods=["POST"])
 @login_requerido
 def api_ia_proxy():

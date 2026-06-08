@@ -445,9 +445,9 @@ function previewAdj(input) {
     Array.from(input.files).map(f => `<div style="font-size:12px;color:#475569;">📎 ${f.name}</div>`).join('');
 }
 
-// ── Autosave ─────────────────────────────────────────────────────
-setInterval(function() {
-  if (!_dirty) return;
+// ── Autosave — debounce 3s en input + intervalo 30s ─────────────
+let _debounceTimer = null;
+function _guardarLocalAhora() {
   sincronizar();
   const h = document.getElementById('contenido-hidden').value;
   const a = document.getElementById('inp-asunto')?.value || '';
@@ -463,6 +463,11 @@ setInterval(function() {
     console.warn('localStorage no disponible:', lsErr);
   }
   _dirty = false;
+}
+
+setInterval(function() {
+  if (!_dirty) return;
+  _guardarLocalAhora();
 }, 30000);
 
 // ── Guardar borrador vía fetch ───────────────────────────────────
@@ -652,8 +657,14 @@ document.addEventListener('DOMContentLoaded', function() {
   actualizarConexion();
   contarFirmantes();
 
-  // Detectar cambios en el editor
-  document.getElementById('contenido_editor').addEventListener('input', marcarDirty);
+  // Detectar cambios: marcar dirty + debounce 3s para guardado local reactivo
+  document.getElementById('contenido_editor').addEventListener('input', function() {
+    marcarDirty();
+    if (_debounceTimer) clearTimeout(_debounceTimer);
+    _debounceTimer = setTimeout(function() {
+      if (_dirty) _guardarLocalAhora();
+    }, 3000);
+  });
 
   // Cargar borrador local si es más reciente que el contenido del servidor
   try {
