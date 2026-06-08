@@ -97,6 +97,10 @@ small, .small { font-size: 0.875rem !important; }
 .modulo-usuarios   { background-color: var(--color-usuarios);   }
 .modulo-mapas      { background-color: var(--color-mapas);      }
 .modulo-reportes   { background-color: var(--color-reportes);   }
+.modulo-pqrs       { background-color: #1565c0; }
+.modulo-auditoria  { background-color: #3f51b5; }
+.modulo-balance    { background-color: #00838f; }
+.modulo-dashboard  { background-color: #37474f; }
 
 /* ── Botones — mínimo 44px táctil ──────────────────────────────── */
 .btn {
