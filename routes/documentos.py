@@ -770,11 +770,20 @@ def api_upload_imagen():
     ext = f.filename.rsplit(".",1)[-1].lower() if "." in f.filename else ""
     if ext not in IMG_EXTS:
         return jsonify({"error": "Tipo no permitido"}), 400
-    fn  = secure_filename(f"editor_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.filename}")
-    dir_= os.path.join("static","uploads","docs")
+    dir_ = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "..", "static", "uploads", "docs")
     os.makedirs(dir_, exist_ok=True)
-    ruta = os.path.join(dir_, fn)
-    f.save(ruta)
+    try:
+        from utils.compresor_imagen import comprimir_imagen, nombre_upload_seguro
+        datos = comprimir_imagen(f)
+        fn    = nombre_upload_seguro(f.filename)
+        ruta  = os.path.join(dir_, fn)
+        with open(ruta, "wb") as out:
+            out.write(datos)
+    except Exception:
+        fn   = secure_filename(f"editor_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.filename}")
+        ruta = os.path.join(dir_, fn)
+        f.save(ruta)
     return jsonify({"url": f"/static/uploads/docs/{fn}"})
 
 
@@ -879,6 +888,114 @@ def api_tipos_documento():
     finally:
         conn.close()
     return jsonify([{"codigo": c, "nombre": n} for c, n in TIPOS])
+
+
+# ── Exportar DOCX ────────────────────────────────────────────────
+@docs_bp.route("/<int:registro_id>/docx")
+@login_requerido
+def generar_docx(registro_id):
+    """Exporta documento institucional a Word (.docx) — sin escritura a disco."""
+    try:
+        from docx import Document as DocxDocument
+        from docx.shared import Pt
+        from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    except ImportError:
+        flash("Modulo python-docx no instalado. Ejecute: pip install python-docx>=1.1.0", "danger")
+        return redirect(url_for("documentos.ver", registro_id=registro_id))
+
+    with db_connection(autocommit=False) as conn:
+        row = conn.execute("""
+            SELECT r.*, cd.contenido_html
+            FROM registro_central r
+            LEFT JOIN contenido_documento cd ON r.pk_registro_id = cd.fk_registro_id
+            WHERE r.pk_registro_id = ?
+        """, (registro_id,)).fetchone()
+
+    if not row:
+        flash("Documento no encontrado.", "danger")
+        return redirect(url_for("documentos.listar"))
+
+    d = dict(row)
+    wordoc = DocxDocument()
+
+    titulo = wordoc.add_heading(d.get("asunto_resumen", "Sin titulo"), 0)
+    titulo.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+    meta = [
+        ("Codigo", d.get("codigo_completo", "")),
+        ("Fecha",  d.get("fecha_radicacion", "")),
+        ("Area",   d.get("area", "")),
+        ("Estado", d.get("estado", "")),
+    ]
+    for label, valor in meta:
+        wordoc.add_paragraph(f"{label}: {valor}", style="Intense Quote")
+
+    wordoc.add_paragraph("")  # separador
+
+    html = d.get("contenido_html") or ""
+    texto = re.sub(r"<[^<]+?>", "", html)
+    texto = re.sub(r"&nbsp;", " ", texto)
+    texto = re.sub(r"&[a-z]+;", "", texto)
+    texto = re.sub(r"\s{2,}", " ", texto).strip()
+    for linea in texto.split("\n"):
+        if linea.strip():
+            wordoc.add_paragraph(linea.strip())
+
+    buf = BytesIO()
+    wordoc.save(buf)
+    buf.seek(0)
+
+    nombre_archivo = secure_filename(f"{d.get('codigo_completo', str(registro_id))}.docx")
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=nombre_archivo,
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+
+
+# ── Dashboard de estadísticas ─────────────────────────────────────
+@docs_bp.route("/dashboard")
+@login_requerido
+def dashboard_documentos():
+    """Dashboard con estadísticas de documentos."""
+    hoy = date.today().isoformat()
+    with db_connection(autocommit=False) as conn:
+        row_stats = conn.execute("""
+            SELECT
+                COUNT(*)                                                              AS total,
+                SUM(CASE WHEN estado='Borrador'    THEN 1 ELSE 0 END)                AS borradores,
+                SUM(CASE WHEN estado='En_revision' THEN 1 ELSE 0 END)                AS en_revision,
+                SUM(CASE WHEN estado='Aprobado'    THEN 1 ELSE 0 END)                AS aprobados,
+                SUM(CASE WHEN fecha_vencimiento < ? AND estado NOT IN
+                         ('Aprobado','Archivado') THEN 1 ELSE 0 END)                 AS vencidos
+            FROM registro_central
+        """, (hoy,)).fetchone()
+
+        por_area = conn.execute("""
+            SELECT area, COUNT(*) AS c
+            FROM registro_central GROUP BY area ORDER BY c DESC
+        """).fetchall()
+
+        por_tipo = conn.execute("""
+            SELECT tipo_documento, COUNT(*) AS c
+            FROM registro_central GROUP BY tipo_documento ORDER BY c DESC LIMIT 10
+        """).fetchall()
+
+        tendencia = conn.execute("""
+            SELECT strftime('%Y-%m', fecha_radicacion) AS mes, COUNT(*) AS c
+            FROM registro_central
+            WHERE fecha_radicacion IS NOT NULL
+            GROUP BY mes ORDER BY mes ASC LIMIT 12
+        """).fetchall()
+
+    stats = dict(row_stats) if row_stats else {}
+    return render_template("documentos/dashboard.html",
+        stats=stats,
+        por_area=[dict(r) for r in por_area],
+        por_tipo=[dict(r) for r in por_tipo],
+        tendencia=[dict(r) for r in tendencia],
+    )
 
 
 @docs_bp.route("/api/areas")
