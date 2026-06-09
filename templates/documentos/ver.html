@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ doc.codigo_completo }} — ASUACAP{% endblock %}
 {% block content %}
+<div class="modulo-header modulo-documental">
+    <i class="bi bi-file-earmark-text-fill"></i>
+    <span>{{ doc.codigo_completo }}</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5><i class="bi bi-file-earmark-text me-2 text-primary"></i>{{ doc.codigo_completo }}</h5>
     <div class="d-flex gap-2">

@@ -67,6 +67,11 @@
 {% endblock %}
 
 {% block content %}
+<div class="modulo-header modulo-mapas">
+    <i class="bi bi-geo-alt-fill"></i>
+    <span>Mapa de Operaciones GIS — ASUACAP</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="mb-0">
     <i class="bi bi-map me-2 text-primary"></i>
@@ -205,16 +210,6 @@
 </script>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
-// PARAGUASMJ — Mapa GIS Mejorado
-// - Mapa siempre visible (tile OSM + fallback color)
-// - Geolocalización como punto de pérdida de agua
-// - Marcador de oficina desde configuración BD
-// - Capas dinámicas con contadores
-// - Modo reportar falla con clic
-// ═══════════════════════════════════════════════════════════════
-
-// Espera a que Leaflet cargue
 function esperarLeaflet(cb, n) {
   n = n || 0;
   if (typeof L !== 'undefined') { cb(); }
@@ -225,32 +220,27 @@ function esperarLeaflet(cb, n) {
 
 esperarLeaflet(function() {
 
-// ── Variables globales ──────────────────────────────────────────
 var modoFalla    = false;
 var fallaLat     = 0, fallaLon = 0;
 var marcadorGeo  = null;
 var circleGeo    = null;
 var marcadorOfic = null;
-var datosSubs    = [];   // cache para buscador
+var datosSubs    = [];
 var configMapa   = { lat: 5.0135, lon: -74.4700, zoom: 15,
                      nombre: "ASUACAP", direccion: "", telefono: "" };
 
-// ── Crear mapa ──────────────────────────────────────────────────
 var map = L.map('mapa_asuacap', { zoomControl: true });
 
-// Tile principal: OpenStreetMap
 var tileOSM = L.tileLayer(
   'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   { maxZoom: 19, attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>' }
 );
 
-// Tile satelite (ESRI)
 var tileSat = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   { maxZoom: 19, attribution: '© Esri' }
 );
 
-// Tile local (si existe) — sin error 404 visible
 var tileLocal = L.tileLayer(
   "{{ url_for('static', filename='map-tiles/{z}/{x}/{y}.png') }}",
   { maxZoom: 18, errorTileUrl: '' }
@@ -258,13 +248,11 @@ var tileLocal = L.tileLayer(
 
 tileOSM.addTo(map);
 
-// Control de capas base
 var baseMaps = {
   "🗺️ Mapa estándar": tileOSM,
   "🛰️ Satélite": tileSat
 };
 
-// ── Capas de datos ──────────────────────────────────────────────
 var capaInfra       = L.layerGroup().addTo(map);
 var capaSuscriptores= L.layerGroup().addTo(map);
 var capaFallas      = L.layerGroup().addTo(map);
@@ -281,7 +269,6 @@ var overlayMaps = {
 
 L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
 
-// ── Leyenda ─────────────────────────────────────────────────────
 var leyenda = L.control({ position: 'bottomleft' });
 leyenda.onAdd = function() {
   var d = L.DomUtil.create('div','legend');
@@ -299,7 +286,6 @@ leyenda.onAdd = function() {
 };
 leyenda.addTo(map);
 
-// ── Íconos personalizados ────────────────────────────────────────
 function colorCircle(color, size, borderColor) {
   return L.divIcon({
     html: `<div style="width:${size}px;height:${size}px;border-radius:50%;
@@ -339,14 +325,11 @@ function iconoGeo() {
   });
 }
 
-// ── 1. Cargar configuración del mapa (lat/lon oficina) ──────────
 fetch('/gis/api/config')
 .then(r => r.json())
 .then(function(cfg) {
   configMapa = cfg;
   map.setView([cfg.lat, cfg.lon], cfg.zoom);
-
-  // Marcador de la oficina ASUACAP
   marcadorOfic = L.marker([cfg.lat, cfg.lon], { icon: iconoOficina(), zIndexOffset: 1000 });
   marcadorOfic.bindPopup(`
     <div class="popup-title">🏢 ${cfg.nombre}</div>
@@ -360,17 +343,13 @@ fetch('/gis/api/config')
     </div>
   `);
   marcadorOfic.addTo(capaOficina);
-
-  // Cargar zonas en el panel lateral
   cargarZonas();
 })
 .catch(function() {
-  // Si falla la config, centrar en coordenadas por defecto de El Puente
   map.setView([5.0135, -74.4700], 15);
   cargarZonas();
 });
 
-// ── 2. Cargar infraestructura ────────────────────────────────────
 fetch('/gis/api/infraestructura')
 .then(r => r.json())
 .then(function(data) {
@@ -397,7 +376,6 @@ fetch('/gis/api/infraestructura')
   }).addTo(capaInfra);
 }).catch(function(e){ console.warn('Infra:', e); });
 
-// ── 3. Cargar suscriptores ───────────────────────────────────────
 fetch('/gis/api/suscriptores')
 .then(r => r.json())
 .then(function(data) {
@@ -424,7 +402,6 @@ fetch('/gis/api/suscriptores')
   }).addTo(capaSuscriptores);
 }).catch(function(e){ console.warn('Suscriptores:', e); });
 
-// ── 4. Cargar fallas ─────────────────────────────────────────────
 fetch('/gis/api/fallas')
 .then(r => r.json())
 .then(function(data) {
@@ -451,7 +428,6 @@ fetch('/gis/api/fallas')
   }).addTo(capaFallas);
 }).catch(function(e){ console.warn('Fallas:', e); });
 
-// ── 5. Geolocalización del dispositivo ──────────────────────────
 document.getElementById('btn-mi-ubicacion').addEventListener('click', function() {
   var alerta = document.getElementById('geo-alert');
   alerta.style.display = 'block';
@@ -466,11 +442,7 @@ document.getElementById('btn-mi-ubicacion').addEventListener('click', function()
       var lat = pos.coords.latitude;
       var lon = pos.coords.longitude;
       var acc = Math.round(pos.coords.accuracy);
-
-      // Eliminar marcador anterior si existe
       capaGeo.clearLayers();
-
-      // Marcador de posición (punto de pérdida de agua)
       var mkr = L.marker([lat, lon], { icon: iconoGeo(), zIndexOffset: 2000 });
       mkr.bindPopup(`
         <div class="popup-title" style="color:#92400e;">📍 Tu ubicación actual</div>
@@ -487,14 +459,10 @@ document.getElementById('btn-mi-ubicacion').addEventListener('click', function()
         </button>
       `);
       mkr.addTo(capaGeo);
-
-      // Círculo de precisión
       L.circle([lat, lon], {
         radius: acc, color: '#f59e0b', fillColor: '#fef3c7',
         fillOpacity: 0.15, weight: 1.5
       }).addTo(capaGeo);
-
-      // Centrar mapa en la ubicación
       map.flyTo([lat, lon], Math.max(map.getZoom(), 16), { duration: 1.2 });
       document.getElementById('cnt-geo').textContent = '±' + acc + 'm';
       mkr.openPopup();
@@ -512,7 +480,6 @@ document.getElementById('btn-mi-ubicacion').addEventListener('click', function()
   );
 });
 
-// Abrir modal de falla desde popup de geolocalización
 window.abrirFallaDesdeGeo = function(lat, lon) {
   fallaLat = lat;
   fallaLon = lon;
@@ -521,7 +488,6 @@ window.abrirFallaDesdeGeo = function(lat, lon) {
   new bootstrap.Modal(document.getElementById('modalFalla')).show();
 };
 
-// ── 6. Modo reportar falla ───────────────────────────────────────
 var btnFalla = document.getElementById('btn-modo-falla');
 btnFalla.addEventListener('click', function() {
   modoFalla = !modoFalla;
@@ -536,7 +502,6 @@ btnFalla.addEventListener('click', function() {
   }
 });
 
-// Clic en el mapa para reportar falla (modo activado o clic derecho)
 map.on('click', function(e) {
   if (!modoFalla) return;
   fallaLat = e.latlng.lat;
@@ -554,13 +519,11 @@ map.on('contextmenu', function(e) {
   new bootstrap.Modal(document.getElementById('modalFalla')).show();
 });
 
-// Confirmar reporte de falla
 document.getElementById('btn-confirmar-falla').addEventListener('click', function() {
   var desc = document.getElementById('falla-desc').value.trim();
   var sev  = document.getElementById('falla-sev').value;
   var zona = document.getElementById('falla-zona').value || null;
   if (!desc) { alert('Ingrese una descripción de la falla.'); return; }
-
   fetch('/gis/api/fallas/nueva', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -571,7 +534,6 @@ document.getElementById('btn-confirmar-falla').addEventListener('click', functio
     if (d.ok) {
       bootstrap.Modal.getInstance(document.getElementById('modalFalla')).hide();
       document.getElementById('falla-desc').value = '';
-      // Agregar marcador inmediatamente sin recargar
       var color = sev === 'Alta_Corte_Servicio' ? '#ef4444' : '#c084fc';
       var mkr = L.circleMarker([fallaLat, fallaLon], {
         radius: 8, fillColor: color, color: '#8b5cf6', weight: 2, fillOpacity: 0.9
@@ -582,7 +544,6 @@ document.getElementById('btn-confirmar-falla').addEventListener('click', functio
       mkr.addTo(capaFallas);
       var cnt = parseInt(document.getElementById('cnt-fallas').textContent||0) + 1;
       document.getElementById('cnt-fallas').textContent = cnt;
-      // Desactivar modo falla
       modoFalla = false;
       btnFalla.classList.replace('btn-danger','btn-outline-danger');
       btnFalla.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Reportar falla';
@@ -594,19 +555,16 @@ document.getElementById('btn-confirmar-falla').addEventListener('click', functio
   .catch(function(e){ alert('Error de conexión: ' + e); });
 });
 
-// ── 7. Cargar zonas en panel lateral ────────────────────────────
 function cargarZonas() {
   fetch('/gis/api/zonas')
   .then(r => r.json())
   .then(function(zonas) {
-    // Rellenar selector del modal
     var sel = document.getElementById('falla-zona');
     zonas.forEach(function(z) {
       var opt = document.createElement('option');
       opt.value = z.pk_zona_id; opt.textContent = z.nombre_zona;
       sel.appendChild(opt);
     });
-    // Panel lateral
     var lista = document.getElementById('lista-zonas');
     lista.innerHTML = zonas.map(function(z) {
       return `<div style="padding:8px 14px;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;align-items:center;">
@@ -621,7 +579,6 @@ function cargarZonas() {
   .catch(function(){ document.getElementById('lista-zonas').innerHTML='<div class="p-3 text-muted" style="font-size:12px;">No disponible</div>'; });
 }
 
-// ── 8. Buscador de suscriptor ────────────────────────────────────
 document.getElementById('buscador-suscriptor').addEventListener('input', function() {
   var q = this.value.toLowerCase().trim();
   var res = document.getElementById('resultado-busqueda');
@@ -634,7 +591,7 @@ document.getElementById('buscador-suscriptor').addEventListener('input', functio
   res.innerHTML = matches.map(function(f) {
     var p = f.properties;
     var color = p.estado === 'Activo' ? '#10b981' : '#f59e0b';
-    return `<div onclick="irASuscriptor(${f.geometry.coordinates[1]},${f.geometry.coordinates[0]},'${p.nombre.replace(/'/g,"\\'")}',${f.properties.id})"
+    return `<div onclick="irASuscriptor(${f.geometry.coordinates[1]},${f.geometry.coordinates[0]},'${p.nombre.replace(/'/g,"\\'")}',${ f.properties.id})"
                  style="padding:6px 8px;border-radius:6px;cursor:pointer;background:#f8fafc;margin-bottom:3px;border:1px solid #e2e8f0;">
                <div style="font-weight:600;">${p.nombre}</div>
                <div style="color:#64748b;font-size:11px;">
@@ -651,7 +608,6 @@ window.irASuscriptor = function(lat, lon, nombre, id) {
   document.getElementById('resultado-busqueda').innerHTML = '';
 };
 
-// ── 9. Panel info lateral ────────────────────────────────────────
 function mostrarPanelInfo(titulo, datos) {
   document.getElementById('panel-info').style.display = '';
   document.getElementById('panel-info-title').textContent = titulo;
