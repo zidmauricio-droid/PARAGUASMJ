@@ -50,6 +50,11 @@
 {% endblock %}
 
 {% block content %}
+<div class="modulo-header modulo-proyectos">
+    <i class="bi bi-kanban-fill"></i>
+    <span>Gestión de Proyectos — PUEAA · PSMV · Obras</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h5 class="mb-0">
     <i class="bi bi-kanban me-2 text-primary"></i>
@@ -752,7 +757,6 @@ async function verDocsMetaModal(mid) {
   if (!confirm('¿Desea gestionar los documentos soporte de esta meta?\n\n' +
                (docs.map(d=>d.codigo+' — '+d.asunto).join('\n')||'Sin documentos aún') +
                '\n\n(Haga clic OK para abrir el buscador en el panel)')) return;
-  // Abrir como diálogo simple usando prompt
   const codigo = prompt('Código del documento a agregar (ej. GA-OFI-2026-001):','');
   if (!codigo) return;
   const resultados = await fetch(`/proyectos2/api/buscar_documento?q=${encodeURIComponent(codigo)}`).then(r=>r.json());
