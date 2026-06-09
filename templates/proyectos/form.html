@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ titulo }}{% endblock %}
 {% block content %}
+<div class="modulo-header modulo-proyectos">
+    <i class="bi bi-kanban-fill"></i>
+    <span>{{ titulo }}</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="row justify-content-center">
     <div class="col-md-8">
         <h5 class="mb-3"><i class="bi bi-kanban me-2"></i>{{ titulo }}</h5>

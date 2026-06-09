@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Bitácora de Operación — ASUACAP{% endblock %}
 {% block content %}
+<div class="modulo-header modulo-pqrs">
+    <i class="bi bi-journal-text"></i>
+    <span>Bitácora de Operación — Archivo Digital</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
@@ -194,17 +199,14 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // Fecha de hoy por defecto
   document.getElementById('fecha-bit').value = new Date().toISOString().split('T')[0];
 
-  // Mostrar nombre del archivo seleccionado
   document.getElementById('archivo-bit').addEventListener('change', function() {
     const f = this.files[0];
     document.getElementById('preview-nombre').textContent =
       f ? `📄 ${f.name} (${(f.size/1024).toFixed(0)} KB)` : '';
   });
 
-  // Mostrar campo de texto si selecciona "Otro"
   document.getElementById('fontanero-bit').addEventListener('change', function() {
     document.getElementById('campo-otro-fontanero').style.display =
       this.value === 'OTRO' ? 'block' : 'none';

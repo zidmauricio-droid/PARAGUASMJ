@@ -8,6 +8,11 @@
 {% endblock %}
 
 {% block content %}
+<div class="modulo-header modulo-documental">
+    <i class="bi bi-folder2-open"></i>
+    <span>Gestión de Expedientes</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="container-fluid mt-3">
 
   <div class="d-flex justify-content-between align-items-center mb-3">
@@ -199,8 +204,6 @@
 
   const $ = id => document.getElementById(id);
 
-  // ── helpers ──────────────────────────────────────────────────────────────
-
   function esc(t) {
     if (!t) return '';
     const d = document.createElement('div');
@@ -218,8 +221,6 @@
     return fetch(url, { ...opts, headers: { ...headers, ...(opts.headers || {}) } })
       .then(r => r.json());
   }
-
-  // ── carga ─────────────────────────────────────────────────────────────────
 
   function cargarExpedientes() {
     const buscar = $('filtroBuscar').value;
@@ -284,8 +285,6 @@
   }
 
   window.cambiarPagina = function (p) { pagina = p; cargarExpedientes(); };
-
-  // ── CRUD ──────────────────────────────────────────────────────────────────
 
   window.mostrarModalNuevo = function () {
     ['n_codigo','n_nombre','n_descripcion'].forEach(id => $(id).value = '');
@@ -405,12 +404,9 @@
     if (expActual) window.open(`/expedientes/${expActual}/hoja_control`, '_blank');
   };
 
-  // ── iniciar ───────────────────────────────────────────────────────────────
-
   cargarExpedientes();
   $('filtroBuscar').addEventListener('keypress', e => { if (e.key === 'Enter') cargarExpedientes(); });
 
-  // exponer para botones globales
   window.cargarExpedientes = cargarExpedientes;
 })();
 </script>
