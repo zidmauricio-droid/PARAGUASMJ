@@ -1586,4 +1586,3 @@ def inicializar_tablas_prog3_prog4(conn=None):
     else:
         c2.commit()
     print("  -> Tablas PROGRAMA_3 + PROGRAMA_4 creadas.")
-
