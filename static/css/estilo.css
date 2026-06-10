@@ -29,11 +29,11 @@
     --color-mapas-bg:        #e8f5e9;
     --color-reportes-bg:     #fff3e0;
 
-    /* Paleta institucional ASUACAP */
-    --asuacap-azul:          #1E3A8A;
-    --asuacap-verde:         #0F6E56;
-    --asuacap-agua:          #0ea5e9;
-    --asuacap-claro:         #f0f9ff;
+    /* Paleta institucional SIGCA */
+    --sigca-azul:          #1E3A8A;
+    --sigca-verde:         #0F6E56;
+    --sigca-agua:          #0ea5e9;
+    --sigca-claro:         #f0f9ff;
 
     /* Base */
     --color-fondo:           #f5f5f5;
@@ -56,8 +56,8 @@ body {
 small, .small { font-size: 0.875rem !important; }
 
 /* ── Barra de navegación ──────────────────────────────────── */
-.bg-asuacap   { background-color: var(--asuacap-azul) !important; }
-.bg-verde-agua{ background-color: var(--asuacap-verde) !important; }
+.bg-sigca     { background-color: var(--sigca-azul) !important; }
+.bg-verde-agua{ background-color: var(--sigca-verde) !important; }
 
 #navbar-principal .nav-link {
     font-size: var(--font-min) !important;
@@ -148,7 +148,7 @@ label, .form-label {
     color: var(--color-texto);
 }
 .form-control:focus, .form-select:focus {
-    border-color: var(--asuacap-azul);
+    border-color: var(--sigca-azul);
     box-shadow: 0 0 0 3px rgba(30,58,138,.18);
     outline: none;
 }
@@ -183,8 +183,8 @@ textarea.form-control { min-height: 100px; }
 .card-reportes   { border-top: 3px solid var(--color-reportes)   !important; }
 
 /* Alias legado */
-.card-top-primary { border-top: 3px solid var(--asuacap-azul)  !important; }
-.card-top-success { border-top: 3px solid var(--asuacap-verde) !important; }
+.card-top-primary { border-top: 3px solid var(--sigca-azul)  !important; }
+.card-top-success { border-top: 3px solid var(--sigca-verde) !important; }
 .card-top-danger  { border-top: 3px solid #ef4444              !important; }
 
 /* ── Tablas ───────────────────────────────────────────────────── */
@@ -195,7 +195,7 @@ textarea.form-control { min-height: 100px; }
 }
 .table thead th {
     font-weight: 600;
-    background: var(--asuacap-azul);
+    background: var(--sigca-azul);
     color: #fff;
     padding: .65rem 1rem;
     border: none;
@@ -241,7 +241,7 @@ textarea.form-control { min-height: 100px; }
     line-height: 1.6;
     padding: 1.5rem;
     background: #fafafa;
-    border-left: 4px solid var(--asuacap-azul);
+    border-left: 4px solid var(--sigca-azul);
 }
 
 /* ── Sidebar nav ──────────────────────────────────────────────── */
@@ -266,15 +266,15 @@ footer {
     font-size: .85rem;
     background: #1a1a2e !important;
     color: #e0e0e0 !important;
-    border-top: 3px solid var(--asuacap-azul) !important;
+    border-top: 3px solid var(--sigca-azul) !important;
 }
 
 /* ── Mapa GIS ────────────────────────────────────────────────────────── */
-#mapa_asuacap { border-radius: 0 0 var(--radius) var(--radius); }
+#mapa-gis { border-radius: 0 0 var(--radius) var(--radius); }
 
 /* ── Focus accesible ───────────────────────────────────────────── */
 :focus-visible {
-    outline: 3px solid var(--asuacap-agua);
+    outline: 3px solid var(--sigca-agua);
     outline-offset: 2px;
 }
 

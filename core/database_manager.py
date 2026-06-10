@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Tuple
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 
-logger = logging.getLogger("asuacap.db")
+logger = logging.getLogger("sigca.db")
 
 # Whitelist completa de tablas operativas del proyecto
 TABLAS_PERMITIDAS = frozenset({

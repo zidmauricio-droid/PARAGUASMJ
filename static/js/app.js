@@ -1,4 +1,4 @@
-/* ASUACAP SIGD 2026 — JavaScript institucional
+/* SIGCA 2026 — JavaScript institucional
    Mejoras del PROGRAMA.doc:
    - Historial de navegación (pushState + popstate) 
    - Lazy loading de documentos

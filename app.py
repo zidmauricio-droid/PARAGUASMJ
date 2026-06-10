@@ -21,7 +21,7 @@ app.config.from_object(Config)
 
 # Logging
 from core.logger import configurar_logger
-logger = configurar_logger("asuacap")
+logger = configurar_logger("sigca")
 
 # Blueprints
 from routes.autenticacion  import auth_bp
@@ -146,7 +146,7 @@ def exportar_excel_trimestral():
         return send_file(buf,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             as_attachment=True,
-            download_name=f"ASUACAP_Reporte_T{trim}_{anio}.xlsx")
+            download_name=f"SIGCA_Reporte_T{trim}_{anio}.xlsx")
     except Exception as e:
         flash(f"Error al generar reporte: {e}", "danger")
         return redirect(url_for("panel_reportes"))

@@ -13,6 +13,20 @@ from werkzeug.security import generate_password_hash
 DB = Config.DB_PATH
 
 SQL_TABLES = [
+# 0 organizaciones
+"""CREATE TABLE IF NOT EXISTS organizaciones (
+    pk_org_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre_completo  TEXT NOT NULL,
+    nombre_corto     TEXT NOT NULL,
+    nit              TEXT,
+    municipio        TEXT DEFAULT 'Villeta',
+    departamento     TEXT DEFAULT 'Cundinamarca',
+    correo           TEXT,
+    telefono         TEXT,
+    activo           INTEGER DEFAULT 1,
+    es_demo          INTEGER DEFAULT 0,
+    fecha_creacion   TEXT DEFAULT CURRENT_TIMESTAMP
+)""",
 # 1 usuarios
 """CREATE TABLE IF NOT EXISTS usuarios (
     pk_usuario_id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -571,6 +585,11 @@ def inicializar_base_datos():
     c.execute("INSERT OR IGNORE INTO usuarios(nombre_completo,nombre_usuario,password_hash,rol) VALUES(?,?,?,?)",
               ("Administrador del Sistema","admin",hp,"admin"))
 
+    conn.execute("""
+        INSERT OR IGNORE INTO organizaciones (pk_org_id, nombre_completo, nombre_corto, nit, municipio, departamento)
+        VALUES (1, 'Asociacion de Suscriptores del Acueducto Comunitario El Puente', 'ASUACAP', '832001389-2', 'Villeta', 'Cundinamarca')
+    """)
+
     zonas = [(1,"La Volconda","Critica: tuberias 3/8\""),(2,"Payande - Tres Esquinas","Zona residencial dispersa"),
              (3,"Alto de Torres - Bajo","Problemas de presion"),(4,"Caserio El Puente","Centro poblado"),
              (5,"El Penon - La Masata","Extremo norte")]
@@ -610,7 +629,7 @@ def inicializar_base_datos():
         ("cargo_representante","Presidente","Cargo","Institucional","texto",None,5),
         ("direccion_oficina","Caserio El Puente, Villeta Cundinamarca","Direccion","Institucional","texto",None,6),
         ("telefono_oficina","3112345678","Telefono","Institucional","texto",None,7),
-        ("correo_oficial","aacueductoelpuente@yahoo.com","Correo","Institucional","texto",None,8),
+        ("correo_oficial","correo@acueducto.org","Correo","Institucional","texto",None,8),
         ("codigo_departamento","25","DIVIPOLA Cundinamarca","Institucional","texto",None,9),
         ("codigo_municipio","258","DIVIPOLA Villeta","Institucional","texto",None,10),
         ("ianc_umbral_verde","15","IANC bueno %","Tecnica","numero","balance",1),
@@ -622,7 +641,7 @@ def inicializar_base_datos():
         ("dias_alerta_documentos","4","Dias inicio alertas doc","Tecnica","numero",None,7),
         ("dias_plazo_autorizacion","7","Dias autorizar","Tecnica","numero",None,8),
         ("whatsapp_api_key","","API Key CallMeBot","Notificaciones","texto","comunicaciones",1),
-        ("whatsapp_numero_oficial","573001234567","WhatsApp ASUACAP","Notificaciones","texto","comunicaciones",2),
+        ("whatsapp_numero_oficial","573000000000","WhatsApp ASUACAP","Notificaciones","texto","comunicaciones",2),
         ("email_smtp_host","smtp.gmail.com","Servidor SMTP","Notificaciones","texto","comunicaciones",3),
         ("email_smtp_port","587","Puerto SMTP","Notificaciones","texto","comunicaciones",4),
         ("email_usuario","","Correo remitente","Notificaciones","texto","comunicaciones",5),

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Mapa GIS — ASUACAP{% endblock %}
+{% block title %}Mapa GIS — SIGCA{% endblock %}
 
 {% block extra_css %}
 {# Leaflet: usa copia local si existe, sino CDN #}
 <link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}"
       onerror="this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'">
 <style>
-  #mapa_asuacap { width: 100%; height: calc(100vh - 200px); min-height: 480px; border-radius: 10px; }
+  #mapa-gis { width: 100%; height: calc(100vh - 200px); min-height: 480px; border-radius: 10px; }
 
   /* Panel lateral */
   .map-panel {
@@ -69,13 +69,13 @@
 {% block content %}
 <div class="modulo-header modulo-mapas">
     <i class="bi bi-geo-alt-fill"></i>
-    <span>Mapa de Operaciones GIS — ASUACAP</span>
+    <span>Mapa de Operaciones GIS — SIGCA</span>
     <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="mb-0">
     <i class="bi bi-map me-2 text-primary"></i>
-    Sistema de Información Geográfica — ASUACAP
+    Sistema de Información Geográfica — SIGCA
   </h5>
   <div class="d-flex gap-2">
     <button class="btn btn-sm btn-outline-primary" id="btn-mi-ubicacion">
@@ -94,7 +94,7 @@
   <!-- Mapa principal -->
   <div class="col-lg-9">
     <div style="position:relative;">
-      <div id="mapa_asuacap"></div>
+      <div id="mapa-gis"></div>
       <div class="geo-alert" id="geo-alert">📍 Obteniendo ubicación del dispositivo…</div>
     </div>
   </div>
@@ -214,7 +214,7 @@ function esperarLeaflet(cb, n) {
   n = n || 0;
   if (typeof L !== 'undefined') { cb(); }
   else if (n < 50) { setTimeout(function(){ esperarLeaflet(cb, n+1); }, 100); }
-  else { document.getElementById('mapa_asuacap').innerHTML =
+  else { document.getElementById('mapa-gis').innerHTML =
     '<div class="alert alert-warning m-3">⚠️ Leaflet no pudo cargarse. Verifique conexión a internet o copie Leaflet en /static/leaflet/</div>'; }
 }
 
@@ -229,7 +229,7 @@ var datosSubs    = [];
 var configMapa   = { lat: 5.0135, lon: -74.4700, zoom: 15,
                      nombre: "ASUACAP", direccion: "", telefono: "" };
 
-var map = L.map('mapa_asuacap', { zoomControl: true });
+var map = L.map('mapa-gis', { zoomControl: true });
 
 var tileOSM = L.tileLayer(
   'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -263,7 +263,7 @@ var overlayMaps = {
   "🏭 Infraestructura": capaInfra,
   "👥 Suscriptores":    capaSuscriptores,
   "⚠️ Fallas":          capaFallas,
-  "🏢 Oficina ASUACAP": capaOficina,
+  "🏢 Oficina": capaOficina,
   "📍 Mi ubicación":    capaGeo
 };
 
