@@ -172,7 +172,7 @@ def api_crear_usuario():
             os.makedirs(FOTO_DIR, exist_ok=True)
             fn = secure_filename(f"usr_{usuario}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}")
             foto.save(os.path.join(FOTO_DIR, fn))
-            foto_path = f"/static/uploads/usuarios/{fn}"
+            foto_path = f"/auditoria/foto/{fn}"
 
     conn = get_db()
     try:
@@ -215,7 +215,7 @@ def api_editar_usuario(uid):
                 os.makedirs(FOTO_DIR, exist_ok=True)
                 fn = secure_filename(f"usr_{uid}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}")
                 foto.save(os.path.join(FOTO_DIR, fn))
-                foto_path = f"/static/uploads/usuarios/{fn}"
+                foto_path = f"/auditoria/foto/{fn}"
 
         updates = ["nombre_completo=?","correo=?","telefono=?","activo=?","rol=?"]
         params  = [nombre, correo, telefono, int(activo), rol]
@@ -246,6 +246,21 @@ def api_desbloquear(uid):
     conn.commit(); conn.close()
     log_action(accion="UNBLOCK_USER", modulo="usuarios", descripcion=f"Usuario {uid} desbloqueado")
     return jsonify({"ok": True})
+
+
+@aud_bp.route("/api/usuarios/<int:uid>", methods=["DELETE"])
+@login_requerido
+@rol_requerido("admin")
+def api_eliminar_usuario(uid):
+@aud_bp.route("/foto/<path:filename>")
+@login_requerido
+def servir_foto_usuario(filename):
+    """Sirve fotos de perfil solo a usuarios autenticados."""
+    from flask import send_from_directory, abort
+    import re
+    if not re.fullmatch(r"[\w\-\.]+\.(png|jpg|jpeg|webp|gif)", filename, re.IGNORECASE):
+        abort(404)
+    return send_from_directory(os.path.abspath(FOTO_DIR), filename)
 
 
 @aud_bp.route("/api/usuarios/<int:uid>", methods=["DELETE"])

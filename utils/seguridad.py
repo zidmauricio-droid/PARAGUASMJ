@@ -7,7 +7,14 @@ from flask import session, redirect, url_for, flash, request, jsonify, abort, g
 
 logger = logging.getLogger("sigca.seguridad")
 
-SESSION_TIMEOUT    = 30 * 60   # 30 minutos
+def _get_session_timeout() -> int:
+    try:
+        from config import Config
+        return int(Config.SESSION_TIMEOUT)
+    except Exception:
+        return 28800
+
+SESSION_TIMEOUT = _get_session_timeout()
 MAX_INTENTOS       = 5
 BLOQUEO_SEGUNDOS   = 15 * 60   # 15 minutos
 

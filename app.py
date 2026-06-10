@@ -101,7 +101,7 @@ def configuracion():
     conn = get_db()
     if request.method == "POST":
         # Verificación CSRF — protege cambios de configuración críticos
-        if not verificar_token_csrf(request.form.get("csrf_token", "")):
+        if not verificar_token_csrf():
             flash("Token de seguridad inválido. Recargue la página.", "danger")
             return redirect(url_for("configuracion"))
         categoria = request.form.get("categoria")
@@ -175,7 +175,7 @@ def crear_backup_manual():
     from utils.seguridad import verificar_token_csrf
     if "usuario_id" not in session:
         return redirect(url_for("autenticacion.login"))
-    if not verificar_token_csrf(request.form.get("csrf_token", "")):
+    if not verificar_token_csrf():
         flash("Token de seguridad inválido.", "danger")
         return redirect(url_for("dashboard.index"))
     from core.backup_manager import crear_backup

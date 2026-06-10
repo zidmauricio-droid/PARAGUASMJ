@@ -399,7 +399,18 @@ def api_actualizar_tarea(tid):
 @proy2_bp.route("/api/tareas/<int:tid>", methods=["DELETE"])
 @login_requerido
 def api_eliminar_tarea(tid):
+    from flask import session
     conn = get_db()
+    tarea = conn.execute("SELECT fk_proyecto_id FROM tareas_proyecto WHERE id=?", (tid,)).fetchone()
+    if not tarea:
+        conn.close()
+        return jsonify({"error": "Tarea no encontrada"}), 404
+    proyecto = conn.execute(
+        "SELECT creado_por FROM proyectos WHERE pk_proyecto_id=?", (tarea["fk_proyecto_id"],)
+    ).fetchone()
+    if session.get("rol") != "admin" and (not proyecto or proyecto["creado_por"] != session.get("nombre_usuario")):
+        conn.close()
+        return jsonify({"error": "Sin permiso para eliminar esta tarea"}), 403
     conn.execute("DELETE FROM tareas_proyecto WHERE id=?", (tid,))
     conn.commit(); conn.close()
     return jsonify({"ok": True})

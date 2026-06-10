@@ -95,7 +95,7 @@ def limpiar_borradores_antiguos(dias: int = 30) -> int:
     """Elimina documentos en estado Borrador con más de `dias` días de antigüedad."""
     with db_connection() as conn:
         cur = conn.execute("""
-            DELETE FROM documentos
+            DELETE FROM registro_central
             WHERE estado = 'Borrador'
             AND julianday('now') - julianday(fecha_creacion) > ?
         """, (dias,))

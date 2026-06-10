@@ -10,7 +10,7 @@ from flask import session, request, jsonify, current_app
 
 # ── CSRF ─────────────────────────────────────────────────────────────────────
 
-_CSRF_KEY = "_csrf_token"
+_CSRF_KEY = "csrf_token"   # unificado con utils/seguridad.py
 
 
 def generate_csrf_token() -> str:

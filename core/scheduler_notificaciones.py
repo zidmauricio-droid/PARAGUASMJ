@@ -90,19 +90,35 @@ def verificar_plazos_documentos():
 
 
 def verificar_pqrs_vencidas():
-    """Alerta sobre PQRS proximas a vencer o ya vencidas."""
+    """Alerta sobre PQRS proximas a vencer o ya vencidas — envía WhatsApp si hay API key."""
     conn = get_db()
     try:
+        api_key = conn.execute(
+            "SELECT valor FROM configuracion WHERE clave='whatsapp_api_key'"
+        ).fetchone()
+        api_key = api_key["valor"] if api_key else ""
+
         vencidas = conn.execute("""
-            SELECT p.pk_pqr_id, r.codigo_completo, p.fecha_limite, c.razon_social
+            SELECT p.pk_pqr_id, r.codigo_completo, p.fecha_limite, c.razon_social,
+                   c.whatsapp
             FROM pqrs p
             JOIN registro_central r ON p.fk_registro_id=r.pk_registro_id
             JOIN contactos c ON p.fk_suscriptor_id=c.pk_contacto_id
             WHERE p.fecha_limite<=date('now','+2 days')
               AND p.estado_pqr NOT IN ('Respondida','Cerrada')
         """).fetchall()
+
         for pqr in vencidas:
-            logger.warning(f"PQRS proxima a vencer: {pqr['codigo_completo']} - {pqr['fecha_limite']}")
+            logger.warning(
+                f"PQRS proxima a vencer: {pqr['codigo_completo']} — {pqr['fecha_limite']}"
+            )
+            if api_key and pqr["whatsapp"]:
+                msg = (f"⚠️ PQRS {pqr['codigo_completo']} vence el {pqr['fecha_limite']}. "
+                       f"Suscriptor: {pqr['razon_social']}. Por favor gestione a la brevedad.")
+                try:
+                    enviar_whatsapp(pqr["whatsapp"], msg, api_key)
+                except Exception as we:
+                    logger.error(f"Error enviando alerta PQRS {pqr['codigo_completo']}: {we}")
     except Exception as e:
         logger.error(f"Error verificando PQRS: {e}")
     finally:
