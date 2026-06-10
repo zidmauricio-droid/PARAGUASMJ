@@ -84,6 +84,10 @@
     <button class="btn btn-sm btn-outline-danger" id="btn-modo-falla" title="Activar para reportar falla con clic">
       <i class="bi bi-exclamation-triangle me-1"></i>Reportar falla
     </button>
+    <button class="btn btn-sm btn-success" id="btn-nuevo-punto" title="Añadir punto de infraestructura"
+            onclick="abrirModalNuevoPunto()">
+      <i class="bi bi-plus-circle me-1"></i>Nueva Infraestructura
+    </button>
     <a href="{{ url_for('gis.mapa') }}" class="btn btn-sm btn-ghost" title="Recargar mapa">
       <i class="bi bi-arrow-clockwise"></i>
     </a>
@@ -227,7 +231,7 @@ var circleGeo    = null;
 var marcadorOfic = null;
 var datosSubs    = [];
 var configMapa   = { lat: 5.0135, lon: -74.4700, zoom: 15,
-                     nombre: "ASUACAP", direccion: "", telefono: "" };
+                     nombre: "Acueducto", direccion: "", telefono: "" };
 
 var map = L.map('mapa-gis', { zoomControl: true });
 
@@ -279,7 +283,7 @@ leyenda.onAdd = function() {
     <div class="legend-row"><div class="legend-dot" style="background:#10b981;"></div>Suscriptor activo</div>
     <div class="legend-row"><div class="legend-dot" style="background:#f59e0b;"></div>Suscriptor suspendido</div>
     <div class="legend-row"><div class="legend-dot" style="background:#c084fc;"></div>Daño reportado</div>
-    <div class="legend-row"><div class="legend-dot" style="background:#1E3A8A;border:2px solid #0ea5e9;"></div>Oficina ASUACAP</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#1E3A8A;border:2px solid #0ea5e9;"></div>Oficina</div>
     <div class="legend-row"><div class="legend-dot" style="background:#f59e0b;border:2px solid #92400e;"></div>Tu ubicación (pérdida)</div>
   `;
   return d;
@@ -350,31 +354,102 @@ fetch('/gis/api/config')
   cargarZonas();
 });
 
-fetch('/gis/api/infraestructura')
-.then(r => r.json())
-.then(function(data) {
-  document.getElementById('cnt-infra').textContent = data.features.length;
-  L.geoJSON(data, {
-    pointToLayer: function(f, ll) {
-      var color = f.properties.estado === 'Falla Critica' ? '#ef4444' : '#3b82f6';
-      return L.circleMarker(ll, {
-        radius: 10, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.88
-      });
-    },
-    onEachFeature: function(f, layer) {
+// ── Iconos diferenciados por tipo de infraestructura ──────────────
+var tipoIconos = {
+  'Bocatoma':    { emoji:'💧', color:'#0ea5e9' },
+  'Desarenador': { emoji:'🪨', color:'#78716c' },
+  'PTAP':        { emoji:'🏭', color:'#8b5cf6' },
+  'Tanque':      { emoji:'🛢️', color:'#f59e0b' },
+  'Valvula':     { emoji:'🔧', color:'#10b981' },
+  'Oficina':     { emoji:'🏢', color:'#1E3A8A' },
+  'otro':        { emoji:'📍', color:'#64748b' }
+};
+
+function iconoInfra(tipo, enFalla) {
+  var conf = tipoIconos[tipo] || tipoIconos['otro'];
+  var color = enFalla ? '#ef4444' : conf.color;
+  return L.divIcon({
+    html: `<div style="width:34px;height:34px;border-radius:50%;background:${color};
+                border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);
+                display:flex;align-items:center;justify-content:center;
+                font-size:15px;cursor:grab;" title="${tipo}">${conf.emoji}</div>`,
+    className: '', iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-20]
+  });
+}
+
+var _infraMarkers = {};
+
+function cargarInfraestructura() {
+  capaInfra.clearLayers();
+  _infraMarkers = {};
+  fetch('/gis/api/infraestructura')
+  .then(r => r.json())
+  .then(function(data) {
+    document.getElementById('cnt-infra').textContent = data.features.length;
+    data.features.forEach(function(f) {
       var p = f.properties;
-      var badgeColor = p.estado === 'Falla Critica' ? 'background:#fee2e2;color:#991b1b' : 'background:#dbeafe;color:#1e40af';
-      layer.bindPopup(`
+      var ll = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
+      var enFalla = p.estado === 'Falla Critica';
+      var mkr = L.marker(ll, {
+        draggable: true,
+        icon: iconoInfra(p.tipo || 'otro', enFalla),
+        title: p.nombre
+      });
+
+      mkr._infraId   = p.id;
+      mkr._infraData = Object.assign({}, p, {coordenada_lat: ll[0], coordenada_lon: ll[1]});
+
+      var badgeColor = enFalla ? 'background:#fee2e2;color:#991b1b' : 'background:#dbeafe;color:#1e40af';
+      mkr.bindPopup(`
         <div class="popup-title">${p.nombre}</div>
         <div class="popup-row"><span class="popup-label">Tipo:</span><span class="popup-val">${p.tipo}</span></div>
         <div class="popup-row"><span class="popup-label">Estado:</span>
           <span class="popup-badge" style="${badgeColor}">${p.estado}</span></div>
         ${p.observaciones ? '<div class="popup-row"><span class="popup-label">Nota:</span><span class="popup-val">' + p.observaciones + '</span></div>' : ''}
+        <div style="margin-top:8px;display:flex;gap:6px;">
+          <button class="btn btn-sm btn-primary" style="font-size:11px;padding:3px 8px;"
+                  onclick="abrirModalEditarPunto(${p.id})">
+            <i class="bi bi-pencil me-1"></i>Editar
+          </button>
+          <button class="btn btn-sm btn-outline-danger" style="font-size:11px;padding:3px 8px;"
+                  onclick="eliminarPunto(${p.id})">
+            <i class="bi bi-trash me-1"></i>Eliminar
+          </button>
+        </div>
       `);
-      layer.on('click', function() { mostrarPanelInfo('🏭 ' + p.nombre, p); });
-    }
-  }).addTo(capaInfra);
-}).catch(function(e){ console.warn('Infra:', e); });
+
+      mkr.on('click', function() { mostrarPanelInfo('🏭 ' + p.nombre, p); });
+
+      mkr.on('dragend', function(e) {
+        var pos = e.target.getLatLng();
+        fetch('/gis/api/infraestructura/' + mkr._infraId, {
+          method: 'PUT',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            nombre: mkr._infraData.nombre,
+            tipo: mkr._infraData.tipo,
+            estado: mkr._infraData.estado,
+            lat: pos.lat, lon: pos.lng,
+            observaciones: mkr._infraData.observaciones || ''
+          })
+        }).then(r=>r.json()).then(function(d) {
+          if (d.ok) {
+            mkr._infraData.coordenada_lat = pos.lat;
+            mkr._infraData.coordenada_lon = pos.lng;
+            mostrarToast('Posición guardada ✔', 'success');
+          } else {
+            mostrarToast('Error al guardar: ' + d.error, 'danger');
+          }
+        }).catch(function(){ mostrarToast('Error de conexión', 'danger'); });
+      });
+
+      mkr.addTo(capaInfra);
+      _infraMarkers[p.id] = mkr;
+    });
+  }).catch(function(e){ console.warn('Infra:', e); });
+}
+
+cargarInfraestructura();
 
 fetch('/gis/api/suscriptores')
 .then(r => r.json())
@@ -621,5 +696,153 @@ function mostrarPanelInfo(titulo, datos) {
 }
 
 }); // fin esperarLeaflet
+
+// ── Modal editar punto ──────────────────────────────────────────────
+function abrirModalEditarPunto(id) {
+  var mkr = _infraMarkers[id];
+  if (!mkr) return;
+  var p = mkr._infraData;
+  document.getElementById('ep-id').value = id;
+  document.getElementById('ep-nombre').value = p.nombre || '';
+  document.getElementById('ep-tipo').value   = p.tipo   || 'otro';
+  document.getElementById('ep-estado').value = p.estado || 'Operativo';
+  document.getElementById('ep-lat').value    = p.coordenada_lat != null ? p.coordenada_lat : (mkr.getLatLng ? mkr.getLatLng().lat : '');
+  document.getElementById('ep-lon').value    = p.coordenada_lon != null ? p.coordenada_lon : (mkr.getLatLng ? mkr.getLatLng().lng : '');
+  document.getElementById('ep-obs').value    = p.observaciones || '';
+  var modal = new bootstrap.Modal(document.getElementById('modalEditarPunto'));
+  modal.show();
+}
+
+function abrirModalNuevoPunto() {
+  document.getElementById('ep-id').value = '';
+  document.getElementById('ep-nombre').value = '';
+  document.getElementById('ep-tipo').value   = 'otro';
+  document.getElementById('ep-estado').value = 'Operativo';
+  var centro = typeof map !== 'undefined' ? map.getCenter() : {lat:5.0135,lng:-74.4700};
+  document.getElementById('ep-lat').value = centro.lat.toFixed(6);
+  document.getElementById('ep-lon').value = centro.lng.toFixed(6);
+  document.getElementById('ep-obs').value = '';
+  var modal = new bootstrap.Modal(document.getElementById('modalEditarPunto'));
+  modal.show();
+}
+
+async function guardarPunto() {
+  var id   = document.getElementById('ep-id').value;
+  var data = {
+    nombre: document.getElementById('ep-nombre').value.trim(),
+    tipo:   document.getElementById('ep-tipo').value,
+    estado: document.getElementById('ep-estado').value,
+    lat:    parseFloat(document.getElementById('ep-lat').value),
+    lon:    parseFloat(document.getElementById('ep-lon').value),
+    observaciones: document.getElementById('ep-obs').value.trim()
+  };
+  if (!data.nombre || isNaN(data.lat) || isNaN(data.lon)) {
+    alert('Nombre y coordenadas son obligatorios'); return;
+  }
+  var url    = id ? '/gis/api/infraestructura/' + id : '/gis/api/infraestructura';
+  var method = id ? 'PUT' : 'POST';
+  try {
+    var r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}).then(r=>r.json());
+    if (r.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('modalEditarPunto')).hide();
+      cargarInfraestructura();
+      mostrarToast(id ? 'Punto actualizado ✔' : 'Punto creado ✔', 'success');
+    } else {
+      alert('Error: ' + (r.error||'Desconocido'));
+    }
+  } catch(e) { alert('Error de conexión'); }
+}
+
+async function eliminarPunto(id) {
+  if (!confirm('¿Eliminar este punto de infraestructura?')) return;
+  var r = await fetch('/gis/api/infraestructura/' + id, {method:'DELETE'}).then(r=>r.json());
+  if (r.ok) { cargarInfraestructura(); mostrarToast('Punto eliminado', 'warning'); }
+  else alert('Error: ' + (r.error||'Desconocido'));
+}
+
+function mostrarToast(msg, tipo) {
+  var t = document.getElementById('toast-gis');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast-gis';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;min-width:220px;';
+    document.body.appendChild(t);
+  }
+  t.innerHTML = `<div class="alert alert-${tipo} shadow" style="margin:0;font-size:13px;">${msg}</div>`;
+  t.style.display = '';
+  setTimeout(function(){ t.style.display='none'; }, 3000);
+}
 </script>
+
+<!-- ═══ MODAL EDITAR/CREAR PUNTO DE INFRAESTRUCTURA ═════════════════ -->
+<div class="modal fade" id="modalEditarPunto" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-geo-alt-fill me-2"></i>Punto de Infraestructura
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ep-id">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nombre del punto <span class="text-danger">*</span></label>
+            <input type="text" id="ep-nombre" class="form-control"
+                   placeholder="Ej: Bocatoma Principal, PTAP El Puente...">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Tipo de infraestructura</label>
+            <select id="ep-tipo" class="form-select">
+              <option value="Bocatoma">💧 Bocatoma</option>
+              <option value="Desarenador">🪨 Desarenador</option>
+              <option value="PTAP">🏭 PTAP</option>
+              <option value="Tanque">🛢️ Tanque</option>
+              <option value="Valvula">🔧 Válvula</option>
+              <option value="Oficina">🏢 Oficina</option>
+              <option value="otro">📍 Otro</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Estado</label>
+            <select id="ep-estado" class="form-select">
+              <option value="Operativo">✅ Operativo</option>
+              <option value="Mantenimiento">🔧 En mantenimiento</option>
+              <option value="Falla Critica">🔴 Falla Crítica</option>
+              <option value="Fuera de servicio">⛔ Fuera de servicio</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Latitud (Y) <span class="text-danger">*</span></label>
+            <input type="number" id="ep-lat" class="form-control" step="0.000001"
+                   placeholder="Ej: 5.013500">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Longitud (X) <span class="text-danger">*</span></label>
+            <input type="number" id="ep-lon" class="form-control" step="0.000001"
+                   placeholder="Ej: -74.470000">
+          </div>
+          <div class="col-12">
+            <div class="alert alert-info py-2 px-3 mb-0" style="font-size:12px;">
+              <i class="bi bi-info-circle me-1"></i>
+              También puede <strong>arrastrar el marcador</strong> directamente en el mapa para cambiar su posición. Las coordenadas se guardan automáticamente al soltar.
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Descripción / Observaciones</label>
+            <textarea id="ep-obs" class="form-control" rows="2"
+                      placeholder="Capacidad, materiales, año de construcción..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary fw-bold" onclick="guardarPunto()">
+          <i class="bi bi-floppy me-1"></i>Guardar Punto
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

@@ -226,6 +226,86 @@ def nueva_falla():
         conn.close()
 
 
+TIPOS_INFRA = ('Bocatoma','Desarenador','PTAP','Tanque','Tramo','Valvula','Oficina','otro')
+
+@gis_bp.route("/api/infraestructura", methods=["POST"])
+@login_requerido
+def api_infraestructura_crear():
+    data = request.get_json() or {}
+    tipo = data.get("tipo", "otro")
+    if tipo not in TIPOS_INFRA:
+        tipo = "otro"
+    conn = get_db()
+    try:
+        # Ampliar CHECK si es necesario via try/except
+        try:
+            cur = conn.execute("""
+                INSERT INTO gis_infraestructura
+                (nombre, tipo, coordenada_lat, coordenada_lon, estado_operativo, observaciones)
+                VALUES (?,?,?,?,?,?)
+            """, (
+                data.get("nombre", "Nuevo punto"), tipo,
+                data.get("lat"), data.get("lon"),
+                data.get("estado", "Operativo"), data.get("observaciones", "")
+            ))
+        except Exception:
+            cur = conn.execute("""
+                INSERT INTO gis_infraestructura
+                (nombre, coordenada_lat, coordenada_lon, estado_operativo, observaciones)
+                VALUES (?,?,?,?,?)
+            """, (
+                data.get("nombre", "Nuevo punto"),
+                data.get("lat"), data.get("lon"),
+                data.get("estado", "Operativo"), data.get("observaciones", "")
+            ))
+        conn.commit()
+        return jsonify({"ok": True, "id": cur.lastrowid}), 201
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@gis_bp.route("/api/infraestructura/<int:iid>", methods=["PUT"])
+@login_requerido
+def api_infraestructura_actualizar(iid):
+    data = request.get_json() or {}
+    conn = get_db()
+    try:
+        conn.execute("""
+            UPDATE gis_infraestructura
+            SET nombre=?, coordenada_lat=?, coordenada_lon=?,
+                estado_operativo=?, observaciones=?
+            WHERE pk_infra_id=?
+        """, (
+            data.get("nombre"), data.get("lat"), data.get("lon"),
+            data.get("estado", "Operativo"), data.get("observaciones", ""), iid
+        ))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@gis_bp.route("/api/infraestructura/<int:iid>", methods=["DELETE"])
+@login_requerido
+def api_infraestructura_eliminar(iid):
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM gis_infraestructura WHERE pk_infra_id=?", (iid,))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
 @gis_bp.route("/api/zonas")
 @login_requerido
 def api_zonas():

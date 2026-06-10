@@ -151,12 +151,14 @@ def api_listar():
         has_ingresos  = "ingresos_totales"  in cols
         has_tipo      = "tipo_proyecto"     in cols
         has_objetivo  = "objetivo"          in cols
-        has_pct       = "porcentaje_completado" in cols or "porcentaje_avance" in cols
         pct_col = ("porcentaje_completado" if "porcentaje_completado" in cols
-                   else "porcentaje_avance" if "porcentaje_avance" in cols else "0")
+                   else "porcentaje_avance" if "porcentaje_avance" in cols else None)
+        pct_sql = f"COALESCE(p.{pct_col}, 0)" if pct_col else "0"
         # Detectar columnas de fecha
-        fi_col = "fecha_inicio" if "fecha_inicio" in cols else "fecha_inicio_plan"
-        ff_col = "fecha_limite" if "fecha_limite" in cols else "fecha_fin_plan"
+        fi_col = "fecha_inicio" if "fecha_inicio" in cols else ("fecha_inicio_plan" if "fecha_inicio_plan" in cols else None)
+        ff_col = "fecha_limite" if "fecha_limite" in cols else ("fecha_fin_plan" if "fecha_fin_plan" in cols else None)
+        fi_sql = f"p.{fi_col}" if fi_col else "NULL"
+        ff_sql = f"p.{ff_col}" if ff_col else "NULL"
         # Detectar si tareas_proyecto existe
         tablas = {r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
@@ -170,9 +172,9 @@ def api_listar():
                    COALESCE(p.presupuesto, 0) as presupuesto_total,
                    COALESCE(p.valor_ejecutado, 0) as costo_real,
                    COALESCE({'p.ingresos_totales' if has_ingresos else '0'}, 0) as ingresos_totales,
-                   COALESCE(p.{pct_col}, 0) as porcentaje_avance,
-                   p.{fi_col} as fecha_inicio_plan,
-                   p.{ff_col} as fecha_fin_plan,
+                   {pct_sql} as porcentaje_avance,
+                   {fi_sql} as fecha_inicio_plan,
+                   {ff_sql} as fecha_fin_plan,
                    p.responsable_id,
                    {'p.objetivo' if has_objetivo else "''"} as objetivo,
                    (SELECT nombre_completo FROM usuarios

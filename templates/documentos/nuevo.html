@@ -51,6 +51,49 @@
   font-size: 11pt;
   line-height: 1.7;
   color: #1e293b;
+  background: #fffffe;
+  cursor: text;
+}
+.ProseMirror:focus {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px #1E3A8A22;
+}
+/* Placeholder cuando el editor está vacío */
+.ProseMirror.is-editor-empty::before,
+.ProseMirror p.is-empty:first-child::before {
+  content: "✍️  Haga clic aquí y comience a redactar el contenido del documento...";
+  color: #94a3b8;
+  pointer-events: none;
+  position: absolute;
+  font-style: italic;
+  font-size: 10.5pt;
+}
+/* Área del editor con borde visible y fondo diferenciado */
+#editor-tiptap {
+  border: 2px dashed #cbd5e1;
+  border-radius: 0 0 10px 10px;
+  background: #f8faff;
+  min-height: 460px;
+  position: relative;
+  transition: border-color .2s, background .2s;
+}
+#editor-tiptap:focus-within {
+  border: 2px solid #1E3A8A;
+  background: #fff;
+}
+/* Fallback textarea visible */
+#ta-fallback {
+  width: 100%;
+  min-height: 460px;
+  padding: 20px 24px;
+  border: 2px solid #1E3A8A;
+  border-radius: 0 0 10px 10px;
+  font-family: 'Calibri', Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.7;
+  resize: vertical;
+  background: #fff;
+  color: #1e293b;
 }
 .ProseMirror p { margin: 0 0 6px 0; }
 .ProseMirror h1 { font-size: 16pt; color: #1E3A8A; margin: 18px 0 8px; }
@@ -511,13 +554,17 @@
 
         </div>
 
-        <!-- Área de edición TipTap -->
-        
+        <!-- ══ ZONA DE EDICIÓN ═══════════════════════════════════════════ -->
+      <div style="background:#e8f0fe;border-left:4px solid #1E3A8A;padding:8px 14px;font-size:12px;color:#1E3A8A;font-weight:600;display:flex;align-items:center;gap:8px;">
+        <i class="bi bi-pencil-fill"></i>
+        ÁREA DE REDACCIÓN — Haga clic dentro del recuadro azul para escribir
+        <span style="margin-left:auto;font-weight:400;color:#475569;font-size:11px;">Los botones de la barra aplican formato al texto seleccionado</span>
+      </div>
       <!-- ═══ MEMBRETE INSTITUCIONAL DINÁMICO (igual al documento real) ═══ -->
-      <div id="membrete-editor-preview" style="margin-bottom:8px;">
+      <div id="membrete-editor-preview" style="margin-bottom:0;padding:8px 16px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;">
         <!-- Se llena con JS al cargar la página -->
       </div>
-<div id="editor-tiptap"></div>
+<div id="editor-tiptap" tabindex="0"></div>
         <input type="hidden" name="contenido_html" id="contenido-hidden">
 
         <!-- Upload imagen oculto -->
