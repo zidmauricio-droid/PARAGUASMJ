@@ -5,7 +5,7 @@ import os, hashlib, time, logging
 from functools import wraps
 from flask import session, redirect, url_for, flash, request, jsonify, abort, g
 
-logger = logging.getLogger("asuacap.seguridad")
+logger = logging.getLogger("sigca.seguridad")
 
 SESSION_TIMEOUT    = 30 * 60   # 30 minutos
 MAX_INTENTOS       = 5

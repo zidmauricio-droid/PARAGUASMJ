@@ -45,7 +45,7 @@ def descargar_fc15():
         wb  = _mgr.generar_fc15_ius(anio)
         buf = BytesIO(); wb.save(buf); buf.seek(0)
         return send_file(buf, as_attachment=True,
-                         download_name=f"FC15_IUS_ASUACAP_{anio}.xlsx",
+                         download_name=f"FC15_IUS_SIGCA_{anio}.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
         flash(f"Error generando FC15: {e}", "danger")
@@ -61,7 +61,7 @@ def descargar_hoja_ius():
         wb  = _mgr.generar_hoja_ius_excel(anio)
         buf = BytesIO(); wb.save(buf); buf.seek(0)
         return send_file(buf, as_attachment=True,
-                         download_name=f"INFORMACION_IUS_ASUACAP_{anio}.xlsx",
+                         download_name=f"INFORMACION_IUS_SIGCA_{anio}.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
         flash(f"Error: {e}", "danger")
@@ -97,7 +97,7 @@ def descargar_trimestral():
         wb  = mgr.generar_reporte_trimestral(anio, trim)
         buf = BytesIO(); wb.save(buf); buf.seek(0)
         return send_file(buf, as_attachment=True,
-                         download_name=f"ASUACAP_Reporte_T{trim}_{anio}.xlsx",
+                         download_name=f"SIGCA_Reporte_T{trim}_{anio}.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
         flash(f"Error: {e}", "danger")

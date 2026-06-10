@@ -128,7 +128,7 @@ class CapabilityRegistry:
         new_idx     = _PROFILE_HIERARCHY.index(profile)
         if new_idx > current_idx and profile == "advanced":
             import logging
-            logging.getLogger("asuacap.capability").warning(
+            logging.getLogger("sigca.capability").warning(
                 "Upgrade a 'advanced' bloqueado — requiere env PARAGUASMJ_ADVANCED=1"
             )
             if not os.environ.get("PARAGUASMJ_ADVANCED"):
@@ -157,7 +157,7 @@ class CapabilityRegistry:
             return False
         if not approval_token or len(approval_token) < 16:
             import logging
-            logging.getLogger("asuacap.capability").error(
+            logging.getLogger("sigca.capability").error(
                 f"RC6 extension '{name}' requiere token de aprobacion institucional"
             )
             return False

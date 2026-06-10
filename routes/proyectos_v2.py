@@ -29,7 +29,7 @@ from io import BytesIO
 
 proy2_bp = Blueprint("proyectos2", __name__, url_prefix="/proyectos2")
 
-logger = logging.getLogger("asuacap.proyectos2")
+logger = logging.getLogger("sigca.proyectos2")
 
 
 def with_retry(max_retries: int = 3, base_delay: float = 0.25):

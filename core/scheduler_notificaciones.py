@@ -8,7 +8,7 @@ from core.database_manager import get_db
 from core.otp_manager import OTPManager, enviar_whatsapp
 from core.backup_manager import crear_backup
 
-logger = logging.getLogger("asuacap.scheduler")
+logger = logging.getLogger("sigca.scheduler")
 
 
 def verificar_plazos_documentos():
@@ -73,7 +73,7 @@ def verificar_plazos_documentos():
             """, (doc["fk_registro_id"],)).fetchall()
             for resp in responsables:
                 if resp["whatsapp"] and api_key:
-                    msg = (f"RECORDATORIO ASUACAP: Documento {doc['codigo_completo']} "
+                    msg = (f"RECORDATORIO SIGCA: Documento {doc['codigo_completo']} "
                            f"pendiente de su autorizacion.")
                     enviar_whatsapp(resp["whatsapp"], msg, api_key)
             conn.execute("""

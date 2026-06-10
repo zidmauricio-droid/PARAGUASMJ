@@ -85,7 +85,7 @@ def membrete_html(db_path: str, codigo: str = "", titulo: str = "",
                   version: str = "01", clasificacion: str = "Uso Interno",
                   aprobado_por: str = "", fecha: str = "") -> str:
     """
-    Genera el membrete HTML exacto al del documento ASUACAP compartido:
+    Genera el membrete HTML exacto al del documento institucional compartido:
     ╔══════════════════════════════════════╦═══════╗
     ║  Nombre asociación · NIT · municipio ║  LOGO ║
     ╠══════════════════════════════════════╩═══════╣

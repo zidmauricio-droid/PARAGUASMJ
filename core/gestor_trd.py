@@ -6,7 +6,7 @@ import json, os, logging
 from datetime import date, datetime, timedelta
 from core.database_manager import get_db
 
-logger = logging.getLogger("asuacap.trd")
+logger = logging.getLogger("sigca.trd")
 
 _TRD_JSON = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                           "config", "trd.json")

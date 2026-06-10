@@ -5,7 +5,7 @@ import os, shutil, time, logging
 from typing import Dict, List, Tuple, Optional, Any
 from utils.validadores import validar_nombre_carpeta, validar_longitud_ruta, verificar_espacio_disco
 
-logger = logging.getLogger("asuacap.file_manager")
+logger = logging.getLogger("sigca.file_manager")
 
 _MODULOS = {
     "PQRS":           ["Recibidos", "En_Proceso", "Respondidos", "Archivados"],

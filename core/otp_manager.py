@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 from core.database_manager import get_db, registrar_log
 
-logger = logging.getLogger("asuacap.otp")
+logger = logging.getLogger("sigca.otp")
 
 CARACTERES_OTP = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sin O,0,I,1
 

@@ -89,7 +89,7 @@ def exportar_logs():
         df.to_excel(wr, sheet_name="AuditLog", index=False)
     buf.seek(0)
     return send_file(buf, as_attachment=True,
-                     download_name=f"AuditLog_ASUACAP_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                     download_name=f"AuditLog_SIGCA_{datetime.now().strftime('%Y%m%d')}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 

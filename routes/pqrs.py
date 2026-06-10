@@ -1,7 +1,7 @@
 """
 routes/pqrs.py — PQRS + Órdenes de Trabajo + Actas + Bitácora (escaneo)
 
-Codificación ASUACAP:
+Codificación SIGCA:
   GC-PQR-AAAA-NNN → Gestión Comercial — PQRS
   GA-OT-AAAA-NNN  → Gestión Ambiental — Órdenes de Trabajo
   GA-ACT-AAAA-NNN → Gestión Ambiental — Actas de Ejecución
@@ -718,7 +718,7 @@ def exportar_sui():
     """
     Genera el Formato A de la Res. SSPD 54575/2015 listo para cargar al SUI.
     Hoja 1: Formato A — 10 columnas exactas en orden oficial
-    Hoja 2: Detalle Completo — para uso interno ASUACAP
+    Hoja 2: Detalle Completo — para uso interno SIGCA
     Hoja 3: Instrucciones — guía paso a paso para el operador
     """
     import pandas as pd
@@ -837,7 +837,7 @@ def exportar_sui():
         df_sui = pd.DataFrame(filas_sui, columns=COLS_SUI)
         df_sui.to_excel(writer, sheet_name="Formato A — SUI", index=False)
 
-        # Hoja 2: Detalle completo (uso interno ASUACAP)
+        # Hoja 2: Detalle completo (uso interno SIGCA)
         df_comp = pd.DataFrame(filas_comp) if filas_comp else pd.DataFrame(columns=[
             "Código_DANE","Tipo_ID","Número_ID","Servicio","Canal","Causal","Subcausal",
             "Estado_SUI","Fecha_Recepcion","Fecha_Respuesta",
@@ -902,7 +902,7 @@ def exportar_sui():
     output.seek(0)
     mes_str = mes or date.today().strftime("%Y-%m")
     return send_file(output, as_attachment=True,
-                     download_name=f"FormatoA_SUI_ASUACAP_{mes_str}.xlsx",
+                     download_name=f"FormatoA_SUI_SIGCA_{mes_str}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 

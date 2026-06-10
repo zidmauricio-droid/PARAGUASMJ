@@ -2,7 +2,7 @@
 import logging
 from core.database_manager import get_db
 
-logger = logging.getLogger("asuacap.indicadores")
+logger = logging.getLogger("sigca.indicadores")
 
 
 def calcular_ianc(produccion_m3: float, facturado_m3: float) -> float | None:

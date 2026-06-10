@@ -1,5 +1,5 @@
 """
-routes/emergencias.py — PEC 2026 ASUACAP
+routes/emergencias.py — PEC 2026 SIGCA
 Fórmula exacta del PEC:
   V = (imp_alcance×0.10 + imp_tiempo×0.80 + imp_costo×0.00 + imp_calidad×0.10) × probabilidad
   Alta ≥ 0.50 | Media ≥ 0.25 | Baja < 0.25
@@ -60,7 +60,7 @@ PROTOCOLO_ALERTA = {
 def calcular_valoracion_pec(prob: float, ia: float, it: float,
                              ic: float, iq: float) -> tuple:
     """
-    Valoración global según PEC 2026 ASUACAP.
+    Valoración global según PEC 2026 SIGCA.
     V = (ia×0.10 + it×0.80 + ic×0.00 + iq×0.10) × probabilidad
     """
     if prob is None: prob = 0
@@ -544,7 +544,7 @@ def api_dashboard():
 @em_bp.route("/api/riesgos/informe_excel")
 @login_requerido
 def api_informe_riesgos_excel():
-    """Excel completo del listado de riesgos — formato PEC ASUACAP."""
+    """Excel completo del listado de riesgos — formato PEC SIGCA."""
     import pandas as pd
     from openpyxl.styles import (Font, PatternFill, Alignment,
                                   Border, Side, numbers)
@@ -592,7 +592,7 @@ def api_informe_riesgos_excel():
     ws.row_dimensions[1].height = 30
 
     ws.merge_cells("A2:X2")
-    nombre = cfg.get("nombre_asociacion","ASUACAP")
+    nombre = cfg.get("nombre_asociacion","SIGCA")
     nit    = cfg.get("nit","832.001.389-2")
     ws["A2"] = f"{nombre} — NIT {nit} — Villeta, Cundinamarca | Fórmula PEC: V = (Ia×10% + It×80% + Ic×0% + Iq×10%) × P"
     ws["A2"].font = Font(name="Calibri", size=9, italic=True, color="64748B")
@@ -660,7 +660,7 @@ def api_informe_riesgos_excel():
 
     # ── Hoja 2: Parámetros de la fórmula ────────────────────────
     ws2 = wb.create_sheet("Parámetros PEC")
-    ws2["A1"] = "PARÁMETROS DE VALORACIÓN — PEC ASUACAP"
+    ws2["A1"] = "PARÁMETROS DE VALORACIÓN — PEC SIGCA"
     ws2["A1"].font = Font(name="Calibri", size=13, bold=True, color=C_AZUL)
     ws2.column_dimensions["A"].width = 35
     ws2.column_dimensions["B"].width = 20
@@ -716,7 +716,7 @@ def api_informe_riesgos_excel():
 
     wb.save(output)
     output.seek(0)
-    fname = f"ListadoRiesgos_PEC_ASUACAP_{anio}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    fname = f"ListadoRiesgos_PEC_SIGCA_{anio}_{datetime.now().strftime('%Y%m%d')}.xlsx"
     return send_file(output, as_attachment=True, download_name=fname,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
@@ -737,7 +737,7 @@ def api_pec_word():
     conn.close()
 
     cfg = {r["clave"]: r["valor"] for r in cfg_rows}
-    nombre   = cfg.get("nombre_asociacion", "ASUACAP")
+    nombre   = cfg.get("nombre_asociacion", "SIGCA")
     nit      = cfg.get("nit", "832.001.389-2")
     municipio= cfg.get("municipio", "Villeta, Cundinamarca")
     rep_legal= cfg.get("representante_legal", "José Humberto Ramírez")
@@ -948,6 +948,6 @@ def api_pec_word():
     output = BytesIO()
     doc.save(output)
     output.seek(0)
-    fname = f"PEC_ASUACAP_{anio}.docx"
+    fname = f"PEC_SIGCA_{anio}.docx"
     return send_file(output, as_attachment=True, download_name=fname,
                      mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")

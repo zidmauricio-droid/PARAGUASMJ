@@ -1,5 +1,5 @@
 """
-routes/balance_hidrico.py — Balance hídrico ASUACAP
+routes/balance_hidrico.py — Balance hídrico SIGCA
 Puntos de medición: bocatoma → entrada PTAP → salida PTAP → consumo facturado
 Indicadores: IANC, IPUF, POACg, IMA
 Gráfico de nivel de quebrada Santibáñez (igual al diagrama compartido)
@@ -248,7 +248,7 @@ def exportar():
 
     output.seek(0)
     return send_file(output, as_attachment=True,
-                     download_name=f"BalanceHidrico_ASUACAP_{anio}.xlsx",
+                     download_name=f"BalanceHidrico_SIGCA_{anio}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 

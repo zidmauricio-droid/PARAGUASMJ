@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 
-logger = logging.getLogger("asuacap.backup")
+logger = logging.getLogger("sigca.backup")
 
 
 def crear_backup() -> str:

@@ -1,5 +1,5 @@
 """
-routes/proyectos.py — Gestión de Proyectos ASUACAP
+routes/proyectos.py — Gestión de Proyectos SIGCA
 Incluye: lista paginada, nuevo, ver, tareas, evidencias, reporte Excel.
 Codificación: GA (soporte PSMV, PUEAA, SSPD)
 """
@@ -19,7 +19,7 @@ from utils.audit import log_action
 from utils.seguridad import verificar_token_csrf
 
 proy_bp = Blueprint("proyectos", __name__, url_prefix="/proyectos")
-logger  = logging.getLogger("asuacap.proyectos")
+logger  = logging.getLogger("sigca.proyectos")
 UPLOAD_EVIDENCIAS = os.path.join("uploads", "evidencias_proyectos")
 os.makedirs(UPLOAD_EVIDENCIAS, exist_ok=True)
 

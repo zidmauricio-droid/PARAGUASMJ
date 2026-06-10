@@ -6,7 +6,7 @@ import re, logging
 from datetime import datetime
 from flask import request as flask_request
 
-logger = logging.getLogger("asuacap.forensic")
+logger = logging.getLogger("sigca.forensic")
 
 
 class SaneadorForense:

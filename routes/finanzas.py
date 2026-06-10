@@ -225,7 +225,7 @@ def caja_exportar():
             df.to_excel(wr, sheet_name="Caja Menor", index=False)
         buf.seek(0)
         return send_file(buf, as_attachment=True,
-                         download_name=f"CajaMenor_ASUACAP_{fd}_{fh}.xlsx",
+                         download_name=f"CajaMenor_SIGCA_{fd}_{fh}.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except ImportError:
         buf = StringIO()
@@ -236,7 +236,7 @@ def caja_exportar():
         return send_file(
             BytesIO(buf.getvalue().encode("utf-8-sig")),
             as_attachment=True,
-            download_name=f"CajaMenor_ASUACAP_{fd}_{fh}.csv",
+            download_name=f"CajaMenor_SIGCA_{fd}_{fh}.csv",
             mimetype="text/csv"
         )
 

@@ -5,7 +5,7 @@ import hashlib, hmac, json, os, time, logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-logger = logging.getLogger("asuacap.auditoria")
+logger = logging.getLogger("sigca.auditoria")
 
 _CLAVE_HMAC = os.environ.get("AUDIT_SECRET", "PARAGUASMJ_AUDITORIA_2026_SECRET").encode()
 _LOG_DIR    = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'logs')
