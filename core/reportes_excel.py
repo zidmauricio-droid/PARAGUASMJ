@@ -117,7 +117,7 @@ class ReporteExcelManager:
 
         # PESTANA 3: PQRS
         ws3 = wb.create_sheet("3. PQRS")
-        ws3["A1"] = "ASUACAP - GESTION DE PETICIONES, QUEJAS, RECLAMOS Y SUGERENCIAS"
+        ws3["A1"] = f"{_cfg.get('nombre_asociacion','SIGCA')} - GESTION DE PETICIONES, QUEJAS, RECLAMOS Y SUGERENCIAS"
         ws3["A1"].font = self.font_t
         df_pq = pd.read_sql_query("""
             SELECT r.codigo_completo AS 'Codigo',p.tipo_pqr AS 'Tipo',
