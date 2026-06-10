@@ -209,8 +209,10 @@ def inicializar_app():
         logger.error(f"Error inicializando DB: {e}")
 
 
+# Inicializar siempre al cargar el módulo (gunicorn, waitress o __main__)
+inicializar_app()
+iniciar_scheduler()
+
 if __name__ == "__main__":
-    inicializar_app()
-    iniciar_scheduler()
     logger.info("Iniciando PARAGUASMJ en http://127.0.0.1:5000")
     app.run(host="127.0.0.1", port=5000, debug=False)

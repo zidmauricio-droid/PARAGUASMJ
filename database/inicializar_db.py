@@ -1201,6 +1201,15 @@ def inicializar_tablas_extra(conn=None):
         VALUES(?,?,?,?,?,?,?)
     """, cfgs_extra)
 
+    # Migrar probabilidad/impacto a TEXT si existen como INTEGER
+    try:
+        cols_r = {r[1]: r[2] for r in c2.execute("PRAGMA table_info(riesgos_proyecto)").fetchall()}
+        if cols_r.get("probabilidad","").upper() not in ("TEXT",""):
+            c2.execute("UPDATE riesgos_proyecto SET probabilidad=CASE CAST(probabilidad AS INTEGER) WHEN 3 THEN 'alta' WHEN 2 THEN 'media' ELSE 'baja' END WHERE probabilidad NOT IN ('alta','media','baja')")
+            c2.execute("UPDATE riesgos_proyecto SET impacto=CASE CAST(impacto AS INTEGER) WHEN 3 THEN 'alto' WHEN 2 THEN 'medio' ELSE 'bajo' END WHERE impacto NOT IN ('alto','medio','bajo')")
+    except Exception:
+        pass
+
     if not conn:
         c2.commit(); c2.close()
     else:

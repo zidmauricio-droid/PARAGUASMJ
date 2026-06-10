@@ -143,34 +143,57 @@ def api_listar():
     estado = request.args.get("estado", "")
     tipo   = request.args.get("tipo",   "")
     conn   = get_db()
-    sql = """
-        SELECT p.pk_proyecto_id as id,
-               p.codigo, p.nombre, p.descripcion, p.tipo_proyecto,
-               p.estado, p.presupuesto as presupuesto_total,
-               p.valor_ejecutado as costo_real,
-               COALESCE(p.ingresos_totales, 0) as ingresos_totales,
-               p.porcentaje_completado as porcentaje_avance,
-               p.fecha_inicio as fecha_inicio_plan,
-               p.fecha_limite as fecha_fin_plan,
-               p.responsable_id, p.objetivo,
-               (SELECT nombre_completo FROM usuarios
-                WHERE pk_usuario_id=p.responsable_id) as responsable_nombre,
-               (SELECT COUNT(*) FROM tareas_proyecto
-                WHERE proyecto_id=p.pk_proyecto_id) as total_tareas,
-               (SELECT COUNT(*) FROM tareas_proyecto
-                WHERE proyecto_id=p.pk_proyecto_id
-                  AND estado='completada') as tareas_ok
-        FROM proyectos p WHERE 1=1
-    """
-    params = []
-    if estado and estado != "todos":
-        sql += " AND p.estado=?"; params.append(estado)
-    if tipo and tipo != "todos":
-        sql += " AND p.tipo_proyecto=?"; params.append(tipo)
-    sql += " ORDER BY p.pk_proyecto_id DESC"
-    rows = conn.execute(sql, params).fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
+    try:
+        # Detectar si la tabla usa pk_proyecto_id (schema v1) o id (schema v2)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(proyectos)").fetchall()}
+        pk_col = "pk_proyecto_id" if "pk_proyecto_id" in cols else "id"
+        # Columnas opcionales agregadas por migrate
+        has_ingresos  = "ingresos_totales"  in cols
+        has_tipo      = "tipo_proyecto"     in cols
+        has_objetivo  = "objetivo"          in cols
+        has_pct       = "porcentaje_completado" in cols or "porcentaje_avance" in cols
+        pct_col = ("porcentaje_completado" if "porcentaje_completado" in cols
+                   else "porcentaje_avance" if "porcentaje_avance" in cols else "0")
+        # Detectar columnas de fecha
+        fi_col = "fecha_inicio" if "fecha_inicio" in cols else "fecha_inicio_plan"
+        ff_col = "fecha_limite" if "fecha_limite" in cols else "fecha_fin_plan"
+        # Detectar si tareas_proyecto existe
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        has_tareas = "tareas_proyecto" in tablas
+
+        sql = f"""
+            SELECT p.{pk_col} as id,
+                   p.codigo, p.nombre, p.descripcion,
+                   {'p.tipo_proyecto' if has_tipo else "'otro'"} as tipo_proyecto,
+                   p.estado,
+                   COALESCE(p.presupuesto, 0) as presupuesto_total,
+                   COALESCE(p.valor_ejecutado, 0) as costo_real,
+                   COALESCE({'p.ingresos_totales' if has_ingresos else '0'}, 0) as ingresos_totales,
+                   COALESCE(p.{pct_col}, 0) as porcentaje_avance,
+                   p.{fi_col} as fecha_inicio_plan,
+                   p.{ff_col} as fecha_fin_plan,
+                   p.responsable_id,
+                   {'p.objetivo' if has_objetivo else "''"} as objetivo,
+                   (SELECT nombre_completo FROM usuarios
+                    WHERE pk_usuario_id=p.responsable_id) as responsable_nombre,
+                   {'(SELECT COUNT(*) FROM tareas_proyecto WHERE proyecto_id=p.' + pk_col + ')' if has_tareas else '0'} as total_tareas,
+                   {'(SELECT COUNT(*) FROM tareas_proyecto WHERE proyecto_id=p.' + pk_col + " AND estado='completada')" if has_tareas else '0'} as tareas_ok
+            FROM proyectos p WHERE 1=1
+        """
+        params = []
+        if estado and estado != "todos":
+            sql += " AND p.estado=?"; params.append(estado)
+        if tipo and tipo != "todos" and has_tipo:
+            sql += " AND p.tipo_proyecto=?"; params.append(tipo)
+        sql += f" ORDER BY p.{pk_col} DESC"
+        rows = conn.execute(sql, params).fetchall()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        logger.error(f"api_listar proyectos error: {e}", exc_info=True)
+        return jsonify({"error": str(e), "items": []}), 500
+    finally:
+        conn.close()
 
 
 @proy2_bp.route("/api", methods=["POST"])
