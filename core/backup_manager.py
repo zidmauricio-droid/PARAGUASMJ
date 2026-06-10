@@ -55,20 +55,29 @@ def _limpiar_backups_antiguos():
 
 def restaurar_backup(backup_path: str) -> dict:
     """
-    Restaura la BD desde un backup verificando integridad primero.
-    Retorna dict con success, path y mensaje.
+    Restaura la BD usando sqlite3.Connection.backup() — atómica y segura en modo WAL.
+    Valida que la ruta esté dentro de BACKUP_FOLDER para prevenir path traversal.
     """
-    import shutil
-    ruta_backup = backup_path
+    import os
+    ruta_backup = os.path.abspath(backup_path)
+    backup_folder = os.path.abspath(Config.BACKUP_FOLDER)
+    # Path traversal guard
+    if not ruta_backup.startswith(backup_folder + os.sep) and ruta_backup != backup_folder:
+        return {"success": False, "error": "Ruta de backup fuera del directorio permitido"}
     if not os.path.isfile(ruta_backup):
         return {"success": False, "error": f"Archivo no encontrado: {ruta_backup}"}
     try:
-        chk = sqlite3.connect(ruta_backup)
-        resultado = chk.execute("PRAGMA integrity_check").fetchone()[0]
-        chk.close()
+        # Verificar integridad del backup
+        src = sqlite3.connect(ruta_backup)
+        resultado = src.execute("PRAGMA integrity_check").fetchone()[0]
         if resultado != "ok":
+            src.close()
             return {"success": False, "error": f"Integridad fallida: {resultado}"}
-        shutil.copy2(ruta_backup, Config.DB_PATH)
+        # Restaurar atómicamente — sqlite3.backup() es seguro con WAL
+        dst = sqlite3.connect(Config.DB_PATH)
+        src.backup(dst)
+        src.close()
+        dst.close()
         logger.info(f"BD restaurada desde: {ruta_backup}")
         return {"success": True, "path": Config.DB_PATH, "restored_from": ruta_backup}
     except Exception as e:

@@ -816,16 +816,7 @@ def exportar_sui():
             "Ya_Reportado":    "Sí" if r["reportado_sui"] else "No",
         })
 
-    # Marcar PQRS como reportadas
-    for r in rows:
-        conn.execute(
-            "UPDATE pqrs SET reportado_sui=1 "
-            "WHERE fk_registro_id=("
-            "SELECT pk_registro_id FROM registro_central WHERE codigo_completo=?)",
-            (r["codigo_completo"],))
-    conn.commit(); conn.close()
-
-    # ── Construir Excel ──────────────────────────────────────────
+    # ── Construir Excel PRIMERO — solo marcar reportadas si el archivo es exitoso ──
     output = BytesIO()
     AZUL   = "1E3A8A"; BLANC = "FFFFFF"
     azul_f = PatternFill("solid", fgColor=AZUL)
@@ -900,6 +891,14 @@ def exportar_sui():
                 ws3.cell(i,1).font = Font(bold=True, color=AZUL, size=11 if i==1 else 10)
 
     output.seek(0)
+    # Solo marcamos reportadas DESPUÉS de que el Excel se generó correctamente
+    for r in rows:
+        conn.execute(
+            "UPDATE pqrs SET reportado_sui=1 "
+            "WHERE fk_registro_id=("
+            "SELECT pk_registro_id FROM registro_central WHERE codigo_completo=?)",
+            (r["codigo_completo"],))
+    conn.commit(); conn.close()
     mes_str = mes or date.today().strftime("%Y-%m")
     return send_file(output, as_attachment=True,
                      download_name=f"FormatoA_SUI_SIGCA_{mes_str}.xlsx",

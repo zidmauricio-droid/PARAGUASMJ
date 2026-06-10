@@ -81,9 +81,19 @@ class USBUpdater:
         self._apply_zip_update(latest_zip)
 
     def _apply_zip_update(self, zip_path: Path):
-        """Extrae y aplica actualización desde ZIP."""
+        """Extrae y aplica actualización desde ZIP con protección Zip Slip."""
         try:
+            app_dir_resolved = self.app_dir.resolve()
             with zipfile.ZipFile(zip_path, 'r') as zf:
+                # Validar cada entrada antes de extraer (Zip Slip protection)
+                for member in zf.namelist():
+                    if ".." in member or member.startswith("/") or member.startswith("\\"):
+                        logger.error(f"ZIP rechazado: ruta peligrosa detectada: {member}")
+                        return
+                    dest = (app_dir_resolved / member).resolve()
+                    if not str(dest).startswith(str(app_dir_resolved)):
+                        logger.error(f"ZIP rechazado: ruta escapa al directorio: {member}")
+                        return
                 zf.extractall(self.app_dir)
             logger.info(f"ZIP aplicado: {zip_path.name}")
 

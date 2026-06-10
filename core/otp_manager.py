@@ -1,7 +1,7 @@
 """
 core/otp_manager.py — Gestion de OTP via WhatsApp (CallMeBot) para firmas digitales.
 """
-import random, string, sqlite3, logging, requests
+import secrets, string, sqlite3, logging, requests
 from datetime import datetime, timedelta
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,8 +14,8 @@ CARACTERES_OTP = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sin O,0,I,1
 
 
 def generar_codigo_otp(longitud: int = 6) -> str:
-    """Genera codigo OTP alfanumerico sin caracteres confusos."""
-    return "".join(random.choices(CARACTERES_OTP, k=longitud))
+    """Genera codigo OTP criptograficamente seguro (secrets, no random)."""
+    return "".join(secrets.choice(CARACTERES_OTP) for _ in range(longitud))
 
 
 def enviar_whatsapp(numero: str, mensaje: str, api_key: str) -> tuple[bool, str]:
@@ -135,7 +135,24 @@ class OTPManager:
                 conn.commit()
                 return {"ok": False, "error": "El codigo OTP ha expirado"}
 
-            if otp["codigo_otp"].upper() != codigo_ingresado.strip().upper():
+            # Rate limit: máx 3 intentos fallidos por OTP
+            intentos = conn.execute(
+                "SELECT intentos_fallidos FROM autorizaciones_otp WHERE pk_auth_id=?",
+                (otp["pk_auth_id"],)
+            ).fetchone()
+            intentos_fallidos = (intentos["intentos_fallidos"] if intentos and "intentos_fallidos" in intentos.keys() else 0) or 0
+            if intentos_fallidos >= 3:
+                conn.execute("UPDATE autorizaciones_otp SET estado='Expirado' WHERE pk_auth_id=?", (otp["pk_auth_id"],))
+                conn.commit()
+                return {"ok": False, "error": "Demasiados intentos fallidos. Solicite un nuevo OTP."}
+
+            # compare_digest previene timing attacks
+            if not secrets.compare_digest(otp["codigo_otp"].upper(), codigo_ingresado.strip().upper()):
+                conn.execute(
+                    "UPDATE autorizaciones_otp SET intentos_fallidos=COALESCE(intentos_fallidos,0)+1 WHERE pk_auth_id=?",
+                    (otp["pk_auth_id"],)
+                )
+                conn.commit()
                 return {"ok": False, "error": "Codigo incorrecto"}
 
             conn.execute("""

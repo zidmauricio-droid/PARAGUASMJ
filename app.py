@@ -94,15 +94,19 @@ def error_500(e):
 # ── Rutas extra ────────────────────────────────────────────────────
 @app.route("/configuracion", methods=["GET","POST"])
 def configuracion():
-    from core.seguridad import login_requerido
     from core.database_manager import get_db
+    from utils.seguridad import verificar_token_csrf
     if "usuario_id" not in session:
         return redirect(url_for("autenticacion.login"))
     conn = get_db()
     if request.method == "POST":
+        # Verificación CSRF — protege cambios de configuración críticos
+        if not verificar_token_csrf(request.form.get("csrf_token", "")):
+            flash("Token de seguridad inválido. Recargue la página.", "danger")
+            return redirect(url_for("configuracion"))
         categoria = request.form.get("categoria")
         for clave, valor in request.form.items():
-            if clave != "categoria":
+            if clave not in ("categoria", "csrf_token"):
                 old = conn.execute("SELECT valor FROM configuracion WHERE clave=?",(clave,)).fetchone()
                 if old and old["valor"] != valor:
                     conn.execute("UPDATE configuracion SET valor=?,fecha_actualizacion=datetime('now'),usuario_ultima_modificacion=? WHERE clave=?",
@@ -165,10 +169,15 @@ def gestion_usuarios():
     return render_template("gestion_usuarios.html", usuarios=usuarios)
 
 
-@app.route("/backup/crear")
+@app.route("/backup/crear", methods=["POST"])
 def crear_backup_manual():
+    """POST + CSRF — previene activación por GET externo (imágenes, iframes)."""
+    from utils.seguridad import verificar_token_csrf
     if "usuario_id" not in session:
         return redirect(url_for("autenticacion.login"))
+    if not verificar_token_csrf(request.form.get("csrf_token", "")):
+        flash("Token de seguridad inválido.", "danger")
+        return redirect(url_for("dashboard.index"))
     from core.backup_manager import crear_backup
     ruta = crear_backup()
     if ruta:

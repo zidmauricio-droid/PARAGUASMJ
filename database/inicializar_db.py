@@ -575,15 +575,19 @@ def inicializar_base_datos():
     for idx in INDICES:
         c.execute(idx)
 
-    try:
-        from werkzeug.security import generate_password_hash as gph
-        hp = gph("PARAGUASMJ2026")
-    except ImportError:
-        import hashlib
-        hp = "pbkdf2:sha256:$" + hashlib.sha256(b"PARAGUASMJ2026").hexdigest()
-
-    c.execute("INSERT OR IGNORE INTO usuarios(nombre_completo,nombre_usuario,password_hash,rol) VALUES(?,?,?,?)",
-              ("Administrador del Sistema","admin",hp,"admin"))
+    # Hash admin — siempre usar generate_password_hash (werkzeug ya importado arriba)
+    hp = generate_password_hash(Config.ADMIN_PASS_DEFAULT)
+    # INSERT OR IGNORE: si ya existe con hash inválido, lo actualiza
+    existing = c.execute(
+        "SELECT password_hash FROM usuarios WHERE nombre_usuario='admin'"
+    ).fetchone()
+    if existing and not existing["password_hash"].startswith("pbkdf2:sha256:"):
+        c.execute("UPDATE usuarios SET password_hash=? WHERE nombre_usuario='admin'", (hp,))
+    else:
+        c.execute(
+            "INSERT OR IGNORE INTO usuarios(nombre_completo,nombre_usuario,password_hash,rol) VALUES(?,?,?,?)",
+            ("Administrador del Sistema","admin",hp,"admin")
+        )
 
     conn.execute("""
         INSERT OR IGNORE INTO organizaciones (pk_org_id, nombre_completo, nombre_corto, nit, municipio, departamento)

@@ -45,7 +45,13 @@ class Config:
     SECRET_KEY               = _cargar_o_crear_secret()
     SESSION_COOKIE_HTTPONLY  = True
     SESSION_COOKIE_SAMESITE  = "Lax"
+    # False en localhost; cambiar a True si se expone por HTTPS
+    SESSION_COOKIE_SECURE    = os.environ.get("HTTPS_ENABLED", "false").lower() == "true"
     PERMANENT_SESSION_LIFETIME = 28800
+    # Timeout de sesión por inactividad (segundos) — unificado para todos los blueprints
+    SESSION_TIMEOUT          = 28800
+    # Límite de tamaño de uploads: 25 MB — previene DoS por disco
+    MAX_CONTENT_LENGTH       = 25 * 1024 * 1024
     DB_PATH                  = definir_ruta_base_datos()
     BASE_DIR                 = os.path.dirname(os.path.abspath(__file__))
     UPLOAD_FOLDER            = os.path.join(BASE_DIR, "uploads")

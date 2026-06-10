@@ -97,6 +97,7 @@ def panel():
 @login_requerido
 def api_niveles():
     n     = request.args.get("n", 30, type=int)
+    if n <= 0: n = 30  # previene LIMIT -1 que retorna todas las filas
     sitio = request.args.get("sitio", "")
     conn  = get_db()
     sql   = "SELECT * FROM niveles_quebrada WHERE 1=1"
