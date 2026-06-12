@@ -13,6 +13,7 @@ from datetime import datetime
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.database_manager import get_db, registrar_log
+from core.crypto_simple import descifrar
 
 logger = logging.getLogger("sigca.email")
 
@@ -43,7 +44,7 @@ def enviar_correo(destinatario: str, asunto: str, cuerpo_html: str,
     """
     cfg = _obtener_config_smtp()
     usuario = cfg.get("email_usuario", "")
-    password = cfg.get("email_password", "")
+    password = descifrar(cfg.get("email_password", ""))
     host = cfg.get("email_smtp_host", "smtp.gmail.com")
     port = int(cfg.get("email_smtp_port", 587))
     correo_from = cfg.get("correo_oficial", usuario)

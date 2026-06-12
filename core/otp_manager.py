@@ -3,6 +3,7 @@ core/otp_manager.py — Gestion de OTP via WhatsApp (CallMeBot) para firmas digi
 """
 import secrets, string, sqlite3, logging, requests
 from datetime import datetime, timedelta
+from core.crypto_simple import descifrar
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
@@ -48,7 +49,7 @@ class OTPManager:
             conn = get_db()
             r = conn.execute("SELECT valor FROM configuracion WHERE clave='whatsapp_api_key'").fetchone()
             conn.close()
-            return r["valor"] if r else ""
+            return descifrar(r["valor"]) if r else ""
         except Exception:
             return ""
 

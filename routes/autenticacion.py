@@ -1,4 +1,6 @@
 """routes/autenticacion.py — Login, logout, perfil y logo institucional."""
+import time
+import base64
 from flask import (Blueprint, render_template, request, session,
                    redirect, url_for, flash, jsonify)
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -33,7 +35,7 @@ def login():
             session["nombre_usuario"] = u["nombre_usuario"]
             session["nombre_completo"]= u["nombre_completo"]
             session["rol"]            = u["rol"]
-            session["ultimo_acceso"]  = __import__("time").time()
+            session["ultimo_acceso"]  = time.time()
             registrar_log("INFO","auth",usuario,"login","","")
             return redirect(url_for("dashboard.index"))
         registrar_intento_fallo(ip)
@@ -98,22 +100,20 @@ def logo_actual():
 @auth_bp.route("/configuracion/api/autorizadores")
 @login_requerido
 def api_get_autorizadores():
-    from core.database_manager import get_db
     conn = get_db()
     rows = conn.execute(
         "SELECT * FROM autorizadores ORDER BY orden_firma, activo DESC, nombre"
     ).fetchall()
     conn.close()
-    return __import__('flask').jsonify([dict(r) for r in rows])
+    return jsonify([dict(r) for r in rows])
 
 
 @auth_bp.route("/configuracion/api/autorizadores", methods=["POST"])
 @login_requerido
 def api_crear_autorizador():
-    from core.database_manager import get_db
-    data = __import__('flask').request.get_json() or {}
+    data = request.get_json() or {}
     if not data.get("nombre") or not data.get("cargo"):
-        return __import__('flask').jsonify({"ok": False, "error": "Nombre y cargo requeridos"}), 400
+        return jsonify({"ok": False, "error": "Nombre y cargo requeridos"}), 400
     conn = get_db()
     conn.execute(
         "INSERT INTO autorizadores (nombre,cargo,telefono,email,activo,tipo) VALUES (?,?,?,?,1,'junta')",
@@ -121,54 +121,50 @@ def api_crear_autorizador():
          data.get("telefono",""), data.get("email",""))
     )
     conn.commit(); conn.close()
-    return __import__('flask').jsonify({"ok": True}), 201
+    return jsonify({"ok": True}), 201
 
 
 @auth_bp.route("/configuracion/api/autorizadores/<int:aid>", methods=["PUT"])
 @login_requerido
 def api_actualizar_autorizador(aid):
-    from core.database_manager import get_db
-    data = __import__('flask').request.get_json() or {}
+    data = request.get_json() or {}
     conn = get_db()
     conn.execute(
         "UPDATE autorizadores SET activo=COALESCE(?,activo), cargo=COALESCE(?,cargo) WHERE id=?",
         (data.get("activo"), data.get("cargo"), aid)
     )
     conn.commit(); conn.close()
-    return __import__('flask').jsonify({"ok": True})
+    return jsonify({"ok": True})
 
 
 # ── API Firmas Digitales ──────────────────────────────────────────────
 @auth_bp.route("/configuracion/api/firmas")
 @login_requerido
 def api_get_firmas():
-    from core.database_manager import get_db
     conn = get_db()
     try:
         rows = conn.execute(
             "SELECT id,nombre,cargo,activo,es_aprobador_formato FROM firmas_digitales ORDER BY nombre"
         ).fetchall()
-        return __import__('flask').jsonify([dict(r) for r in rows])
-    finally: conn.close()
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
 
 
 @auth_bp.route("/configuracion/api/firmas", methods=["POST"])
 @login_requerido
 def api_crear_firma():
-    import base64
-    from core.database_manager import get_db
-    req = __import__('flask').request
-    nombre = req.form.get("nombre","").strip()
-    cargo  = req.form.get("cargo","").strip()
+    nombre = request.form.get("nombre","").strip()
+    cargo  = request.form.get("cargo","").strip()
     if not nombre or not cargo:
-        return __import__('flask').jsonify({"ok":False,"error":"Nombre y cargo requeridos"}), 400
+        return jsonify({"ok": False, "error": "Nombre y cargo requeridos"}), 400
     firma_b64 = None
-    if "firma_img" in req.files:
-        f = req.files["firma_img"]
+    if "firma_img" in request.files:
+        f = request.files["firma_img"]
         if f.filename:
-            raw   = f.read()
-            ext   = f.filename.rsplit(".",1)[-1].lower()
-            mime  = f"image/{ext}" if ext != "jpg" else "image/jpeg"
+            raw  = f.read()
+            ext  = f.filename.rsplit(".",1)[-1].lower()
+            mime = f"image/{ext}" if ext != "jpg" else "image/jpeg"
             firma_b64 = f"data:{mime};base64,{base64.b64encode(raw).decode()}"
     conn = get_db()
     try:
@@ -177,81 +173,81 @@ def api_crear_firma():
             (nombre, cargo, firma_b64)
         )
         conn.commit()
-        return __import__('flask').jsonify({"ok":True}), 201
+        return jsonify({"ok": True}), 201
     except Exception as e:
         conn.rollback()
-        return __import__('flask').jsonify({"ok":False,"error":str(e)}), 500
-    finally: conn.close()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @auth_bp.route("/configuracion/api/firmas/<int:fid>", methods=["PUT"])
 @login_requerido
 def api_toggle_firma(fid):
-    data = __import__('flask').request.get_json() or {}
-    from core.database_manager import get_db
+    data = request.get_json() or {}
     conn = get_db()
     try:
         conn.execute("UPDATE firmas_digitales SET activo=? WHERE id=?",
-                     (data.get("activo",1), fid))
+                     (data.get("activo", 1), fid))
         conn.commit()
-        return __import__('flask').jsonify({"ok":True})
-    finally: conn.close()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
 
 
 @auth_bp.route("/configuracion/api/firmas/<int:fid>/imagen")
 @login_requerido
 def api_firma_imagen(fid):
-    from core.database_manager import get_db
     conn = get_db()
     try:
         r = conn.execute(
             "SELECT firma_base64 FROM firmas_digitales WHERE id=?", (fid,)
         ).fetchone()
         if r and r["firma_base64"]:
-            return __import__('flask').jsonify({"ok":True,"base64":r["firma_base64"]})
-        return __import__('flask').jsonify({"ok":False}), 404
-    finally: conn.close()
+            return jsonify({"ok": True, "base64": r["firma_base64"]})
+        return jsonify({"ok": False}), 404
+    finally:
+        conn.close()
 
 
 # ── API Tipos de Documento (CRUD) ─────────────────────────────────────
 @auth_bp.route("/configuracion/api/tipos_documento")
 @login_requerido
 def api_get_tipos():
-    from core.database_manager import get_db
     conn = get_db()
     try:
         rows = conn.execute(
             "SELECT id,codigo,nombre,activo FROM tipos_documento ORDER BY nombre"
         ).fetchall()
-        return __import__('flask').jsonify([dict(r) for r in rows])
-    finally: conn.close()
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
 
 
 @auth_bp.route("/configuracion/api/tipos_documento", methods=["POST"])
 @login_requerido
 def api_crear_tipo():
-    from core.database_manager import get_db
-    data = __import__('flask').request.get_json() or {}
+    data = request.get_json() or {}
     cod  = data.get("codigo","").strip().upper()
     nom  = data.get("nombre","").strip()
     if not cod or not nom:
-        return __import__('flask').jsonify({"ok":False,"error":"Código y nombre requeridos"}), 400
+        return jsonify({"ok": False, "error": "Código y nombre requeridos"}), 400
     conn = get_db()
     try:
-        conn.execute("INSERT INTO tipos_documento (codigo,nombre) VALUES (?,?)",(cod,nom))
+        conn.execute("INSERT INTO tipos_documento (codigo,nombre) VALUES (?,?)", (cod, nom))
         conn.commit()
-        return __import__('flask').jsonify({"ok":True}), 201
+        return jsonify({"ok": True}), 201
     except Exception as e:
         conn.rollback()
-        return __import__('flask').jsonify({"ok":False,"error":str(e)}), 500
-    finally: conn.close()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @auth_bp.route("/configuracion/api/tipos_documento/<int:tid>", methods=["PUT"])
 @login_requerido
 def api_actualizar_tipo(tid):
-    from core.database_manager import get_db
-    data = __import__('flask').request.get_json() or {}
+    data = request.get_json() or {}
     conn = get_db()
     try:
         if "activo" in data:
@@ -261,39 +257,39 @@ def api_actualizar_tipo(tid):
             conn.execute("UPDATE tipos_documento SET nombre=? WHERE id=?",
                          (data["nombre"].strip(), tid))
         conn.commit()
-        return __import__('flask').jsonify({"ok":True})
-    finally: conn.close()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
 
 
 @auth_bp.route("/configuracion/api/tipos_documento/<int:tid>", methods=["DELETE"])
 @login_requerido
 def api_eliminar_tipo(tid):
-    from core.database_manager import get_db
     conn = get_db()
     try:
         conn.execute("DELETE FROM tipos_documento WHERE id=?", (tid,))
         conn.commit()
-        return __import__('flask').jsonify({"ok":True})
-    finally: conn.close()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
 
 
 # ── API Aprobador de Formatos ─────────────────────────────────────────
 @auth_bp.route("/configuracion/api/aprobador_formato")
 @login_requerido
 def api_get_aprobador():
-    from core.database_manager import get_db
     conn = get_db()
     try:
         r = conn.execute("SELECT * FROM config_aprobador_formato WHERE id=1").fetchone()
-        return __import__('flask').jsonify(dict(r) if r else {})
-    finally: conn.close()
+        return jsonify(dict(r) if r else {})
+    finally:
+        conn.close()
 
 
 @auth_bp.route("/configuracion/api/aprobador_formato", methods=["POST"])
 @login_requerido
 def api_set_aprobador():
-    from core.database_manager import get_db
-    data = __import__('flask').request.get_json() or {}
+    data = request.get_json() or {}
     conn = get_db()
     try:
         conn.execute("""INSERT OR REPLACE INTO config_aprobador_formato
@@ -302,5 +298,6 @@ def api_set_aprobador():
                      (data.get("nombre",""), data.get("cargo",""),
                       data.get("firma_id")))
         conn.commit()
-        return __import__('flask').jsonify({"ok":True})
-    finally: conn.close()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()

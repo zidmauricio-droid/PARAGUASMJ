@@ -7,6 +7,7 @@ from datetime import datetime
 from core.database_manager import get_db
 from core.otp_manager import OTPManager, enviar_whatsapp
 from core.backup_manager import crear_backup
+from core.crypto_simple import descifrar
 
 logger = logging.getLogger("sigca.scheduler")
 
@@ -22,7 +23,7 @@ def verificar_plazos_documentos():
         api_key = conn.execute(
             "SELECT valor FROM configuracion WHERE clave='whatsapp_api_key'"
         ).fetchone()
-        api_key = api_key["valor"] if api_key else ""
+        api_key = descifrar(api_key["valor"]) if api_key else ""
 
         # Notificaciones iniciales
         docs = conn.execute("""
@@ -96,7 +97,7 @@ def verificar_pqrs_vencidas():
         api_key = conn.execute(
             "SELECT valor FROM configuracion WHERE clave='whatsapp_api_key'"
         ).fetchone()
-        api_key = api_key["valor"] if api_key else ""
+        api_key = descifrar(api_key["valor"]) if api_key else ""
 
         vencidas = conn.execute("""
             SELECT p.pk_pqr_id, r.codigo_completo, p.fecha_limite, c.razon_social,

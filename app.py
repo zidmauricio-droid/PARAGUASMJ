@@ -104,9 +104,13 @@ def configuracion():
         if not verificar_token_csrf():
             flash("Token de seguridad inválido. Recargue la página.", "danger")
             return redirect(url_for("configuracion"))
+        from core.crypto_simple import cifrar
+        _CLAVES_CIFRADAS = {"email_password", "whatsapp_api_key", "smtp_password"}
         categoria = request.form.get("categoria")
         for clave, valor in request.form.items():
             if clave not in ("categoria", "csrf_token"):
+                if clave in _CLAVES_CIFRADAS and valor:
+                    valor = cifrar(valor)
                 old = conn.execute("SELECT valor FROM configuracion WHERE clave=?",(clave,)).fetchone()
                 if old and old["valor"] != valor:
                     conn.execute("UPDATE configuracion SET valor=?,fecha_actualizacion=datetime('now'),usuario_ultima_modificacion=? WHERE clave=?",
