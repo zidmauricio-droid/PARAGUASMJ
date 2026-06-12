@@ -24,12 +24,21 @@ import logging as _logging
 _log_fin = _logging.getLogger("sigca.finanzas")
 
 
-def _sanitizar_texto(texto: str, max_len: int = 100) -> str:
-    """Limpia texto de caracteres de control y trunca. (#4 sanitización profunda)"""
+def _sanitizar_texto(texto: str, max_len: int = 100, allow_newlines: bool = False) -> str:
+    """Limpia texto de caracteres de control y trunca.
+    allow_newlines=True conserva saltos de línea (para textarea financiero).
+    """
     if not texto:
         return ""
-    texto = _re.sub(r"[\n\r\t\x00-\x1f\x7f]", " ", texto)
-    texto = _re.sub(r"\s+", " ", texto)
+    if allow_newlines:
+        texto = _re.sub(r"[\t\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", texto)
+        texto = _re.sub(r"\r\n|\r", "\n", texto)
+        texto = _re.sub(r"[ \t]+", " ", texto)
+        texto = "\n".join(line.strip() for line in texto.split("\n"))
+        texto = _re.sub(r"\n{3,}", "\n\n", texto)
+    else:
+        texto = _re.sub(r"[\n\r\t\x00-\x1f\x7f]", " ", texto)
+        texto = _re.sub(r"\s+", " ", texto)
     return texto.strip()[:max_len]
 
 
@@ -169,7 +178,7 @@ def caja_nuevo():
         flash("Importe inválido. Ingrese un número mayor a cero.", "danger")
         return redirect(url_for("finanzas.caja"))
 
-    concepto = _sanitizar_texto(request.form.get("concepto", ""), 200)
+    concepto = _sanitizar_texto(request.form.get("concepto", ""), 500, allow_newlines=True)
     if not concepto:
         flash("El concepto es obligatorio.", "danger")
         return redirect(url_for("finanzas.caja"))
@@ -444,7 +453,7 @@ def movimiento_nuevo():
         flash("Importe inválido. Ingrese un número mayor a cero.", "danger")
         return redirect(url_for("finanzas.movimientos"))
 
-    concepto = _sanitizar_texto(request.form.get("concepto", ""), 200)
+    concepto = _sanitizar_texto(request.form.get("concepto", ""), 500, allow_newlines=True)
     if not concepto:
         flash("El concepto es obligatorio.", "danger")
         return redirect(url_for("finanzas.movimientos"))

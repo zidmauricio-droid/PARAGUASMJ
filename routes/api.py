@@ -5,25 +5,52 @@ Mejoras del PROGRAMA.doc:
   - Historial de navegación (pushState via frontend)
   - Paginación de documentos (lazy loading)
 """
+import logging as _logging
 from flask import Blueprint, jsonify, request, session
 from core.database_manager import get_db
 from core.otp_manager import OTPManager
 from core.seguridad import login_requerido
 from core.capability_registry import CapabilityRegistry
+from core.rate_limiter import limitar
+from core.auditoria import auditar
 from datetime import datetime
 
+_log_api = _logging.getLogger("sigca.api")
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 
 # ── OTP (sistema original mejorado) ────────────────────────────────
 @api_bp.route("/otp/enviar", methods=["POST"])
 @login_requerido
+@limitar("otp_enviar", max_attempts=3, window_seconds=60,
+         mensaje="Demasiados envíos de OTP. Espere 1 minuto antes de reintentar.")
 def otp_enviar():
-    data = request.get_json()
+    data        = request.get_json() or {}
     registro_id = data.get("registro_id")
     firmante_id = data.get("firmante_id")
     if not registro_id or not firmante_id:
         return jsonify({"ok": False, "error": "Faltan parámetros"}), 400
+
+    conn = get_db()
+    try:
+        # #37 — Verificar que el documento existe
+        doc = conn.execute(
+            "SELECT pk_registro_id FROM registro_central WHERE pk_registro_id=?",
+            (registro_id,)
+        ).fetchone()
+        if not doc:
+            return jsonify({"ok": False, "error": "Documento no encontrado"}), 404
+
+        # #37 — Verificar que el firmante está asignado a este documento
+        asignado = conn.execute("""
+            SELECT 1 FROM documento_firmantes
+            WHERE documento_id=? AND firmante_id=? AND estado='pendiente'
+        """, (registro_id, firmante_id)).fetchone()
+        if not asignado:
+            return jsonify({"ok": False, "error": "Firmante no asignado a este documento"}), 403
+    finally:
+        conn.close()
+
     mgr = OTPManager()
     return jsonify(mgr.iniciar_autorizacion(registro_id, firmante_id))
 
@@ -92,10 +119,16 @@ def asignar_firmantes(doc_id):
                 VALUES (?, ?, ?, 'pendiente')
             """, (doc_id, f["firmante_id"], f.get("orden_firma", 1)))
         conn.commit()
-        return jsonify({"ok": True})
+        auditar(
+            "FIRMANTES_ASIGNAR",
+            detalle=f"Documento {doc_id}: {len(firmantes)} firmante(s) asignados por {session.get('nombre_usuario')}",
+            modulo="api"
+        )
+        return jsonify({"ok": True, "firmantes_asignados": len(firmantes)})
     except Exception as e:
         conn.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
+        _log_api.error("asignar_firmantes doc=%s: %s", doc_id, e, exc_info=True)
+        return jsonify({"ok": False, "error": "Error al asignar firmantes. Contacte al administrador."}), 500
     finally:
         conn.close()
 
@@ -113,15 +146,14 @@ def validar_otp_documento(doc_id):
     mgr = OTPManager()
     resultado = mgr.verificar_otp(doc_id, firmante_id, codigo)
     if resultado.get("ok"):
-        # Actualizar tabla documento_firmantes
         conn = get_db()
         try:
+            ts = datetime.now().isoformat()
             conn.execute("""
                 UPDATE documento_firmantes
                 SET estado='aprobado', fecha_aprobacion=?
                 WHERE documento_id=? AND firmante_id=?
-            """, (datetime.now().isoformat(), doc_id, firmante_id))
-            # Verificar si todos aprobaron
+            """, (ts, doc_id, firmante_id))
             pendientes = conn.execute("""
                 SELECT COUNT(*) as c FROM documento_firmantes
                 WHERE documento_id=? AND estado='pendiente'
@@ -131,7 +163,20 @@ def validar_otp_documento(doc_id):
                     UPDATE registro_central SET estado='Aprobado'
                     WHERE pk_registro_id=?
                 """, (doc_id,))
+                auditar(
+                    "DOCUMENTO_APROBADO",
+                    detalle=f"Documento {doc_id} aprobado — todos los firmantes validaron OTP",
+                    modulo="api"
+                )
             conn.commit()
+            auditar(
+                "OTP_VALIDADO",
+                detalle=f"Firmante {firmante_id} validó OTP para documento {doc_id}",
+                modulo="api"
+            )
+        except Exception as e:
+            conn.rollback()
+            _log_api.error("validar_otp_documento doc=%s firmante=%s: %s", doc_id, firmante_id, e, exc_info=True)
         finally:
             conn.close()
     return jsonify(resultado)

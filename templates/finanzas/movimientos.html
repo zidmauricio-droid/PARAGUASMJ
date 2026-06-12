@@ -137,9 +137,12 @@
           </select>
         </div>
         <div class="col-md-3">
-          <label class="form-label fw-semibold" for="inp-concepto">Concepto</label>
-          <input type="text" id="inp-concepto" name="concepto" class="form-control"
-                 required maxlength="200" placeholder="Descripción del movimiento...">
+          <label class="form-label fw-semibold" for="inp-concepto">Concepto / Descripción</label>
+          <textarea id="inp-concepto" name="concepto" class="form-control" required
+                    maxlength="500" rows="2"
+                    placeholder="Describa el movimiento (ej: Pago factura #123 — materiales)"
+                    aria-describedby="mov-concepto-ayuda"></textarea>
+          <small id="mov-concepto-ayuda" class="text-muted">Máx. 500 caracteres.</small>
         </div>
         <div class="col-md-2">
           <label class="form-label fw-semibold" for="inp-tipo">Tipo</label>

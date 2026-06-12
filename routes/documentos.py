@@ -13,6 +13,14 @@ Mejoras del documento del editor:
 """
 import re, os, json, tempfile, logging as _logging
 _log_docs = _logging.getLogger("sigca.documentos")
+
+# gestor_trd — importación condicional (#41)
+try:
+    from core.gestor_trd import gestor_trd
+    _GESTOR_TRD_AVAILABLE = True
+except ImportError:
+    gestor_trd = None
+    _GESTOR_TRD_AVAILABLE = False
 from io import BytesIO
 import hashlib
 import secrets
@@ -22,6 +30,7 @@ from werkzeug.utils import secure_filename
 from core.database_manager import get_db, atomic, readonly, validar_columnas, obtener_consecutivo, registrar_log, db_connection
 from core.seguridad import login_requerido
 from utils.seguridad import verificar_token_csrf
+from core.rate_limiter import limitar
 from core.capability_registry import CapabilityRegistry
 from core.auditoria import auditar, registrar_evento
 from core.forensic_saneamiento import SaneadorForense
@@ -36,10 +45,7 @@ try:
     CLASSIFIER_AVAILABLE = True
 except ImportError:
     CLASSIFIER_AVAILABLE = False
-    import logging
-    logging.getLogger("sigca.documentos").warning(
-        "core/document_classifier.py no encontrado. Clasificación TRD desactivada."
-    )
+    _log_docs.warning("core/document_classifier.py no encontrado. Clasificación TRD desactivada.")
 
 
 
@@ -1306,44 +1312,67 @@ def api_sugerir_expediente():
 @docs_bp.route("/api/alertas_trd")
 @login_requerido
 def alertas_trd():
-    """Alertas TRD usando gestor_trd (fuente única: gestor_trd + document_classifier)."""
-    from core.gestor_trd import gestor_trd as _gestor_trd
-    alertas = _gestor_trd.verificar_transferencias_pendientes()
-    return jsonify({"ok": True, "total_alertas": len(alertas),
-                    "alertas": alertas, "fecha_consulta": datetime.now().isoformat()})
+    """Alertas TRD — usa gestor_trd si disponible. (#41: import consistente)"""
+    if not _GESTOR_TRD_AVAILABLE:
+        return jsonify({"ok": False, "error": "Módulo TRD no disponible"}), 503
+    try:
+        alertas = gestor_trd.verificar_transferencias_pendientes()
+        return jsonify({"ok": True, "total_alertas": len(alertas),
+                        "alertas": alertas, "fecha_consulta": datetime.now().isoformat()})
+    except Exception as e:
+        _log_docs.error("alertas_trd: %s", e, exc_info=True)
+        return jsonify({"ok": False, "error": "Error al consultar alertas TRD"}), 500
 
 
 @docs_bp.route("/api/trd/simular")
 @login_requerido
 def trd_simular():
-    return jsonify(gestor_trd.simular_transferencia())
+    if not _GESTOR_TRD_AVAILABLE:
+        return jsonify({"ok": False, "error": "Módulo TRD no disponible"}), 503
+    try:
+        return jsonify(gestor_trd.simular_transferencia())
+    except Exception as e:
+        _log_docs.error("trd_simular: %s", e, exc_info=True)
+        return jsonify({"ok": False, "error": "Error al simular transferencia"}), 500
 
 
 @docs_bp.route("/api/trd/solicitar_confirmacion", methods=["POST"])
 @login_requerido
 def trd_solicitar_confirmacion():
-    sim = gestor_trd.simular_transferencia()
+    if not _GESTOR_TRD_AVAILABLE:
+        return jsonify({"ok": False, "error": "Módulo TRD no disponible"}), 503
+    try:
+        sim = gestor_trd.simular_transferencia()
+    except Exception as e:
+        _log_docs.error("trd_solicitar_confirmacion: %s", e, exc_info=True)
+        return jsonify({"ok": False, "error": "Error al simular transferencia"}), 500
     if sim.get("total", 0) == 0:
         return jsonify({"ok": False, "mensaje": "No hay documentos pendientes de transferencia."})
     token = secrets.token_urlsafe(32)
     session["trd_confirm_token"] = token
     return jsonify({"ok": True, "simulacion": sim, "confirmacion_token": token,
-                    "mensaje": f"Se procesaran {sim['total']} documentos. Desea continuar?"})
+                    "mensaje": f"Se procesarán {sim['total']} documentos. ¿Desea continuar?"})
 
 
 @docs_bp.route("/api/transferir", methods=["POST"])
 @login_requerido
 def transferir_documentos():
+    if not _GESTOR_TRD_AVAILABLE:
+        return jsonify({"ok": False, "error": "Módulo TRD no disponible"}), 503
     data  = request.get_json() or {}
     token = data.get("confirmacion_token")
     if token and token != session.get("trd_confirm_token"):
-        return jsonify({"ok": False, "error": "Token de confirmacion invalido"}), 403
+        return jsonify({"ok": False, "error": "Token de confirmación inválido"}), 403
     session.pop("trd_confirm_token", None)
-    resultado = gestor_trd.ejecutar_transferencias(usuario=session.get("nombre_usuario","admin"))
+    try:
+        resultado = gestor_trd.ejecutar_transferencias(usuario=session.get("nombre_usuario", "admin"))
+    except Exception as e:
+        _log_docs.error("transferir_documentos: %s", e, exc_info=True)
+        return jsonify({"ok": False, "error": "Error al ejecutar transferencias"}), 500
     if resultado["ok"]:
         flash(f"Transferencia TRD completada: {resultado['total']} documentos procesados.", "success")
     else:
-        flash(f"Error en transferencia TRD: {resultado['error']}", "danger")
+        flash("Error en transferencia TRD. Revise los logs.", "danger")
     return jsonify(resultado)
 
 
@@ -1591,6 +1620,8 @@ def hoja_control_expediente(exp_id):
 
 @docs_bp.route("/api/firmar", methods=["POST"])
 @login_requerido
+@limitar("api_firmar", max_attempts=5, window_seconds=60,
+         mensaje="Demasiados intentos de firma. Espere 1 minuto.")
 def api_firmar():
     data        = request.get_json() or {}
     doc_id      = data.get("documento_id")
@@ -1643,7 +1674,8 @@ def api_firmar():
         return jsonify({"ok": True, "hash": hash_firma, "timestamp": ts})
     except Exception as e:
         conn.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
+        _log_docs.error("api_firmar doc=%s firmante=%s: %s", doc_id, firmante_id, e, exc_info=True)
+        return jsonify({"ok": False, "error": "Error al registrar la firma. Contacte al administrador."}), 500
     finally:
         conn.close()
 

@@ -102,9 +102,12 @@
                  required value="{{ fecha_hasta }}">
         </div>
         <div class="col-md-5">
-          <label class="form-label fw-semibold" for="inp-concepto">Concepto</label>
-          <input type="text" id="inp-concepto" name="concepto" class="form-control"
-                 required maxlength="200" placeholder="Descripción del movimiento...">
+          <label class="form-label fw-semibold" for="inp-concepto">Concepto / Descripción</label>
+          <textarea id="inp-concepto" name="concepto" class="form-control" required
+                    maxlength="500" rows="2"
+                    placeholder="Describa el movimiento en detalle (ej: Pago factura #123 — compra tubería 4 pulgadas)"
+                    aria-describedby="concepto-ayuda"></textarea>
+          <small id="concepto-ayuda" class="text-muted">Máx. 500 caracteres. Puede usar múltiples líneas.</small>
         </div>
         <div class="col-md-2">
           <label class="form-label fw-semibold" for="inp-tipo">Tipo</label>
