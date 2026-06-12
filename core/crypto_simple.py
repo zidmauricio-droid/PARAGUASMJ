@@ -1,9 +1,11 @@
 """
 core/crypto_simple.py
-Cifrado simétrico ligero sin dependencias externas.
-Usa XOR con keystream SHA-256 derivado de SECRET_KEY.
-Propósito: proteger contraseñas en BD SQLite de lectura directa.
-No apto para datos altamente sensibles expuestos en red.
+ADVERTENCIA: Este módulo provee OFUSCACIÓN OPERATIVA, NO cifrado institucional fuerte.
+- Usa XOR con keystream SHA-256 derivado de SECRET_KEY.
+- Un atacante con acceso al código fuente y a la BD puede recuperar los secretos.
+- Propósito exclusivo: proteger contraseñas SMTP/API en BD SQLite contra lectura directa.
+- NO usar para datos sensibles expuestos en red, credenciales bancarias o información personal.
+- Para cifrado institucional fuerte usar cryptography.Fernet o AES-GCM.
 """
 import hashlib
 import base64

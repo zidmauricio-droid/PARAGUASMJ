@@ -412,7 +412,21 @@ def api_eliminar_tarea(tid):
         conn.close()
         return jsonify({"error": "Sin permiso para eliminar esta tarea"}), 403
     conn.execute("DELETE FROM tareas_proyecto WHERE id=?", (tid,))
-    conn.commit(); conn.close()
+    conn.commit()
+    try:
+        from utils.audit import log_action
+        from flask import request as _req
+        log_action(
+            accion="TAREA_ELIMINADA",
+            modulo="proyectos",
+            descripcion=(
+                f"Tarea #{tid} eliminada | Proyecto #{tarea['fk_proyecto_id']} "
+                f"| Por: {session.get('nombre_usuario','?')} | IP: {_req.remote_addr}"
+            )
+        )
+    except Exception:
+        pass
+    conn.close()
     return jsonify({"ok": True})
 
 

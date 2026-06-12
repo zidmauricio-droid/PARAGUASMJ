@@ -1,6 +1,7 @@
 """
 core/scheduler_notificaciones.py
 Tareas programadas: alertas de plazos, PQRS vencidas, backups.
+Jerarquía de notificación: WhatsApp → Email → Log local.
 """
 import logging
 from datetime import datetime
@@ -12,18 +13,61 @@ from core.crypto_simple import descifrar
 logger = logging.getLogger("sigca.scheduler")
 
 
+def _notificar(destino_wa: str, destino_email: str, asunto: str, msg: str,
+               api_key: str) -> str:
+    """
+    Intenta enviar notificación con fallback jerárquico:
+    1. WhatsApp (si hay api_key y número)
+    2. Email (si hay destinatario configurado)
+    3. Log local (siempre como último recurso)
+    Retorna: 'whatsapp' | 'email' | 'log'
+    """
+    # Intento 1: WhatsApp
+    if api_key and destino_wa:
+        try:
+            ok, err = enviar_whatsapp(destino_wa, msg, api_key)
+            if ok:
+                return "whatsapp"
+            logger.warning(f"WhatsApp fallido ({err}), intentando email...")
+        except Exception as e:
+            logger.warning(f"WhatsApp excepción ({e}), intentando email...")
+
+    # Intento 2: Email
+    if destino_email:
+        try:
+            from core.email_manager import enviar_correo
+            if enviar_correo(destino_email, asunto, f"<p>{msg}</p>"):
+                return "email"
+            logger.warning("Email fallido, registrando en log local...")
+        except Exception as e:
+            logger.warning(f"Email excepción ({e}), registrando en log local...")
+
+    # Intento 3: Log local — siempre disponible sin infraestructura
+    logger.warning(f"[NOTIF_LOCAL] {asunto} | {msg}")
+    return "log"
+
+
+def _leer_config(conn, *claves) -> dict:
+    """Lee múltiples claves de configuración en una sola consulta."""
+    placeholders = ",".join("?" * len(claves))
+    rows = conn.execute(
+        f"SELECT clave, valor FROM configuracion WHERE clave IN ({placeholders})",
+        claves
+    ).fetchall()
+    return {r["clave"]: r["valor"] for r in rows}
+
+
 def verificar_plazos_documentos():
     """
-    Envia alertas WhatsApp/email para documentos cuyo plazo inicio
-    notificaciones ya vencio y no han sido notificados.
+    Envia alertas para documentos cuyo plazo inicio notificaciones ya venció.
+    Jerarquía: WhatsApp → Email → Log.
     """
     conn = get_db()
     try:
         hoy = datetime.now().date().isoformat()
-        api_key = conn.execute(
-            "SELECT valor FROM configuracion WHERE clave='whatsapp_api_key'"
-        ).fetchone()
-        api_key = descifrar(api_key["valor"]) if api_key else ""
+        cfg = _leer_config(conn, "whatsapp_api_key", "correo_notificaciones")
+        api_key        = descifrar(cfg.get("whatsapp_api_key", "") or "")
+        correo_notif   = cfg.get("correo_notificaciones", "")
 
         # Notificaciones iniciales
         docs = conn.execute("""
@@ -36,18 +80,22 @@ def verificar_plazos_documentos():
 
         for doc in docs:
             responsables = conn.execute("""
-                SELECT DISTINCT f.nombre_completo, f.cargo, f.whatsapp
+                SELECT DISTINCT f.nombre_completo, f.cargo, f.whatsapp,
+                       COALESCE(f.email,'') as email
                 FROM acciones_pendientes a
                 JOIN firmantes f ON a.responsable_id=f.pk_firmante_id
                 WHERE a.fk_registro_id=? AND a.estado='Pendiente'
             """, (doc["fk_registro_id"],)).fetchall()
 
             for resp in responsables:
-                if resp["whatsapp"] and api_key:
-                    msg = (f"PARAGUASMJ: Sr(a). {resp['cargo']}, "
-                           f"el documento {doc['codigo_completo']} - "
-                           f"{doc['asunto_resumen'][:40]} requiere su atencion.")
-                    enviar_whatsapp(resp["whatsapp"], msg, api_key)
+                asunto = f"SIGCA: Documento {doc['codigo_completo']} requiere acción"
+                msg = (f"Sr(a). {resp['cargo']}, el documento {doc['codigo_completo']} - "
+                       f"{doc['asunto_resumen'][:40]} requiere su atención.")
+                canal = _notificar(
+                    resp["whatsapp"], resp.get("email") or correo_notif,
+                    asunto, msg, api_key
+                )
+                logger.info(f"Notif {doc['codigo_completo']} → {resp['cargo']} via {canal}")
 
             conn.execute("""
                 UPDATE plazos_documento
@@ -55,7 +103,7 @@ def verificar_plazos_documentos():
                 WHERE pk_plazo_id=?
             """, (doc["pk_plazo_id"],))
 
-        # Recordatorios periodicos
+        # Recordatorios periódicos
         pendientes = conn.execute("""
             SELECT p.*, r.codigo_completo, r.asunto_resumen
             FROM plazos_documento p
@@ -67,23 +115,23 @@ def verificar_plazos_documentos():
 
         for doc in pendientes:
             responsables = conn.execute("""
-                SELECT DISTINCT f.whatsapp, f.cargo
+                SELECT DISTINCT f.whatsapp, f.cargo, COALESCE(f.email,'') as email
                 FROM acciones_pendientes a
                 JOIN firmantes f ON a.responsable_id=f.pk_firmante_id
                 WHERE a.fk_registro_id=? AND a.estado='Pendiente'
             """, (doc["fk_registro_id"],)).fetchall()
             for resp in responsables:
-                if resp["whatsapp"] and api_key:
-                    msg = (f"RECORDATORIO SIGCA: Documento {doc['codigo_completo']} "
-                           f"pendiente de su autorizacion.")
-                    enviar_whatsapp(resp["whatsapp"], msg, api_key)
-            conn.execute("""
-                UPDATE plazos_documento SET ultimo_recordatorio=date('now')
-                WHERE pk_plazo_id=?
-            """, (doc["pk_plazo_id"],))
+                asunto = f"RECORDATORIO SIGCA: {doc['codigo_completo']} pendiente"
+                msg = (f"Documento {doc['codigo_completo']} pendiente de su autorización.")
+                _notificar(resp["whatsapp"], resp.get("email") or correo_notif,
+                           asunto, msg, api_key)
+            conn.execute(
+                "UPDATE plazos_documento SET ultimo_recordatorio=date('now') WHERE pk_plazo_id=?",
+                (doc["pk_plazo_id"],)
+            )
 
         conn.commit()
-        logger.info(f"Verificacion plazos completada. Docs notificados: {len(docs)}")
+        logger.info(f"Verificacion plazos: {len(docs)} docs notificados")
     except Exception as e:
         logger.error(f"Error en verificar_plazos: {e}")
     finally:
@@ -91,17 +139,20 @@ def verificar_plazos_documentos():
 
 
 def verificar_pqrs_vencidas():
-    """Alerta sobre PQRS proximas a vencer o ya vencidas — envía WhatsApp si hay API key."""
+    """
+    Alerta sobre PQRS próximas a vencer o ya vencidas.
+    Jerarquía: WhatsApp → Email → Log.
+    """
     conn = get_db()
     try:
-        api_key = conn.execute(
-            "SELECT valor FROM configuracion WHERE clave='whatsapp_api_key'"
-        ).fetchone()
-        api_key = descifrar(api_key["valor"]) if api_key else ""
+        cfg = _leer_config(conn, "whatsapp_api_key", "correo_notificaciones")
+        api_key      = descifrar(cfg.get("whatsapp_api_key", "") or "")
+        correo_notif = cfg.get("correo_notificaciones", "")
 
         vencidas = conn.execute("""
             SELECT p.pk_pqr_id, r.codigo_completo, p.fecha_limite, c.razon_social,
-                   c.whatsapp
+                   COALESCE(c.whatsapp,'') as whatsapp,
+                   COALESCE(c.correo,'') as correo
             FROM pqrs p
             JOIN registro_central r ON p.fk_registro_id=r.pk_registro_id
             JOIN contactos c ON p.fk_suscriptor_id=c.pk_contacto_id
@@ -110,16 +161,15 @@ def verificar_pqrs_vencidas():
         """).fetchall()
 
         for pqr in vencidas:
-            logger.warning(
-                f"PQRS proxima a vencer: {pqr['codigo_completo']} — {pqr['fecha_limite']}"
+            asunto = f"⚠️ PQRS {pqr['codigo_completo']} vence {pqr['fecha_limite']}"
+            msg = (f"PQRS {pqr['codigo_completo']} vence el {pqr['fecha_limite']}. "
+                   f"Suscriptor: {pqr['razon_social']}. Gestione a la brevedad.")
+            canal = _notificar(
+                pqr["whatsapp"], pqr.get("correo") or correo_notif,
+                asunto, msg, api_key
             )
-            if api_key and pqr["whatsapp"]:
-                msg = (f"⚠️ PQRS {pqr['codigo_completo']} vence el {pqr['fecha_limite']}. "
-                       f"Suscriptor: {pqr['razon_social']}. Por favor gestione a la brevedad.")
-                try:
-                    enviar_whatsapp(pqr["whatsapp"], msg, api_key)
-                except Exception as we:
-                    logger.error(f"Error enviando alerta PQRS {pqr['codigo_completo']}: {we}")
+            logger.warning(f"PQRS próxima a vencer: {pqr['codigo_completo']} "
+                           f"— {pqr['fecha_limite']} | Notif via {canal}")
     except Exception as e:
         logger.error(f"Error verificando PQRS: {e}")
     finally:

@@ -867,6 +867,20 @@ def inicializar_base_datos():
     except Exception:
         pass  # columna ya existe
 
+    # Índices financieros para rendimiento en consultas de saldo y auditoría
+    _IDX_FINANCIEROS = [
+        "CREATE INDEX IF NOT EXISTS idx_mov_fecha     ON movimientos_financieros(fecha)",
+        "CREATE INDEX IF NOT EXISTS idx_mov_banco     ON movimientos_financieros(fk_banco_id)",
+        "CREATE INDEX IF NOT EXISTS idx_mov_tipo      ON movimientos_financieros(tipo_mov)",
+        "CREATE INDEX IF NOT EXISTS idx_caja_fecha    ON caja_chica(fecha)",
+        "CREATE INDEX IF NOT EXISTS idx_caja_tipo     ON caja_chica(tipo_mov)",
+    ]
+    for idx_sql in _IDX_FINANCIEROS:
+        try:
+            conn.execute(idx_sql)
+        except Exception:
+            pass
+
     conn.commit()
     conn.close()
     print("  -> 31 tablas + indices + datos semilla listos.")

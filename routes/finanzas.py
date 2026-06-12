@@ -155,6 +155,7 @@ def caja_nuevo():
 
     conn = get_db()
     try:
+        conn.execute("BEGIN IMMEDIATE")
         conn.execute("""
             INSERT INTO caja_chica (fecha, concepto, tipo_mov, importe, usuario)
             VALUES (?, ?, ?, ?, ?)

@@ -13,6 +13,7 @@ def crear_backup() -> str:
     Crea backup caliente con la API nativa de SQLite (segura en WAL mode).
     sqlite3.Connection.backup() es atómica incluso con escrituras concurrentes,
     a diferencia de shutil.copy2 que puede capturar WAL en estado inconsistente.
+    Verifica integridad del backup inmediatamente después de crearlo.
     """
     os.makedirs(Config.BACKUP_FOLDER, exist_ok=True)
     ts      = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -24,7 +25,17 @@ def crear_backup() -> str:
             src.backup(dst, pages=500)   # 500 páginas por paso (~2MB) — no bloquea lectores
         src.close()
         dst.close()
-        logger.info(f"Backup creado: {destino}")
+
+        # Verificar integridad del backup recién creado
+        verif = sqlite3.connect(destino)
+        resultado = verif.execute("PRAGMA integrity_check").fetchone()[0]
+        verif.close()
+        if resultado != "ok":
+            os.remove(destino)
+            logger.error(f"Backup eliminado — integridad fallida: {resultado}")
+            return ""
+
+        logger.info(f"Backup creado y verificado: {destino}")
         _limpiar_backups_antiguos()
         return destino
     except Exception as e:

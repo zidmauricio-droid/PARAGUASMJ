@@ -255,12 +255,18 @@ def api_eliminar_usuario(uid):
 @aud_bp.route("/foto/<path:filename>")
 @login_requerido
 def servir_foto_usuario(filename):
-    """Sirve fotos de perfil solo a usuarios autenticados."""
+    """Sirve fotos de perfil solo a usuarios autenticados. Usa safe_join para evitar bypass."""
     from flask import send_from_directory, abort
+    from werkzeug.utils import safe_join
     import re
-    if not re.fullmatch(r"[\w\-\.]+\.(png|jpg|jpeg|webp|gif)", filename, re.IGNORECASE):
+    # Whitelist estricta: solo nombres simples con extensión de imagen
+    if not re.fullmatch(r"[\w\-]+\.(png|jpg|jpeg|webp|gif)", filename, re.IGNORECASE):
         abort(404)
-    return send_from_directory(os.path.abspath(FOTO_DIR), filename)
+    directorio = os.path.abspath(FOTO_DIR)
+    ruta_segura = safe_join(directorio, filename)
+    if ruta_segura is None or not os.path.isfile(ruta_segura):
+        abort(404)
+    return send_from_directory(directorio, filename)
 
 
 @aud_bp.route("/api/usuarios/<int:uid>", methods=["DELETE"])

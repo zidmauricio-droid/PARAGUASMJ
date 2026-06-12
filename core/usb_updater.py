@@ -1,14 +1,24 @@
 """
 Sistema de actualización automática por USB — PARAGUASMJ
 Detecta un USB con carpeta PARAGUASMJ_UPDATE/ y aplica actualizaciones.
+Seguridad: valida manifest.sha256 firmado antes de aplicar cualquier ZIP.
 """
 import os
 import shutil
 import zipfile
+import hashlib
+import hmac as _hmac
 import threading
 import time
 import logging
 from pathlib import Path
+
+
+def hmac_compare(a: str, b: str) -> bool:
+    return _hmac.compare_digest(
+        a.encode() if isinstance(a, str) else a,
+        b.encode() if isinstance(b, str) else b,
+    )
 
 logger = logging.getLogger("paraguasmj.usb_updater")
 
@@ -80,11 +90,57 @@ class USBUpdater:
         latest_zip = max(zips, key=lambda z: z.stat().st_mtime)
         self._apply_zip_update(latest_zip)
 
+    def _verificar_manifest(self, zip_path: Path) -> bool:
+        """
+        Verifica que exista un manifest.sha256 en la misma carpeta del ZIP
+        y que el hash SHA-256 del archivo coincida.
+        Formato del manifest: <hash_hex>  <nombre_zip>
+        """
+        manifest_path = zip_path.parent / "manifest.sha256"
+        if not manifest_path.exists():
+            logger.error(f"ZIP rechazado: falta manifest.sha256 en {zip_path.parent}")
+            return False
+        try:
+            # Calcular SHA-256 del ZIP
+            sha = hashlib.sha256()
+            with open(zip_path, "rb") as fz:
+                for bloque in iter(lambda: fz.read(65536), b""):
+                    sha.update(bloque)
+            hash_calculado = sha.hexdigest()
+
+            # Leer manifest y buscar la línea correspondiente al ZIP
+            contenido = manifest_path.read_text(encoding="utf-8").strip()
+            for linea in contenido.splitlines():
+                partes = linea.strip().split(None, 1)
+                if len(partes) == 2 and partes[1].strip() == zip_path.name:
+                    hash_esperado = partes[0].strip().lower()
+                    if hmac_compare(hash_calculado, hash_esperado):
+                        logger.info(f"Manifest verificado correctamente para {zip_path.name}")
+                        return True
+                    logger.error(
+                        f"ZIP rechazado: hash no coincide. "
+                        f"Esperado: {hash_esperado[:16]}... Calculado: {hash_calculado[:16]}..."
+                    )
+                    return False
+            logger.error(f"ZIP rechazado: {zip_path.name} no encontrado en manifest.sha256")
+            return False
+        except Exception as e:
+            logger.error(f"Error verificando manifest: {e}")
+            return False
+
     def _apply_zip_update(self, zip_path: Path):
-        """Extrae y aplica actualización desde ZIP con protección Zip Slip."""
+        """Extrae y aplica actualización desde ZIP con protección Zip Slip y verificación SHA-256."""
+        # Verificar manifest antes de cualquier extracción
+        if not self._verificar_manifest(zip_path):
+            return
         try:
             app_dir_resolved = self.app_dir.resolve()
             with zipfile.ZipFile(zip_path, 'r') as zf:
+                # Validar integridad interna del ZIP
+                bad = zf.testzip()
+                if bad:
+                    logger.error(f"ZIP corrupto: primer archivo malo = {bad}")
+                    return
                 # Validar cada entrada antes de extraer (Zip Slip protection)
                 for member in zf.namelist():
                     if ".." in member or member.startswith("/") or member.startswith("\\"):

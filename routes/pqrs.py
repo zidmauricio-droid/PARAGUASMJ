@@ -892,13 +892,31 @@ def exportar_sui():
 
     output.seek(0)
     # Solo marcamos reportadas DESPUÉS de que el Excel se generó correctamente
-    for r in rows:
-        conn.execute(
-            "UPDATE pqrs SET reportado_sui=1 "
-            "WHERE fk_registro_id=("
-            "SELECT pk_registro_id FROM registro_central WHERE codigo_completo=?)",
-            (r["codigo_completo"],))
-    conn.commit(); conn.close()
+    n_marcadas = 0
+    try:
+        for r in rows:
+            conn.execute(
+                "UPDATE pqrs SET reportado_sui=1 "
+                "WHERE fk_registro_id=("
+                "SELECT pk_registro_id FROM registro_central WHERE codigo_completo=?)",
+                (r["codigo_completo"],))
+            n_marcadas += 1
+        conn.commit()
+        from utils.audit import log_action
+        log_action(
+            accion="SUI_EXPORTADO",
+            modulo="pqrs",
+            descripcion=f"Formato A SUI exportado: {n_marcadas} PQRS marcadas | Mes: {mes or date.today().strftime('%Y-%m')}"
+        )
+    except Exception as e_mark:
+        conn.rollback()
+        from utils.audit import log_action
+        log_action(
+            accion="SUI_FALLIDO",
+            modulo="pqrs",
+            descripcion=f"Error al marcar PQRS como reportadas al SUI: {e_mark}"
+        )
+    conn.close()
     mes_str = mes or date.today().strftime("%Y-%m")
     return send_file(output, as_attachment=True,
                      download_name=f"FormatoA_SUI_SIGCA_{mes_str}.xlsx",
