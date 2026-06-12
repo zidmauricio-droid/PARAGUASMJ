@@ -708,29 +708,22 @@ const PLANTILLAS_DATA = {
 };
 </script>
 
-<!-- ═══ TipTap 2.x via CDN — cada extensión expone su propio global ═══ -->
-<script>
-// Shim: exponer todo bajo window.tt para acceso unificado
-window.tt = window.tt || {};
-</script>
-<!-- TipTap 2.4 local-first, CDN fallback -->
+<!-- ═══ TipTap 2.x — solo local (offline-first, sin CDN) ═══ -->
 <script>
 (function() {
-  var LOC = '/static/vendor/tiptap/', CDN = 'https://cdn.jsdelivr.net/npm/@tiptap/', V='2.4.0';
+  var LOC = '/static/vendor/tiptap/';
   var pkgs=['pm','core','starter-kit','extension-table','extension-table-row',
     'extension-table-header','extension-table-cell','extension-image',
     'extension-text-align','extension-link','extension-underline',
     'extension-superscript','extension-subscript','extension-color',
     'extension-text-style','extension-highlight','extension-font-family'];
-  function load(u,fb){ return new Promise(function(ok){
-    var s=document.createElement('script'); s.src=u; s.onload=ok;
-    s.onerror=function(){ if(fb){var s2=document.createElement('script');s2.src=fb;s2.onload=ok;
-      s2.onerror=ok; document.head.appendChild(s2);}else ok(); };
+  function load(u){ return new Promise(function(ok){
+    var s=document.createElement('script'); s.src=u; s.onload=ok; s.onerror=ok;
     document.head.appendChild(s);
   });}
   window._tiptapReady=(async function(){
     for(var i=0;i<pkgs.length;i++)
-      await load(LOC+pkgs[i]+'.umd.js', CDN+pkgs[i]+'@'+V+'/dist/index.umd.js');
+      await load(LOC+pkgs[i]+'.umd.js');
   })();
 })();
 </script>
@@ -826,27 +819,29 @@ function cargarTiposDocumento() {
 
 // ── Plantillas institucionales ──────────────────────────────────────
 async function cargarPlantilla(key) {
-  // Esperar al editor si todavía no está listo (máx 5 seg)
+  const html = PLANTILLAS_DATA[key];
+  if (!html) { console.warn('Plantilla no encontrada:', key); return; }
+
+  // Esperar al editor si todavía no está listo (máx 4 seg)
   if (!editor) {
     const inicio = Date.now();
-    while (!editor && Date.now() - inicio < 5000) {
+    while (!editor && Date.now() - inicio < 4000)
       await new Promise(r => setTimeout(r, 100));
+  }
+
+  if (editor) {
+    editor.commands.setContent(editor.getHTML() + html);
+    const el = document.querySelector('.ProseMirror');
+    if (el) el.scrollTop = el.scrollHeight;
+  } else {
+    // Fallback: insertar en textarea si editor no cargó
+    const ta = document.getElementById('ta-fallback')
+            || document.getElementById('contenido-hidden');
+    if (ta) {
+      ta.value = (ta.value || '') + '\n' + html.replace(/<[^>]+>/g, ' ').trim();
+      document.getElementById('contenido-hidden').value = ta.value;
     }
   }
-  if (!editor) {
-    alert('El editor no pudo cargar. Recargue la página.');
-    return;
-  }
-  const html = PLANTILLAS_DATA[key];
-  if (!html) {
-    console.warn('Plantilla no encontrada:', key);
-    return;
-  }
-  // Insertar al final del contenido actual
-  editor.commands.setContent(editor.getHTML() + html);
-  // Scroll al final del editor
-  const el = document.querySelector('.ProseMirror');
-  if (el) el.scrollTop = el.scrollHeight;
 }
 
 // ── Preview del código (SIN XXX — solo área-tipo-año-NNN) ────────────
@@ -938,13 +933,14 @@ function initEditor() {
 
 function fallbackEditor() {
   document.getElementById('toolbar').innerHTML =
-    '<div class="alert alert-warning m-2 small">Editor avanzado requiere conexión a internet. '
-    +'Se usa modo texto simple.</div>';
+    '<div class="alert alert-info m-2 small"><i class="bi bi-pencil me-1"></i>'
+    +'Editor de texto enriquecido no disponible. Usando modo texto simple.</div>';
   document.getElementById('editor-tiptap').innerHTML =
-    `<textarea id="ta-fallback" rows="20"
+    `<textarea id="ta-fallback" name="contenido_html_ta" rows="20"
       style="width:100%;border:none;padding:20px 24px;resize:vertical;
              font-family:Calibri,Arial,sans-serif;font-size:11pt;outline:none;"
-      placeholder="Redacte aquí el contenido del documento..."></textarea>`;
+      placeholder="Redacte aquí el contenido del documento..."
+      oninput="document.getElementById('contenido-hidden').value=this.value"></textarea>`;
 }
 
 // ── Comandos del toolbar ────────────────────────────────────────────
@@ -999,7 +995,7 @@ function insertarLink() {
 }
 
 function triggerImgUpload() {
-  document.getElementById('inp-img-upload').click();
+  document.getElementById('input-img-upload').click();
 }
 
 async function handleImageUpload(input) {
@@ -1147,8 +1143,7 @@ function togglePanelIA() {
 
 function abrirPromptPersonalizado() {
   const instr = prompt(
-    'Instrucción para Claude:
-Ej: "Redacta la introducción del informe PUEAA 2026"'
+    'Instrucción para Claude:\nEj: "Redacta la introducción del informe PUEAA 2026"'
   );
   if (instr && instr.trim()) promptIA(instr.trim());
 }
@@ -1264,6 +1259,141 @@ function macroTablaMarcoJuridico() {
     <tr><td></td><td></td><td></td></tr>
     </table>
   `).run();
+}
+
+// ── Macro: Representante legal (desde api/representante) ───────────
+async function macroRepresentante() {
+  if (!editor) return;
+  try {
+    const d = await fetch('/documentos/api/representante').then(r=>r.json());
+    const html = `<p>&nbsp;</p>
+      <p>Atentamente,</p><p>&nbsp;</p>
+      <p>___________________________</p>
+      <p><strong>${d.representante_legal || 'Representante Legal'}</strong></p>
+      <p>${d.cargo_representante || 'Representante Legal'}</p>
+      <p>${d.nombre_asociacion || 'Acueducto Comunitario'}</p>
+      <p>NIT: ${d.nit || ''}</p>`;
+    editor.chain().focus().insertContent(html).run();
+  } catch { editor.chain().focus().insertContent('<p>Representante Legal</p>').run(); }
+}
+
+// ── Macro: Encabezado institucional ────────────────────────────────
+async function macroEncabezado() {
+  if (!editor) return;
+  try {
+    const d = await fetch('/documentos/api/representante').then(r=>r.json());
+    const area  = document.getElementById('sel-area')?.value  || 'GA';
+    const tipo  = document.getElementById('sel-tipo')?.value  || 'OFI';
+    const fecha = document.querySelector('[name="fecha_radicacion"]')?.value || new Date().toISOString().substring(0,10);
+    const html = `
+      <p style="text-align:center;"><strong>${(d.nombre_asociacion||'ASUACAP').toUpperCase()}</strong></p>
+      <p style="text-align:center;">NIT: ${d.nit||'832.001.389-2'} — Villeta, Cundinamarca</p>
+      <p style="text-align:center;">${d.eslogan||''}</p>
+      <hr>
+      <p><strong>Código:</strong> ${area}-${tipo}-${new Date().getFullYear()}-###&nbsp;&nbsp;
+         <strong>Fecha:</strong> ${fecha}</p>
+      <p>&nbsp;</p>`;
+    editor.chain().focus().insertContent(html).run();
+  } catch { editor.chain().focus().insertContent('<p><strong>Encabezado institucional</strong></p>').run(); }
+}
+
+// ── Macro: Tabla balance hídrico ────────────────────────────────────
+function macroBalanceHidrico() {
+  if (!editor) return;
+  editor.chain().focus().insertContent(`
+    <p><strong>Balance Hídrico del Sistema</strong></p>
+    <table>
+      <tr><th>Tramo</th><th>Caudal Entrada (L/s)</th><th>Caudal Salida (L/s)</th><th>Pérdida (L/s)</th><th>Pérdida (%)</th></tr>
+      <tr><td>Bocatoma → Desarenador</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Desarenador → PTAP</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>PTAP → Almacenamiento</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>Almacenamiento → Distribución</td><td></td><td></td><td></td><td></td></tr>
+      <tr><td><strong>TOTAL</strong></td><td></td><td></td><td></td><td></td></tr>
+    </table>
+    <p><small>Nota: 1 L/s = 86.4 m³/día. IANC objetivo &lt; 30%</small></p>
+  `).run();
+}
+
+// ── Macro: Líneas de firma (firmantes seleccionados o de API) ───────
+async function macroFirmantes() {
+  if (!editor) return;
+  // Usar firmantes seleccionados en el formulario
+  const checks = document.querySelectorAll('input[name="firmantes_sel"]:checked');
+  let filas = [];
+  if (checks.length > 0) {
+    checks.forEach(ch => {
+      const label = ch.closest('.firmante-chip')?.querySelector('.fw-semibold');
+      const cargo = ch.closest('.firmante-chip')?.querySelector('.text-muted');
+      filas.push({n: label?.textContent||'Nombre', c: cargo?.textContent||'Cargo'});
+    });
+  } else {
+    // Sin selección: traer de la API
+    try {
+      const data = await fetch('/documentos/api/firmantes_activos').then(r=>r.json());
+      filas = (data||[]).slice(0,3).map(f=>({n:f.nombre||'Nombre',c:f.cargo||'Cargo'}));
+    } catch {}
+  }
+  if (!filas.length) filas = [{n:'Nombre',c:'Cargo'}];
+
+  const celdas = filas.map(f=>`
+    <td style="width:${Math.floor(100/filas.length)}%;border-top:1px solid #000;
+               text-align:center;padding-top:8px;font-size:10px;">
+      __________________________<br><strong>${f.n}</strong><br>${f.c}
+    </td>`).join('<td style="width:8px;"></td>');
+  editor.chain().focus().insertContent(
+    `<p>&nbsp;</p><table style="width:100%;border-collapse:collapse;margin-top:32px;">
+       <tr>${celdas}</tr></table>`
+  ).run();
+}
+
+// ── Macro: Saludo legal (apertura formal) ───────────────────────────
+function macroSaltoLegal() {
+  if (!editor) return;
+  const fecha = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
+  editor.chain().focus().insertContent(`
+    <p>Villeta, Cundinamarca, ${fecha}</p>
+    <p>&nbsp;</p>
+    <p>Señores:<br><strong></strong></p>
+    <p>Ciudad.</p>
+    <p>&nbsp;</p>
+    <p>Referencia: </p>
+    <p>&nbsp;</p>
+    <p>Respetados señores:</p>
+    <p>&nbsp;</p>
+  `).run();
+}
+
+// ── Utilidades del formulario ───────────────────────────────────────
+function contarFirmantes() {
+  const n = document.querySelectorAll('input[name="firmantes_sel"]:checked').length;
+  const badge = document.getElementById('cnt-firmantes');
+  if (badge) { badge.textContent = n; badge.className = 'badge ms-auto ' + (n>0?'bg-primary':'bg-secondary'); }
+}
+
+function sincronizarContenido() {
+  const h = editor ? editor.getHTML() : (document.getElementById('ta-fallback')?.value||'');
+  document.getElementById('contenido-hidden').value = h;
+}
+
+function revisarOrtografia() {
+  const panel = document.getElementById('corrector-resultados');
+  if (!panel) return;
+  const texto = editor ? editor.getText() : (document.getElementById('ta-fallback')?.value||'');
+  if (!texto.trim()) { panel.innerHTML='<div class="text-muted small">Sin contenido para revisar.</div>'; return; }
+  // Detector heurístico básico: palabras con doble espacio, número+letra pegados, puntuación doble
+  const errores = [];
+  if (/\s{2,}/.test(texto)) errores.push({tipo:'Espacios dobles detectados',sug:'Revise el espaciado'});
+  if (/[,.;]{2,}/.test(texto)) errores.push({tipo:'Puntuación duplicada',sug:'Revise ,.;'});
+  const mayus = texto.match(/(?<=[.!?]\s)[a-záéíóúüñ]/g);
+  if (mayus?.length) errores.push({tipo:`${mayus.length} posibles minúsculas al inicio de oración`,sug:'Revise mayúsculas'});
+  if (!errores.length) {
+    panel.innerHTML='<div class="text-success small"><i class="bi bi-check-circle me-1"></i>Sin errores detectados.</div>';
+  } else {
+    panel.innerHTML = errores.map(e=>
+      `<div class="error-item"><span class="error-word">${e.tipo}</span>
+       <span class="error-suger">→ ${e.sug}</span></div>`
+    ).join('');
+  }
 }
 
 // ── Membrete dinámico ───────────────────────────────────────────────
