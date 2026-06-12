@@ -84,24 +84,15 @@ def verificar_permiso(permiso: str):
     return decorator
 
 
+# ── CSRF — delega a core/csrf_manager (autoridad única) ─────────────
 def generar_token_csrf() -> str:
-    if "csrf_token" not in session:
-        session["csrf_token"] = hashlib.sha256(os.urandom(32)).hexdigest()
-    return session["csrf_token"]
+    from core.csrf_manager import generar_token
+    return generar_token()
 
 
 def verificar_token_csrf() -> bool:
-    token_form    = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
-    token_session = session.get("csrf_token")
-    if not token_form or not token_session:
-        return False
-    return hmac_compare(token_form, token_session)
-
-
-def hmac_compare(a: str, b: str) -> bool:
-    import hmac as _hmac
-    return _hmac.compare_digest(a.encode() if isinstance(a, str) else a,
-                                 b.encode() if isinstance(b, str) else b)
+    from core.csrf_manager import verificar_token
+    return verificar_token()
 
 
 def registrar_intento_fallo(ip: str):

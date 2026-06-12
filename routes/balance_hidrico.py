@@ -68,15 +68,16 @@ def api_guardar():
     long_d = float(data.get("longitud_distribucion_km") or 0)
     ima    = round((prod - fac) / (long_a + long_d), 2) if (long_a + long_d) > 0 else None
 
-    # Whitelist explícita: solo columnas conocidas de balance_hidrico
-    COLS_PERMITIDAS = {
+    # Columnas congeladas baseline RC5.5 — frozenset previene mutación accidental en runtime
+    # Toda modificación debe actualizarse en docs/ARCHITECTURE_MANIFEST.yaml
+    COLS_PERMITIDAS = frozenset({
         "bocatoma_m3","entrada_ptap_m3","salida_ptap_m3","produccion_m3",
         "consumo_facturado_m3","facturado_m3","perdidas_m3",
         "fallas_aduccion","longitud_aduccion_km",
         "fallas_distribucion","longitud_distribucion_km",
         "suscriptores","empleados","micromedidores_instalados",
         "micromedidores_efectivos","ianc_pct","ipuf_m3_susc_mes","ima","observaciones"
-    }
+    })
     c = {
         "bocatoma_m3":              boc or None,
         "entrada_ptap_m3":          ent or None,

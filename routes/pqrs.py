@@ -891,6 +891,12 @@ def exportar_sui():
                 ws3.cell(i,1).font = Font(bold=True, color=AZUL, size=11 if i==1 else 10)
 
     output.seek(0)
+    # SHA-256 del Excel para trazabilidad normativa
+    import hashlib as _hl
+    excel_bytes = output.getvalue()
+    hash_excel  = _hl.sha256(excel_bytes).hexdigest()
+    output.seek(0)
+
     # Solo marcamos reportadas DESPUÉS de que el Excel se generó correctamente
     n_marcadas = 0
     try:
@@ -906,7 +912,11 @@ def exportar_sui():
         log_action(
             accion="SUI_EXPORTADO",
             modulo="pqrs",
-            descripcion=f"Formato A SUI exportado: {n_marcadas} PQRS marcadas | Mes: {mes or date.today().strftime('%Y-%m')}"
+            descripcion=(
+                f"Formato A SUI exportado: {n_marcadas} PQRS marcadas | "
+                f"Mes: {mes or date.today().strftime('%Y-%m')} | "
+                f"SHA256: {hash_excel[:32]}..."
+            )
         )
     except Exception as e_mark:
         conn.rollback()

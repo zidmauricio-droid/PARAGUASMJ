@@ -10,30 +10,15 @@ from flask import session, request, jsonify, current_app
 
 # ── CSRF ─────────────────────────────────────────────────────────────────────
 
-_CSRF_KEY = "csrf_token"   # unificado con utils/seguridad.py
-
-
+# ── CSRF — delega a core/csrf_manager (autoridad única) ─────────────
 def generate_csrf_token() -> str:
-    """Genera (o reutiliza) un token CSRF en la sesion actual."""
-    if _CSRF_KEY not in session:
-        session[_CSRF_KEY] = secrets.token_hex(32)
-    return session[_CSRF_KEY]
+    from core.csrf_manager import generar_token
+    return generar_token()
 
 
 def verify_csrf_token() -> bool:
-    """
-    Verifica el token CSRF. SIN ARGUMENTOS — lee de request automaticamente.
-    Busca en: request.form → X-CSRF-Token header → request.json.
-    """
-    token: str | None = (
-        request.form.get("csrf_token")
-        or request.headers.get("X-CSRF-Token")
-        or (request.get_json(silent=True) or {}).get("csrf_token")
-    )
-    stored = session.get(_CSRF_KEY)
-    if not token or not stored:
-        return False
-    return secrets.compare_digest(token, stored)
+    from core.csrf_manager import verificar_token
+    return verificar_token()
 
 
 def csrf_protect(f):

@@ -35,7 +35,14 @@ def crear_backup() -> str:
             logger.error(f"Backup eliminado — integridad fallida: {resultado}")
             return ""
 
-        logger.info(f"Backup creado y verificado: {destino}")
+        # Verificación funcional: tablas críticas consultables
+        test = backup_test_restore(destino)
+        if not test["ok"]:
+            os.remove(destino)
+            logger.error(f"Backup eliminado — verificación funcional falló: {test}")
+            return ""
+
+        logger.info(f"Backup creado, verificado y funcional: {destino} | {test['tablas_verificadas']}")
         _limpiar_backups_antiguos()
         return destino
     except Exception as e:
@@ -62,6 +69,50 @@ def _limpiar_backups_antiguos():
         if i >= Config.BACKUPS_A_MANTENER or os.path.getmtime(ruta) < limite_tiempo:
             os.remove(ruta)
             logger.info(f"Backup eliminado: {nombre}")
+
+
+def backup_test_restore(backup_path: str) -> dict:
+    """
+    Verifica que un backup es íntegro Y restaurable consultando tablas críticas.
+    Un backup puede pasar PRAGMA integrity_check y aun así tener corrupción lógica.
+    Retorna dict con ok, tablas_verificadas, errores.
+    """
+    ruta_backup = os.path.abspath(backup_path)
+    if not os.path.isfile(ruta_backup):
+        return {"ok": False, "error": "Archivo no encontrado"}
+
+    _TABLAS_CRITICAS = ["usuarios", "registro_central", "audit_log", "configuracion"]
+    errores = []
+    tablas_ok = []
+
+    try:
+        conn = sqlite3.connect(ruta_backup)
+        conn.row_factory = sqlite3.Row
+
+        # Integridad estructural
+        resultado = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        if resultado != "ok":
+            conn.close()
+            return {"ok": False, "error": f"integrity_check falló: {resultado}"}
+
+        # Consulta funcional en tablas críticas
+        for tabla in _TABLAS_CRITICAS:
+            try:
+                n = conn.execute(f"SELECT COUNT(*) FROM {tabla}").fetchone()[0]
+                tablas_ok.append(f"{tabla}:{n}")
+            except Exception as e:
+                errores.append(f"{tabla}: {e}")
+
+        conn.close()
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+    if errores:
+        logger.warning(f"backup_test_restore — tablas con error: {errores}")
+        return {"ok": False, "tablas_ok": tablas_ok, "errores": errores}
+
+    logger.info(f"backup_test_restore OK: {tablas_ok}")
+    return {"ok": True, "tablas_verificadas": tablas_ok, "errores": []}
 
 
 def restaurar_backup(backup_path: str) -> dict:

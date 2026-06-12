@@ -28,8 +28,10 @@ def _notificar(destino_wa: str, destino_email: str, asunto: str, msg: str,
             ok, err = enviar_whatsapp(destino_wa, msg, api_key)
             if ok:
                 return "whatsapp"
+            _audit_canal("CANAL_WHATSAPP_FALLIDO", asunto, err)
             logger.warning(f"WhatsApp fallido ({err}), intentando email...")
         except Exception as e:
+            _audit_canal("CANAL_WHATSAPP_FALLIDO", asunto, str(e))
             logger.warning(f"WhatsApp excepción ({e}), intentando email...")
 
     # Intento 2: Email
@@ -37,14 +39,28 @@ def _notificar(destino_wa: str, destino_email: str, asunto: str, msg: str,
         try:
             from core.email_manager import enviar_correo
             if enviar_correo(destino_email, asunto, f"<p>{msg}</p>"):
+                _audit_canal("CANAL_EMAIL_UTILIZADO", asunto, "WhatsApp no disponible")
                 return "email"
             logger.warning("Email fallido, registrando en log local...")
         except Exception as e:
             logger.warning(f"Email excepción ({e}), registrando en log local...")
 
     # Intento 3: Log local — siempre disponible sin infraestructura
+    _audit_canal("CANAL_LOG_LOCAL", asunto, "WhatsApp y Email no disponibles")
     logger.warning(f"[NOTIF_LOCAL] {asunto} | {msg}")
     return "log"
+
+
+def _audit_canal(evento: str, asunto: str, detalle: str) -> None:
+    """Registra eventos de canal de notificación en audit_log."""
+    try:
+        from utils.audit import log_action
+        log_action(
+            accion=evento, modulo="scheduler",
+            descripcion=f"{asunto[:80]} | {detalle[:120]}"
+        )
+    except Exception:
+        pass
 
 
 def _leer_config(conn, *claves) -> dict:
