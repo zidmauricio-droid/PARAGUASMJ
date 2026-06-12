@@ -753,9 +753,19 @@ def api_contenido(registro_id):
         if conn: conn.close()
 
 
+_REPR_DEFAULTS = {
+    "representante_legal":   "Representante no configurado",
+    "cargo_representante":   "Representante Legal",
+    "nombre_asociacion":     "Acueducto Comunitario",
+    "nit":                   "NIT pendiente",
+    "correo":                "sin-correo@configurar.com",
+    "eslogan":               "Sistema de Gestión Documental",
+}
+
 @docs_bp.route("/api/representante")
 @login_requerido
 def api_representante():
+    """Retorna configuración de la asociación. Nunca retorna 500. (#46)"""
     conn = None
     try:
         conn = get_db()
@@ -764,7 +774,14 @@ def api_representante():
             WHERE clave IN ('representante_legal','cargo_representante',
                             'nombre_asociacion','nit','correo','eslogan')
         """).fetchall()
-        return jsonify({r["clave"]: r["valor"] for r in rows})
+        result = dict(_REPR_DEFAULTS)
+        for r in rows:
+            if r["valor"]:
+                result[r["clave"]] = r["valor"]
+        return jsonify(result)
+    except Exception as e:
+        _log_docs.error("api_representante: %s", e, exc_info=True)
+        return jsonify(dict(_REPR_DEFAULTS))
     finally:
         if conn: conn.close()
 

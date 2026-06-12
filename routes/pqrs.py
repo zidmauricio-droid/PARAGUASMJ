@@ -141,6 +141,63 @@ COMPONENTES = [
 EXTS_BITACORA = {"pdf", "jpg", "jpeg", "png", "tif", "tiff"}
 UPLOAD_BITACORA = os.path.join("uploads", "bitacoras")
 
+# ── Agrupación de causales F/I/P según Res. SSPD 54575/2015 ────────
+GRUPO_CAUSALES = {
+    "F": {"nombre": "Facturación",  "causales": ["01", "06", "10"]},
+    "I": {"nombre": "Instalación",  "causales": ["04", "05"]},
+    "P": {"nombre": "Prestación",   "causales": ["02", "03", "09"]},
+    "O": {"nombre": "Otros",        "causales": ["07", "08", "11", "12", "99"]},
+}
+
+# Código DANE por defecto (Villeta, Cundinamarca)
+DANE_DEFAULT = "251750000"
+
+
+# ══════════════════════════════════════════════════════════════════
+# API JSON — carga dinámica para formulario (#47, #48)
+# ══════════════════════════════════════════════════════════════════
+
+@pqrs_bp.route("/api/tipos-tramite")
+@login_requerido
+def api_tipos_tramite():
+    tipos = [
+        {"codigo": k, "nombre": k, "plazo": v["plazo"], "codigo_sui": v["codigo_sui"]}
+        for k, v in TIPOS_PQR.items()
+    ]
+    return jsonify({"ok": True, "tipos": tipos})
+
+
+@pqrs_bp.route("/api/grupos-causal")
+@login_requerido
+def api_grupos_causal():
+    grupos = [{"codigo": g, "nombre": v["nombre"]} for g, v in GRUPO_CAUSALES.items()]
+    return jsonify({"ok": True, "grupos": grupos})
+
+
+@pqrs_bp.route("/api/causales")
+@login_requerido
+def api_causales():
+    """Causales planas o filtradas por grupo (?grupo=F/I/P/O)."""
+    grupo = request.args.get("grupo", "").upper()
+    result = []
+    for cod, data in CAUSALES.items():
+        # Determinar grupo de este causal
+        g = next((k for k, v in GRUPO_CAUSALES.items() if cod in v["causales"]), "O")
+        if grupo and g != grupo:
+            continue
+        result.append({"codigo": cod, "nombre": data["texto"],
+                        "grupo": g, "tiene_subcausal": data.get("tiene_subcausal", False)})
+    return jsonify({"ok": True, "causales": result})
+
+
+@pqrs_bp.route("/api/subcausales/<causal_cod>")
+@login_requerido
+def api_subcausales(causal_cod):
+    sub = {k: v for k, v in SUBCAUSALES_FACTURACION.items()
+           if k.startswith(causal_cod + "-")}
+    result = [{"codigo": k, "nombre": v} for k, v in sub.items()]
+    return jsonify({"ok": True, "subcausales": result})
+
 
 # ══════════════════════════════════════════════════════════════════
 # PANEL PRINCIPAL
@@ -251,10 +308,21 @@ def nueva():
                 susc_id = str(_cur.lastrowid)
             _c.close()
 
-        canal_cod = request.form.get("canal_codigo", "99")
-        causal_cod = request.form.get("causal_codigo", "99")
+        canal_cod     = request.form.get("canal", request.form.get("canal_codigo", "99"))
+        causal_cod    = request.form.get("causal_codigo", "99")
         subcausal_cod = request.form.get("subcausal_codigo", "")
-        servicio_cod = request.form.get("servicio_codigo", "1")
+        servicio_cod  = request.form.get("servicio_codigo", "1")
+        grupo_causal  = request.form.get("grupo_causal", "")
+        # Inferir grupo si no viene del form
+        if not grupo_causal:
+            grupo_causal = next(
+                (k for k, v in GRUPO_CAUSALES.items() if causal_cod in v["causales"]), "O"
+            )
+        dane_municipio  = request.form.get("dane_municipio", DANE_DEFAULT).strip()
+        tipo_solicitante = request.form.get("tipo_solicitante", "suscriptor").strip()
+        # Whitelist tipo_solicitante (#48)
+        if tipo_solicitante not in ("suscriptor", "usuario", "SUS", "USR"):
+            tipo_solicitante = "suscriptor"
         resumen  = request.form.get("resumen", "").strip()
         detalle  = request.form.get("descripcion_detallada", "")
         comp     = request.form.get("componente_afectado", "")
@@ -295,8 +363,9 @@ def nueva():
                  estado_pqr, fecha_limite,
                  descripcion_detallada, radicado_visible,
                  resumen, componente_afectado,
-                 requiere_visita, mes_reporte)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 requiere_visita, mes_reporte,
+                 tipo_solicitante, dane_municipio, grupo_causal)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (reg_id, tipo_pqr, susc_id,
                   CANALES.get(canal_cod, canal_cod), canal_cod,
                   causal_cod, CAUSALES.get(causal_cod, {}).get("texto",""),
@@ -305,7 +374,8 @@ def nueva():
                   servicio_cod,
                   "Recibida", fecha_lim,
                   detalle, codigo, resumen, comp,
-                  req_vis, mes_rep))
+                  req_vis, mes_rep,
+                  tipo_solicitante, dane_municipio, grupo_causal))
             conn.commit()
 
             log_action(accion="CREATE", modulo="pqrs",
@@ -328,14 +398,30 @@ def nueva():
         "FROM contactos WHERE activo=1 ORDER BY razon_social"
     ).fetchall()
     conn.close()
+    conn2 = get_db()
+    dane_default = DANE_DEFAULT
+    try:
+        row = conn2.execute(
+            "SELECT valor FROM configuracion WHERE clave='dane_municipio'"
+        ).fetchone()
+        if row and row["valor"]:
+            dane_default = row["valor"]
+    except Exception:
+        pass
+    finally:
+        conn2.close()
+
     return render_template("pqrs/nueva.html",
                            suscriptores=suscriptores,
-                           tipos=TIPOS_PQR,
+                           tipos_pqr=list(TIPOS_PQR.keys()),
+                           tipos_pqr_json=TIPOS_PQR,
                            causales=CAUSALES,
                            subcausales=SUBCAUSALES_FACTURACION,
                            canales=CANALES,
                            servicios=SERVICIOS,
-                           componentes=COMPONENTES)
+                           componentes=COMPONENTES,
+                           grupos_causal=GRUPO_CAUSALES,
+                           dane_default=dane_default)
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -974,10 +1060,10 @@ def api_stats():
     })
 
 
-@pqrs_bp.route("/api/causales")
+@pqrs_bp.route("/api/formulario-data")
 @login_requerido
-def api_causales():
-    """Retorna causales y subcausales para el formulario dinámico."""
+def api_formulario_data():
+    """Datos completos para formulario PQRS (causales, canales, servicios, tipos)."""
     return jsonify({
         "causales":    {k: v for k, v in CAUSALES.items()},
         "subcausales": SUBCAUSALES_FACTURACION,

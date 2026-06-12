@@ -102,12 +102,22 @@ def nuevo():
             consec = obtener_consecutivo("GA", "PRY", anio)
             codigo = f"GA-PRY-{anio}-{consec:03d}"
             responsable_id = request.form.get("responsable_id") or None
+            tipo_periodo    = request.form.get("tipo_periodo", "ANIOS").upper()
+            if tipo_periodo not in ("MESES", "ANIOS", "TRIMESTRES", "SEMESTRES"):
+                tipo_periodo = "ANIOS"
+            try:
+                cantidad_periodo = max(1, int(request.form.get("cantidad_periodo") or 1))
+            except (ValueError, TypeError):
+                cantidad_periodo = 1
+            _MESES_FACTOR = {"MESES": 1, "TRIMESTRES": 3, "SEMESTRES": 6, "ANIOS": 12}
+            duracion_meses = cantidad_periodo * _MESES_FACTOR.get(tipo_periodo, 12)
             conn.execute("""
                 INSERT INTO proyectos
                 (codigo, nombre, descripcion, tipo_proyecto,
                  fecha_inicio, fecha_limite, presupuesto,
-                 responsable_id, estado, fecha_creacion, creado_por)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                 responsable_id, estado, fecha_creacion, creado_por,
+                 tipo_periodo, cantidad_periodo, duracion_meses)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (codigo, nombre,
                   request.form.get("descripcion", "").strip(),
                   request.form.get("tipo_proyecto", "otro"),
@@ -117,13 +127,14 @@ def nuevo():
                   responsable_id,
                   "planificacion",
                   datetime.now().isoformat(),
-                  session.get("usuario_id")))
+                  session.get("usuario_id"),
+                  tipo_periodo, cantidad_periodo, duracion_meses))
             new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
             conn.commit()
             log_action(
                 accion="CREATE_PROYECTO",
                 modulo="proyectos",
-                descripcion=f"{codigo} — {nombre} | presupuesto={presupuesto:,.0f} | responsable_id={responsable_id}"
+                descripcion=f"{codigo} — {nombre} | presupuesto={presupuesto:,.0f} | periodo={cantidad_periodo}{tipo_periodo} ({duracion_meses}m)"
             )
             flash(f"Proyecto creado: {codigo}", "success")
             return redirect(url_for("proyectos.ver", pid=new_id))

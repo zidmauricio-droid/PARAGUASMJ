@@ -6,6 +6,9 @@
   background:#f8fafc; border-radius:0 8px 8px 0; margin-bottom:8px; }
 .badge-plazo { background:#dbeafe;color:#1e40af;padding:3px 10px;
   border-radius:12px;font-size:11px;font-weight:700; }
+.solicitante-tipo .form-check-label { cursor:pointer; }
+.solicitante-tipo .form-check-input:checked + .form-check-label {
+  font-weight:600; color:#1e40af; }
 </style>
 {% endblock %}
 {% block content %}
@@ -32,31 +35,65 @@
 
 <div class="card border-0 shadow-sm">
   <div class="card-body">
-    <form method="POST" action="/pqrs/nueva">
+    <form method="POST" action="/pqrs/nueva" id="formNuevaPqrs">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div class="row g-3">
         <!-- Tipo PQRS -->
         <div class="col-md-6">
           <label class="form-label fw-semibold">Tipo de solicitud *</label>
-          <select name="tipo_pqr" class="form-select" required>
+          <select name="tipo_pqr" id="sel_tipo_pqr" class="form-select" required>
             <option value="">Seleccione...</option>
             {% for tipo in tipos_pqr %}
-            <div class="seccion-tipo">{{ tipo }}</div>
             <option value="{{ tipo }}">{{ tipo }}</option>
             {% endfor %}
           </select>
+          <div id="info_plazo" class="mt-1"></div>
         </div>
 
         <!-- Canal de entrada -->
         <div class="col-md-6">
           <label class="form-label fw-semibold">Canal de entrada *</label>
           <select name="canal" class="form-select" required>
-            <option value="presencial">Presencial</option>
-            <option value="telefono">Teléfono</option>
-            <option value="escrito">Escrito / Correo</option>
-            <option value="web">Portal Web</option>
+            <option value="01">Oficina física / Ventanilla</option>
+            <option value="02">Línea de atención telefónica</option>
+            <option value="03">Página web / Formulario en línea</option>
+            <option value="04">Correo electrónico</option>
+            <option value="08">Correspondencia física / Escrito</option>
+            <option value="09">Ventanilla única / Traslado externo</option>
+            <option value="99">Otro canal</option>
           </select>
+        </div>
+
+        <!-- Tipo de solicitante (Ley 142/1994) -->
+        <div class="col-12">
+          <label class="form-label fw-semibold">Tipo de solicitante <span class="text-muted small">(Ley 142/1994)</span></label>
+          <div class="d-flex gap-4 solicitante-tipo">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="tipo_solicitante"
+                     id="ts_suscriptor" value="suscriptor" checked>
+              <label class="form-check-label" for="ts_suscriptor">
+                <i class="bi bi-person-fill me-1 text-primary"></i>Suscriptor
+                <small class="text-muted d-block">Usuario con contrato de servicio</small>
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="tipo_solicitante"
+                     id="ts_usuario" value="usuario">
+              <label class="form-check-label" for="ts_usuario">
+                <i class="bi bi-people-fill me-1 text-success"></i>Usuario
+                <small class="text-muted d-block">Sin contrato — uso ocasional</small>
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="tipo_solicitante"
+                     id="ts_tercero" value="tercero">
+              <label class="form-check-label" for="ts_tercero">
+                <i class="bi bi-building me-1 text-warning"></i>Tercero
+                <small class="text-muted d-block">Entidad / persona externa</small>
+              </label>
+            </div>
+          </div>
         </div>
 
         <!-- Nombre del solicitante -->
@@ -85,6 +122,48 @@
           <label class="form-label fw-semibold">Correo electrónico</label>
           <input type="email" name="correo_solicitante" class="form-control"
                  placeholder="ejemplo@correo.com">
+        </div>
+
+        <!-- Grupo causal (Res. SSPD 54575/2015) -->
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">
+            Grupo causal <span class="text-muted small">(Res. SSPD 54575/2015)</span>
+          </label>
+          <select name="grupo_causal" id="sel_grupo_causal" class="form-select">
+            <option value="">— Sin causal —</option>
+            {% for grupo_cod, grupo_data in grupos_causal.items() %}
+            <option value="{{ grupo_cod }}">{{ grupo_cod }} — {{ grupo_data.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Causal -->
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Causal</label>
+          <select name="causal_codigo" id="sel_causal" class="form-select" disabled>
+            <option value="">— Seleccione grupo primero —</option>
+          </select>
+        </div>
+
+        <!-- Subcausal (visible solo para causal 01 - Facturación) -->
+        <div class="col-md-4" id="div_subcausal" style="display:none">
+          <label class="form-label fw-semibold">Subcausal de facturación</label>
+          <select name="subcausal_codigo" id="sel_subcausal" class="form-select">
+            <option value="">— Seleccione causal primero —</option>
+          </select>
+        </div>
+
+        <!-- DANE municipio -->
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">
+            Municipio DANE
+            <i class="bi bi-info-circle text-muted" title="Código DANE del municipio donde ocurre el hecho"></i>
+          </label>
+          <input type="text" name="dane_municipio" id="inp_dane" class="form-control"
+                 maxlength="9" pattern="[0-9]{9}"
+                 value="{{ dane_default }}"
+                 placeholder="251750000">
+          <div class="form-text">Villeta, Cundinamarca: 251750000</div>
         </div>
 
         <!-- Descripción -->
@@ -121,4 +200,86 @@
     </form>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  "use strict";
+
+  // Tipos de trámite con sus plazos (cargados desde servidor vía JSON inline)
+  var TIPOS_PQR = {{ tipos_pqr_json | tojson }};
+
+  // Actualizar badge de plazo al cambiar tipo
+  var selTipo = document.getElementById("sel_tipo_pqr");
+  var infoPlazo = document.getElementById("info_plazo");
+  selTipo.addEventListener("change", function () {
+    var t = TIPOS_PQR[this.value];
+    if (t) {
+      infoPlazo.innerHTML = '<span class="badge-plazo"><i class="bi bi-clock me-1"></i>' +
+        t.plazo + ' días hábiles — Cód. SUI ' + t.codigo_sui + '</span>';
+    } else {
+      infoPlazo.innerHTML = "";
+    }
+  });
+
+  // Carga dinámica de causales según grupo
+  var selGrupo = document.getElementById("sel_grupo_causal");
+  var selCausal = document.getElementById("sel_causal");
+  var selSubcausal = document.getElementById("sel_subcausal");
+  var divSubcausal = document.getElementById("div_subcausal");
+
+  selGrupo.addEventListener("change", function () {
+    var grupo = this.value;
+    selCausal.innerHTML = '<option value="">Cargando...</option>';
+    selCausal.disabled = true;
+    divSubcausal.style.display = "none";
+    selSubcausal.innerHTML = '<option value="">—</option>';
+
+    if (!grupo) {
+      selCausal.innerHTML = '<option value="">— Seleccione grupo primero —</option>';
+      return;
+    }
+
+    // Datos de causales están precargados en el servidor; usar endpoint local
+    fetch("/pqrs/api/causales?grupo=" + encodeURIComponent(grupo), {
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.ok) { selCausal.innerHTML = '<option value="">Error al cargar</option>'; return; }
+      var opts = '<option value="">— Seleccione causal —</option>';
+      data.causales.forEach(function (c) {
+        opts += '<option value="' + c.codigo + '" data-subcausal="' + (c.tiene_subcausal ? "1" : "0") + '">'
+              + c.codigo + ' — ' + c.nombre + '</option>';
+      });
+      selCausal.innerHTML = opts;
+      selCausal.disabled = false;
+    })
+    .catch(function () {
+      selCausal.innerHTML = '<option value="">Error de red</option>';
+    });
+  });
+
+  selCausal.addEventListener("change", function () {
+    var opt = this.options[this.selectedIndex];
+    var tieneSub = opt && opt.dataset.subcausal === "1";
+    divSubcausal.style.display = tieneSub ? "" : "none";
+    if (!tieneSub) { selSubcausal.innerHTML = '<option value="">—</option>'; return; }
+
+    var causal = this.value;
+    fetch("/pqrs/api/subcausales/" + encodeURIComponent(causal), {
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var opts = '<option value="">— Seleccione subcausal —</option>';
+      (data.subcausales || []).forEach(function (s) {
+        opts += '<option value="' + s.codigo + '">' + s.codigo + ' — ' + s.nombre + '</option>';
+      });
+      selSubcausal.innerHTML = opts;
+    })
+    .catch(function () {});
+  });
+}());
+</script>
 {% endblock %}
