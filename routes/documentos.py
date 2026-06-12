@@ -372,6 +372,23 @@ def nuevo():
                     VALUES(?,'Borrador',CURRENT_TIMESTAMP,?,'Documento creado desde editor')
                 """,(reg_id, session.get("nombre_usuario")))
 
+                # Clasificación archivística determinística al momento de radicación
+                try:
+                    from core.document_classifier import clasificar_documento as _clf_doc
+                    clf = _clf_doc(tipo, asunto, area)
+                    if fk_trd is None and clf.serie_codigo not in ("OTR",):
+                        trd_auto = conn.execute(
+                            "SELECT pk_trd_id FROM trd WHERE nombre LIKE ? LIMIT 1",
+                            (f"%{clf.serie_nombre}%",)
+                        ).fetchone()
+                        if trd_auto:
+                            conn.execute(
+                                "UPDATE registro_central SET fk_trd_id=? WHERE pk_registro_id=?",
+                                (trd_auto["pk_trd_id"], reg_id)
+                            )
+                except Exception:
+                    pass  # Clasificación es auxiliar — no bloquea radicación
+
                 conn.commit()
                 auditar(f"Documento creado: {codigo}", modulo="documentos")
                 flash(f"Documento {codigo} creado exitosamente.", "success")
@@ -1226,6 +1243,43 @@ def desactivar_indicador(registro_id):
 # ════════════════════════════════════════════════════════════
 # TRD — Archivo Total
 # ════════════════════════════════════════════════════════════
+
+@docs_bp.route("/api/clasificar", methods=["POST"])
+@login_requerido
+def api_clasificar():
+    """Clasifica un documento según TRD determinística. No guarda nada."""
+    data  = request.get_json(silent=True) or {}
+    tipo  = data.get("tipo_documento", "")
+    asunto = data.get("asunto", "")
+    area  = data.get("area", "")
+    if not tipo and not asunto:
+        return jsonify({"ok": False, "error": "tipo_documento o asunto requerido"}), 400
+    from core.document_classifier import clasificar_documento as _clf
+    clf = _clf(tipo, asunto, area)
+    return jsonify({"ok": True, "clasificacion": clf.to_dict()})
+
+
+@docs_bp.route("/api/clasificar/<int:registro_id>", methods=["POST"])
+@login_requerido
+def api_clasificar_registro(registro_id):
+    """Enriquece un registro existente con su clasificación TRD."""
+    from core.document_classifier import enriquecer_registro
+    conn = get_db()
+    resultado = enriquecer_registro(conn, registro_id)
+    conn.close()
+    return jsonify(resultado)
+
+
+@docs_bp.route("/api/sugerir_expediente", methods=["POST"])
+@login_requerido
+def api_sugerir_expediente():
+    """Sugiere expedientes existentes para vincular un documento."""
+    data   = request.get_json(silent=True) or {}
+    doc_id = data.get("documento_id", 0)
+    asunto = data.get("asunto", "")
+    from modules.documental.clasificador_documental import sugerir_expediente
+    return jsonify(sugerir_expediente(doc_id, asunto))
+
 
 @docs_bp.route("/api/alertas_trd")
 @login_requerido
