@@ -248,10 +248,6 @@ def api_desbloquear(uid):
     return jsonify({"ok": True})
 
 
-@aud_bp.route("/api/usuarios/<int:uid>", methods=["DELETE"])
-@login_requerido
-@rol_requerido("admin")
-def api_eliminar_usuario(uid):
 @aud_bp.route("/foto/<path:filename>")
 @login_requerido
 def servir_foto_usuario(filename):
@@ -259,7 +255,6 @@ def servir_foto_usuario(filename):
     from flask import send_from_directory, abort
     from werkzeug.utils import safe_join
     import re
-    # Whitelist estricta: solo nombres simples con extensión de imagen
     if not re.fullmatch(r"[\w\-]+\.(png|jpg|jpeg|webp|gif)", filename, re.IGNORECASE):
         abort(404)
     directorio = os.path.abspath(FOTO_DIR)
