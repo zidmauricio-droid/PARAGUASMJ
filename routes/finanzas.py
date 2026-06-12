@@ -18,6 +18,20 @@ fin_bp = Blueprint("finanzas", __name__, url_prefix="/finanzas")
 _TABLAS_FIN = frozenset({"caja_chica", "movimientos_financieros"})
 
 
+import re as _re
+import logging as _logging
+_log_fin = _logging.getLogger("sigca.finanzas")
+
+
+def _sanitizar_texto(texto: str, max_len: int = 100) -> str:
+    """Limpia texto de caracteres de control y trunca. (#4 sanitización profunda)"""
+    if not texto:
+        return ""
+    texto = _re.sub(r"[\n\r\t\x00-\x1f\x7f]", " ", texto)
+    texto = _re.sub(r"\s+", " ", texto)
+    return texto.strip()[:max_len]
+
+
 def _validar_tabla(tabla: str) -> None:
     if tabla not in _TABLAS_FIN:
         raise ValueError(f"Tabla financiera '{tabla}' no autorizada")
@@ -259,8 +273,15 @@ def banco_crear():
     if not _verificar_csrf_o_abortar():
         return redirect(url_for("finanzas.bancos"))
 
-    codigo  = request.form.get("codigo_cuenta", "").strip().upper()
-    nombre  = request.form.get("banco_nombre", "").strip()
+    # Sanitización profunda de entradas (#4)
+    codigo    = _sanitizar_texto(request.form.get("codigo_cuenta", ""), 20).upper()
+    nombre    = _sanitizar_texto(request.form.get("banco_nombre", ""), 100)
+    ejecutivo = _sanitizar_texto(request.form.get("ejecutivo", ""), 80)
+    telefono  = _sanitizar_texto(request.form.get("telefono", ""), 20)
+    moneda    = request.form.get("moneda", "COP")
+    if moneda not in ("COP", "USD", "EUR"):
+        moneda = "COP"
+
     if not codigo or not nombre:
         flash("Código y nombre del banco son obligatorios.", "danger")
         return redirect(url_for("finanzas.bancos"))
@@ -276,19 +297,20 @@ def banco_crear():
 
     conn = get_db()
     try:
+        # Verificar código duplicado (#2 — duplicados)
+        if conn.execute(
+            "SELECT 1 FROM bancos WHERE codigo_cuenta=? AND status='ACTIVA'", (codigo,)
+        ).fetchone():
+            flash(f"Ya existe una cuenta activa con el código '{codigo}'.", "danger")
+            return redirect(url_for("finanzas.bancos"))
+
         conn.execute("""
             INSERT INTO bancos (codigo_cuenta, banco_nombre, tipo_cuenta, moneda,
                                saldo_actual, ejecutivo, telefono, status)
             VALUES (?,?,?,?,?,?,?,?)
-        """, (
-            codigo, nombre,
-            request.form.get("tipo_cuenta", "AHORRO"),
-            request.form.get("moneda", "COP"),
-            saldo_ini,
-            request.form.get("ejecutivo", ""),
-            request.form.get("telefono", ""),
-            "ACTIVA"
-        ))
+        """, (codigo, nombre,
+              request.form.get("tipo_cuenta", "AHORRO"),
+              moneda, saldo_ini, ejecutivo, telefono, "ACTIVA"))
         conn.commit()
         auditar(
             "BANCO_CREAR",
@@ -298,7 +320,9 @@ def banco_crear():
         flash("Cuenta bancaria creada correctamente.", "success")
     except Exception as e:
         conn.rollback()
-        flash(f"Error al crear cuenta: {e}", "danger")
+        # Log completo interno; mensaje genérico al usuario (#3 — no exponer BD)
+        _log_fin.error("banco_crear: %s", e, exc_info=True)
+        flash("Error al crear la cuenta. Contacte al administrador si el problema persiste.", "danger")
     finally:
         conn.close()
     return redirect(url_for("finanzas.bancos"))
@@ -342,7 +366,8 @@ def banco_eliminar(bid):
         flash(msg, "info")
     except Exception as e:
         conn.rollback()
-        flash(f"Error: {e}", "danger")
+        _log_fin.error("banco_eliminar bid=%s: %s", bid, e, exc_info=True)
+        flash("Error al inactivar la cuenta. Contacte al administrador.", "danger")
     finally:
         conn.close()
     return redirect(url_for("finanzas.bancos"))

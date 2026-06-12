@@ -1,21 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Movimientos Bancarios{% endblock %}
+{% block title %}Movimientos Bancarios — PARAGUASMJ{% endblock %}
 {% block content %}
 <div class="modulo-header modulo-financiero">
     <i class="bi bi-arrow-left-right"></i>
     <span>Finanzas — Movimientos</span>
     <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
-<div class="d-flex justify-content-between mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="mb-0">Movimientos Bancarios</h5>
-  <a href="{{ url_for('finanzas.bancos') }}" class="btn btn-sm btn-outline-secondary">← Cuentas</a>
+  <a href="{{ url_for('finanzas.bancos') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-bank me-1"></i>Cuentas
+  </a>
 </div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat,msg in messages %}
+  <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar alerta"></button>
+  </div>
+  {% endfor %}
+{% endwith %}
 
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-body py-2">
-    <form method="GET" class="row g-2 align-items-end">
+    <form method="GET" class="row g-2 align-items-end" role="search" aria-label="Filtros de movimientos">
       <div class="col-md-3">
-        <select name="cuenta_id" class="form-select form-select-sm">
+        <label class="form-label mb-0" for="sel-cuenta">Cuenta</label>
+        <select id="sel-cuenta" name="cuenta_id" class="form-select form-select-sm">
           <option value="">Todas las cuentas</option>
           {% for c in cuentas %}
           <option value="{{ c.pk_banco_id }}" {% if cuenta_id==c.pk_banco_id %}selected{% endif %}>
@@ -24,27 +35,57 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-auto"><input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}"></div>
-      <div class="col-auto"><input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}"></div>
-      <div class="col-auto"><button type="submit" class="btn btn-sm btn-outline-primary">Consultar</button></div>
+      <div class="col-auto">
+        <label class="form-label mb-0" for="inp-fd">Desde</label>
+        <input type="date" id="inp-fd" name="fecha_desde" class="form-control form-control-sm"
+               value="{{ fecha_desde }}">
+      </div>
+      <div class="col-auto">
+        <label class="form-label mb-0" for="inp-fh">Hasta</label>
+        <input type="date" id="inp-fh" name="fecha_hasta" class="form-control form-control-sm"
+               value="{{ fecha_hasta }}">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-search me-1"></i>Consultar
+        </button>
+      </div>
     </form>
   </div>
 </div>
 
 <div class="card border-0 shadow-sm mb-3">
-  <div class="card-header">
+  <div class="card-header d-flex justify-content-between align-items-center">
     <span>Saldo anterior al período: <strong class="text-primary">{{ saldo_anterior | moneda }}</strong></span>
+    {% if total_paginas > 1 %}
+    <span class="text-muted small">Página {{ pagina }} de {{ total_paginas }}</span>
+    {% endif %}
   </div>
   <div class="table-responsive">
-    <table class="table table-sm table-hover mb-0">
-      <thead class="table-dark"><tr><th>Fecha</th><th>Concepto</th><th>Ingreso</th><th>Egreso</th><th>Saldo</th></tr></thead>
+    <table class="table table-sm table-hover mb-0" aria-label="Movimientos bancarios del período">
+      <thead class="table-dark">
+        <tr>
+          <th scope="col">Fecha</th>
+          <th scope="col">Concepto</th>
+          <th scope="col" class="text-end">Ingreso</th>
+          <th scope="col" class="text-end">Egreso</th>
+          <th scope="col" class="text-end">Saldo</th>
+        </tr>
+      </thead>
       <tbody>
       {% for m in movimientos %}
       <tr>
-        <td><small>{{ m.fecha }}</small></td><td>{{ m.concepto }}</td>
-        <td class="text-success fw-semibold">{% if m.ingreso > 0 %}{{ m.ingreso | moneda }}{% endif %}</td>
-        <td class="text-danger fw-semibold">{% if m.egreso > 0 %}{{ m.egreso | moneda }}{% endif %}</td>
-        <td class="fw-bold {% if m.saldo >= 0 %}text-primary{% else %}text-danger{% endif %}">{{ m.saldo | moneda }}</td>
+        <td><small>{{ m.fecha }}</small></td>
+        <td>{{ m.concepto }}</td>
+        <td class="text-end text-success fw-semibold">
+          {% if m.ingreso > 0 %}{{ m.ingreso | moneda }}{% endif %}
+        </td>
+        <td class="text-end text-danger fw-semibold">
+          {% if m.egreso > 0 %}{{ m.egreso | moneda }}{% endif %}
+        </td>
+        <td class="text-end fw-bold {% if m.saldo >= 0 %}text-primary{% else %}text-danger{% endif %}">
+          {{ m.saldo | moneda }}
+        </td>
       </tr>
       {% else %}
       <tr><td colspan="5" class="text-center text-muted py-3">Sin movimientos en el período.</td></tr>
@@ -53,45 +94,99 @@
     </table>
   </div>
   {% if total_paginas > 1 %}
-  <div class="card-footer d-flex gap-2 justify-content-end">
+  <div class="card-footer d-flex gap-2 justify-content-end align-items-center">
     {% if pagina > 1 %}
-    <a href="?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}{% if cuenta_id %}&cuenta_id={{ cuenta_id }}{% endif %}&pagina={{ pagina - 1 }}" class="btn btn-sm btn-outline-secondary">← Anterior</a>
+    <a href="?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}{% if cuenta_id %}&cuenta_id={{ cuenta_id }}{% endif %}&pagina={{ pagina - 1 }}"
+       class="btn btn-sm btn-outline-secondary"
+       aria-label="Página anterior">
+      <i class="bi bi-chevron-left"></i> Anterior
+    </a>
     {% endif %}
-    <span class="btn btn-sm btn-light disabled">{{ pagina }} / {{ total_paginas }}</span>
+    <span class="text-muted small px-2">{{ pagina }} / {{ total_paginas }}</span>
     {% if pagina < total_paginas %}
-    <a href="?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}{% if cuenta_id %}&cuenta_id={{ cuenta_id }}{% endif %}&pagina={{ pagina + 1 }}" class="btn btn-sm btn-outline-primary">Siguiente →</a>
+    <a href="?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}{% if cuenta_id %}&cuenta_id={{ cuenta_id }}{% endif %}&pagina={{ pagina + 1 }}"
+       class="btn btn-sm btn-outline-primary"
+       aria-label="Página siguiente">
+      Siguiente <i class="bi bi-chevron-right"></i>
+    </a>
     {% endif %}
   </div>
   {% endif %}
 </div>
 
 <div class="card border-0 shadow-sm">
-  <div class="card-header bg-primary text-white">Registrar Movimiento</div>
+  <div class="card-header bg-primary text-white fw-bold">
+    <i class="bi bi-plus-circle me-2"></i>Registrar Movimiento
+  </div>
   <div class="card-body">
-    <form method="POST" action="{{ url_for('finanzas.movimiento_nuevo') }}">
+    <form method="POST" action="{{ url_for('finanzas.movimiento_nuevo') }}" id="form-mov">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-3">
-        <div class="col-md-2"><label class="form-label fw-semibold">Fecha</label>
-          <input type="date" name="fecha" class="form-control" required value="{{ fecha_hasta }}"></div>
-        <div class="col-md-2"><label class="form-label fw-semibold">Cuenta</label>
-          <select name="fk_banco_id" class="form-select">
-            <option value="">Caja</option>
-            {% for c in cuentas %}<option value="{{ c.pk_banco_id }}">{{ c.banco_nombre }}</option>{% endfor %}
-          </select></div>
-        <div class="col-md-3"><label class="form-label fw-semibold">Concepto</label>
-          <input type="text" name="concepto" class="form-control" required></div>
-        <div class="col-md-2"><label class="form-label fw-semibold">Tipo</label>
-          <select name="tipo_mov" class="form-select">
+        <div class="col-md-2">
+          <label class="form-label fw-semibold" for="inp-fecha">Fecha</label>
+          <input type="date" id="inp-fecha" name="fecha" class="form-control"
+                 required value="{{ fecha_hasta }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold" for="inp-cuenta">Cuenta</label>
+          <select id="inp-cuenta" name="fk_banco_id" class="form-select">
+            <option value="">Caja menor</option>
+            {% for c in cuentas %}
+            <option value="{{ c.pk_banco_id }}">{{ c.banco_nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold" for="inp-concepto">Concepto</label>
+          <input type="text" id="inp-concepto" name="concepto" class="form-control"
+                 required maxlength="200" placeholder="Descripción del movimiento...">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold" for="inp-tipo">Tipo</label>
+          <select id="inp-tipo" name="tipo_mov" class="form-select">
             <option value="INGRESO">💚 Ingreso</option>
             <option value="EGRESO">❤️ Egreso</option>
-          </select></div>
-        <div class="col-md-2"><label class="form-label fw-semibold">Importe</label>
-          <input type="number" name="importe" class="form-control" required min="1" step="100"></div>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold" for="inp-importe-display">Importe (COP)</label>
+          <input type="text" id="inp-importe-display" class="form-control"
+                 placeholder="Ej: 150.000" oninput="fmtImporte(this)"
+                 autocomplete="off" aria-describedby="mov-importe-ayuda">
+          <input type="hidden" id="inp-importe" name="importe">
+          <small id="mov-importe-ayuda" class="text-muted">Valor en pesos colombianos</small>
+        </div>
         <div class="col-md-1 d-flex align-items-end">
-          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-floppy"></i></button>
+          <button type="submit" class="btn btn-primary w-100"
+                  aria-label="Guardar movimiento bancario">
+            <i class="bi bi-floppy"></i>
+          </button>
         </div>
       </div>
     </form>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function fmtImporte(input) {
+  const raw = input.value.replace(/[^0-9]/g, '');
+  document.getElementById('inp-importe').value = raw || '';
+  if (raw) {
+    input.value = new Intl.NumberFormat('es-CO').format(parseInt(raw, 10));
+  }
+}
+
+document.getElementById('form-mov').addEventListener('submit', function(e) {
+  const imp = document.getElementById('inp-importe').value;
+  if (!imp || parseInt(imp, 10) <= 0) {
+    e.preventDefault();
+    const display = document.getElementById('inp-importe-display');
+    display.classList.add('is-invalid');
+    display.focus();
+    return false;
+  }
+  document.getElementById('inp-importe-display').classList.remove('is-invalid');
+});
+</script>
 {% endblock %}
