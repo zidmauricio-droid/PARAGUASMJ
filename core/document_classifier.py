@@ -15,7 +15,9 @@ import re
 import json
 import os
 import logging
+import hashlib
 from dataclasses import dataclass, field, asdict
+from functools import lru_cache
 from typing import Optional
 
 logger = logging.getLogger("sigca.classifier")
@@ -153,16 +155,25 @@ _AREA_NOMBRES: dict[str, str] = {
 
 # ── Funciones públicas ────────────────────────────────────────────────────────
 
+@lru_cache(maxsize=512)
+def _determinar_serie_cached(texto_norm: str) -> tuple:
+    """Núcleo de clasificación con caché LRU — clave: texto normalizado hasta 200 chars (#8)."""
+    for patron, serie, subserie in _REGLAS_TIPO:
+        if patron.search(texto_norm):
+            return serie, subserie, "REGLA"
+    return "OTR", "General", "DEFAULT"
+
+
 def determinar_serie(tipo_documento: str, asunto: str) -> tuple[str, str, str]:
     """
     Retorna (serie_codigo, subserie, confianza).
     confianza: 'REGLA' si hubo match por regla, 'DEFAULT' si no.
+    Usa caché LRU de 512 entradas para entradas repetidas.
     """
     texto = f"{tipo_documento or ''} {asunto or ''}"
-    for patron, serie, subserie in _REGLAS_TIPO:
-        if patron.search(texto):
-            return serie, subserie, "REGLA"
-    return "OTR", "General", "DEFAULT"
+    # Normalizar y truncar para clave de caché reproducible
+    texto_norm = re.sub(r"\s+", " ", texto).strip().lower()[:200]
+    return _determinar_serie_cached(texto_norm)
 
 
 def determinar_retencion(serie_codigo: str) -> dict:

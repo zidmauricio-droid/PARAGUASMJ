@@ -11,7 +11,7 @@ Mejoras del documento del editor:
   - Estadisticas de documentos
   - Vista previa en linea del PDF
 """
-import re, os, json
+import re, os, json, tempfile
 from io import BytesIO
 import hashlib
 import secrets
@@ -23,9 +23,22 @@ from core.seguridad import login_requerido
 from utils.seguridad import verificar_token_csrf
 from core.capability_registry import CapabilityRegistry
 from core.auditoria import auditar, registrar_evento
-from core.gestor_trd import gestor_trd
 from core.forensic_saneamiento import SaneadorForense
 from datetime import datetime, timedelta, date
+
+# Clasificador archivístico — disponibilidad verificada al cargar el módulo (#6)
+try:
+    from core.document_classifier import (
+        clasificar_documento as _clf_doc,
+        enriquecer_registro as _enriquecer_registro,
+    )
+    CLASSIFIER_AVAILABLE = True
+except ImportError:
+    CLASSIFIER_AVAILABLE = False
+    import logging
+    logging.getLogger("sigca.documentos").warning(
+        "core/document_classifier.py no encontrado. Clasificación TRD desactivada."
+    )
 
 
 
@@ -61,19 +74,23 @@ def registrar_acceso_doc(conn, doc_id: int, usuario: str, ip: str) -> None:
 
 
 def calcular_vencimiento_trd(conn, doc_id: int):
-    doc = conn.execute("""
-        SELECT r.fecha_radicacion, trd.tiempo_retencion_gestion
-        FROM registro_central r
-        JOIN trd ON r.tipo_documento = trd.tipo_documento AND r.area = trd.area
-        WHERE r.pk_registro_id = ?
-    """, (doc_id,)).fetchone()
-    if not doc or not doc['tiempo_retencion_gestion']:
+    """Retorna días restantes en Gestión según TRD. Usa document_classifier como fuente única."""
+    if not CLASSIFIER_AVAILABLE:
         return None
-    from datetime import date as _date, datetime as _dt
     try:
-        fecha_rad = _dt.strptime(doc['fecha_radicacion'], "%Y-%m-%d").date()
-        vence = fecha_rad + timedelta(days=int(doc['tiempo_retencion_gestion']) * 365)
-        return (_date.today() - vence).days * -1
+        row = conn.execute(
+            "SELECT tipo_documento, asunto_resumen, area, fecha_radicacion FROM registro_central WHERE pk_registro_id=?",
+            (doc_id,)
+        ).fetchone()
+        if not row or not row["fecha_radicacion"]:
+            return None
+        clf = _clf_doc(row["tipo_documento"] or "", row["asunto_resumen"] or "", row["area"])
+        fecha_rad = datetime.strptime(row["fecha_radicacion"], "%Y-%m-%d").date()
+        try:
+            vence = fecha_rad.replace(year=fecha_rad.year + clf.retencion_gestion)
+        except ValueError:
+            vence = fecha_rad + timedelta(days=clf.retencion_gestion * 365)
+        return (vence - date.today()).days
     except Exception:
         return None
 
@@ -372,11 +389,10 @@ def nuevo():
                     VALUES(?,'Borrador',CURRENT_TIMESTAMP,?,'Documento creado desde editor')
                 """,(reg_id, session.get("nombre_usuario")))
 
-                # Clasificación archivística determinística al momento de radicación
-                try:
-                    from core.document_classifier import clasificar_documento as _clf_doc
+                # Clasificación archivística determinística — obligatoria (#2, #6)
+                if CLASSIFIER_AVAILABLE:
                     clf = _clf_doc(tipo, asunto, area)
-                    if fk_trd is None and clf.serie_codigo not in ("OTR",):
+                    if fk_trd is None and clf.serie_codigo != "OTR":
                         trd_auto = conn.execute(
                             "SELECT pk_trd_id FROM trd WHERE nombre LIKE ? LIMIT 1",
                             (f"%{clf.serie_nombre}%",)
@@ -386,8 +402,8 @@ def nuevo():
                                 "UPDATE registro_central SET fk_trd_id=? WHERE pk_registro_id=?",
                                 (trd_auto["pk_trd_id"], reg_id)
                             )
-                except Exception:
-                    pass  # Clasificación es auxiliar — no bloquea radicación
+                else:
+                    flash("Advertencia: clasificador TRD no disponible. Asigne la serie manualmente.", "warning")
 
                 conn.commit()
                 auditar(f"Documento creado: {codigo}", modulo="documentos")
@@ -1248,14 +1264,15 @@ def desactivar_indicador(registro_id):
 @login_requerido
 def api_clasificar():
     """Clasifica un documento según TRD determinística. No guarda nada."""
-    data  = request.get_json(silent=True) or {}
-    tipo  = data.get("tipo_documento", "")
+    if not CLASSIFIER_AVAILABLE:
+        return jsonify({"ok": False, "error": "Clasificador no disponible"}), 503
+    data   = request.get_json(silent=True) or {}
+    tipo   = data.get("tipo_documento", "")
     asunto = data.get("asunto", "")
-    area  = data.get("area", "")
+    area   = data.get("area", "")
     if not tipo and not asunto:
         return jsonify({"ok": False, "error": "tipo_documento o asunto requerido"}), 400
-    from core.document_classifier import clasificar_documento as _clf
-    clf = _clf(tipo, asunto, area)
+    clf = _clf_doc(tipo, asunto, area)
     return jsonify({"ok": True, "clasificacion": clf.to_dict()})
 
 
@@ -1263,9 +1280,10 @@ def api_clasificar():
 @login_requerido
 def api_clasificar_registro(registro_id):
     """Enriquece un registro existente con su clasificación TRD."""
-    from core.document_classifier import enriquecer_registro
+    if not CLASSIFIER_AVAILABLE:
+        return jsonify({"ok": False, "error": "Clasificador no disponible"}), 503
     conn = get_db()
-    resultado = enriquecer_registro(conn, registro_id)
+    resultado = _enriquecer_registro(conn, registro_id)
     conn.close()
     return jsonify(resultado)
 
@@ -1284,7 +1302,9 @@ def api_sugerir_expediente():
 @docs_bp.route("/api/alertas_trd")
 @login_requerido
 def alertas_trd():
-    alertas = gestor_trd.verificar_transferencias_pendientes()
+    """Alertas TRD usando gestor_trd (fuente única: gestor_trd + document_classifier)."""
+    from core.gestor_trd import gestor_trd as _gestor_trd
+    alertas = _gestor_trd.verificar_transferencias_pendientes()
     return jsonify({"ok": True, "total_alertas": len(alertas),
                     "alertas": alertas, "fecha_consulta": datetime.now().isoformat()})
 
@@ -1391,6 +1411,11 @@ def indicador_tiempo(doc_id):
 @docs_bp.route("/documento/vista_previa_temporal", methods=["POST"])
 @login_requerido
 def vista_previa_temporal():
+    # CSRF obligatorio en rutas POST que consumen recursos (#7)
+    if not verificar_token_csrf():
+        flash("Token de seguridad inválido. Recargue la página.", "danger")
+        return redirect(url_for("documentos.listar"))
+
     try:
         from weasyprint import HTML
     except ImportError:
@@ -1437,9 +1462,18 @@ def vista_previa_temporal():
     <hr><p style="font-size:10px;text-align:center;color:#888;">
     Vista previa sin validez oficial. Radique el documento para que tenga efecto legal.</p>
     </body></html>"""
-    pdf_file = "/tmp/preview_temp.pdf"
-    HTML(string=html).write_pdf(pdf_file)
-    return send_file(pdf_file, mimetype="application/pdf")
+    # tempfile.NamedTemporaryFile evita colisión entre usuarios y /tmp desbordado (#3)
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, prefix="vprevia_") as tmp:
+        tmp_path = tmp.name
+    try:
+        HTML(string=html).write_pdf(tmp_path)
+        return send_file(tmp_path, mimetype="application/pdf")
+    finally:
+        # Limpieza garantizada al salir del request
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 # ════════════════════════════════════════════════════════════
@@ -1531,11 +1565,18 @@ def hoja_control_expediente(exp_id):
         <p style="margin-top:30px;font-size:10px;color:#888;">
         Hoja de Control generada por PARAGUASMJ</p>
         </body></html>"""
-        pdf_file = f"/tmp/expediente_{exp_id}.pdf"
-        HTML(string=html).write_pdf(pdf_file)
-        return send_file(pdf_file, as_attachment=True,
-                         download_name=f"Hoja_Control_{exp['codigo_expediente']}.pdf",
-                         mimetype="application/pdf")
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, prefix=f"hoja_ctrl_{exp_id}_") as tmp:
+            tmp_path = tmp.name
+        try:
+            HTML(string=html).write_pdf(tmp_path)
+            return send_file(tmp_path, as_attachment=True,
+                             download_name=f"Hoja_Control_{exp['codigo_expediente']}.pdf",
+                             mimetype="application/pdf")
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
     finally:
         if conn: conn.close()
 
@@ -1565,9 +1606,20 @@ def api_firmar():
         firmante = conn.execute("SELECT nombre_completo,cargo FROM firmantes WHERE pk_firmante_id=?", (firmante_id,)).fetchone()
         doc      = conn.execute("SELECT codigo_completo FROM registro_central WHERE pk_registro_id=?", (doc_id,)).fetchone()
 
-        ts         = SaneadorForense.normalizar_fecha_estatica(datetime.now())
-        ip         = SaneadorForense.obtener_ip_segura(request)
-        payload    = f"{doc['codigo_completo']}|{firmante['nombre_completo']}|{firmante['cargo']}|{ts}|{ip}"
+        ts = SaneadorForense.normalizar_fecha_estatica(datetime.now())
+        ip = SaneadorForense.obtener_ip_segura(request)
+
+        # Hash del contenido del documento — ancla la firma al contenido exacto (#4)
+        contenido_row = conn.execute(
+            "SELECT contenido_html FROM contenido_documento WHERE fk_registro_id=? ORDER BY version DESC LIMIT 1",
+            (doc_id,)
+        ).fetchone()
+        contenido_hash = hashlib.sha256(
+            (contenido_row["contenido_html"] or "").encode("utf-8")
+        ).hexdigest() if contenido_row else "sin_contenido"
+
+        # Payload incluye hash del contenido: la firma queda anclada al documento exacto
+        payload    = f"{contenido_hash}|{doc['codigo_completo']}|{firmante_id}|{ts}|{ip}"
         hash_firma = hashlib.sha256(payload.encode()).hexdigest()
 
         conn.execute("UPDATE documento_firmantes SET estado='firmado',fecha_firma=?,hash_firma=?,ip_firma=? WHERE id=?",
@@ -1599,16 +1651,18 @@ def api_firmar():
 @docs_bp.route("/formato_transferencia/<fase_origen>")
 @login_requerido
 def formato_transferencia(fase_origen):
+    """Exporta inventario de transferencia en Excel usando openpyxl directo — sin pandas (#10)."""
     try:
-        import pandas as pd
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
     except ImportError:
-        flash("pandas no instalado. pip install pandas openpyxl", "warning")
+        flash("openpyxl no instalado. pip install openpyxl", "warning")
         return redirect(url_for("documentos.listar"))
 
     conn = get_db()
     docs = conn.execute("""
         SELECT r.codigo_completo, r.asunto_resumen, r.fecha_radicacion,
-               r.fecha_ingreso_fase, t.serie_nombre, t.disposicion_final
+               r.fecha_ingreso_fase, t.nombre AS serie_nombre, t.disposicion_final
         FROM registro_central r
         LEFT JOIN trd t ON r.fk_trd_id = t.pk_trd_id
         WHERE r.fase_archivo = ?
@@ -1618,14 +1672,77 @@ def formato_transferencia(fase_origen):
     if not docs:
         flash("No hay documentos en esta fase.", "warning")
         return redirect(url_for("documentos.listar"))
-    df = pd.DataFrame([dict(d) for d in docs])
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"Inventario_{fase_origen}"[:31]
+
+    # Encabezado con estilo
+    encabezados = ["Código", "Asunto / Resumen", "Fecha Radicación",
+                   "Ingreso Fase", "Serie Documental", "Disposición Final"]
+    hdr_fill = PatternFill("solid", fgColor="1E3A8A")
+    hdr_font = Font(bold=True, color="FFFFFF")
+    for col, titulo in enumerate(encabezados, 1):
+        cell = ws.cell(row=1, column=col, value=titulo)
+        cell.fill = hdr_fill
+        cell.font = hdr_font
+        cell.alignment = Alignment(horizontal="center")
+
+    for row_num, d in enumerate(docs, 2):
+        ws.cell(row=row_num, column=1, value=d["codigo_completo"])
+        ws.cell(row=row_num, column=2, value=d["asunto_resumen"])
+        ws.cell(row=row_num, column=3, value=d["fecha_radicacion"])
+        ws.cell(row=row_num, column=4, value=d["fecha_ingreso_fase"])
+        ws.cell(row=row_num, column=5, value=d["serie_nombre"] or "Sin clasificar")
+        ws.cell(row=row_num, column=6, value=d["disposicion_final"] or "")
+
+    # Ancho automático aproximado
+    for col in ws.columns:
+        max_len = max((len(str(c.value or "")) for c in col), default=10)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 50)
+
     output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, sheet_name=f"Inventario_{fase_origen}", index=False)
+    wb.save(output)
     output.seek(0)
     filename = f"Formato_Transferencia_{fase_origen}_{date.today()}.xlsx"
     return send_file(output, as_attachment=True, download_name=filename,
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@docs_bp.route("/api/indice/stats")
+@login_requerido
+def api_indice_stats():
+    """Estadísticas del índice maestro de expedientes (#9)."""
+    from modules.indexer import estadisticas_indice
+    conn = get_db()
+    resultado = estadisticas_indice(conn)
+    conn.close()
+    return jsonify(resultado)
+
+
+@docs_bp.route("/api/indice/expediente/<int:exp_id>")
+@login_requerido
+def api_indice_expediente(exp_id):
+    """Índice completo de un expediente con todos sus documentos (#9)."""
+    from modules.indexer import indice_expediente
+    conn = get_db()
+    resultado = indice_expediente(conn, exp_id)
+    conn.close()
+    return jsonify(resultado)
+
+
+@docs_bp.route("/api/indice/buscar")
+@login_requerido
+def api_indice_buscar():
+    """Búsqueda en expedientes por código, nombre o descripción (#9)."""
+    from modules.indexer import buscar_en_expedientes
+    q = request.args.get("q", "").strip()
+    if len(q) < 2:
+        return jsonify({"ok": False, "error": "Mínimo 2 caracteres"}), 400
+    conn = get_db()
+    resultados = buscar_en_expedientes(conn, q)
+    conn.close()
+    return jsonify({"ok": True, "resultados": resultados, "total": len(resultados)})
 
 
 @docs_bp.route("/api/guardar_config_tipos", methods=["POST"])
