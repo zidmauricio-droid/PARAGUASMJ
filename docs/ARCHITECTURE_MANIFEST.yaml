@@ -11,7 +11,8 @@ responsable: "SIGCA — Equipo técnico PARAGUASMJ"
 
 # ── Hash de baseline (para validación de integridad) ─────────────────────────
 # Generar con: find PARAGUASMJ/ -name "*.py" | sort | xargs sha256sum | sha256sum
-baseline_hash: "PENDIENTE_GENERAR_POST_DEPLOY"
+baseline_hash: "40c32ceb7a860fce8bfa95796b253cbf5609dfdca32459c7f7d2c09728db251a"
+# Verificar con: find . -name "*.py" | sort | xargs sha256sum | sha256sum
 
 # ── Componentes congelados ────────────────────────────────────────────────────
 frozen_components:
