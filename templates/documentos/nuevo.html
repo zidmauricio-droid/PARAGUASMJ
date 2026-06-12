@@ -733,6 +733,7 @@ const PLANTILLAS_DATA = {
 // Fix: los UMD de TipTap se exponen como TiptapCore, TiptapStarterKit, etc.
 // ════════════════════════════════════════════════════════════════════
 let editor = null, docId = null, autosaveTimer = null, textoIA = "";
+let _editorInitialized = false;
 
 // ── Resolver extensiones desde los globals UMD ─────────────────────
 function getExt(names) {
@@ -858,10 +859,21 @@ function actualizarCodigo() {
 }
 
 function initEditor() {
+  // Guard: evita doble inicialización (#59)
+  if (_editorInitialized) return;
+  _editorInitialized = true;
+
   // Buscar TiptapCore (el namespace principal)
   const Core = window.TiptapCore || window.tiptapCore;
   if (!Core || !Core.Editor) {
     console.warn('TiptapCore no cargado — usando textarea fallback');
+    fallbackEditor();
+    return;
+  }
+  // Si StarterKit no está disponible, usar fallback sin bloqueo (#61)
+  const SK_check = window.TiptapStarterKit || window.tiptapStarterKit;
+  if (!SK_check || !SK_check.StarterKit) {
+    console.warn('StarterKit no cargado — usando textarea fallback');
     fallbackEditor();
     return;
   }
@@ -910,9 +922,13 @@ function initEditor() {
     element: document.getElementById('editor-tiptap'),
     extensions: exts,
     content: '<p></p>',
+    editable: true,
     onUpdate() { marcarUnsaved(); clearTimeout(autosaveTimer); autosaveTimer = setTimeout(guardarBorrador,30000); },
     onSelectionUpdate() { actualizarToolbar(); },
   });
+
+  // Garantizar estado editable (#57/#60)
+  editor.setEditable(true);
 
   // Cargar contenido guardado
   const saved = document.getElementById('contenido-guardado')?.value;
@@ -1435,10 +1451,13 @@ async function cargarMembreteEditor() {
 }
 
 // ── Inicialización ──────────────────────────────────────────────────
-document.getElementById('ma-opacidad').addEventListener('input',function(){
-  document.getElementById('ma-opacidad-val').textContent=this.value;
-});
 document.addEventListener('DOMContentLoaded', () => {
+  // Listener marca de agua — dentro de DOMContentLoaded para evitar error si falta el elemento (#57)
+  const maOp = document.getElementById('ma-opacidad');
+  if (maOp) maOp.addEventListener('input', function(){
+    const lbl = document.getElementById('ma-opacidad-val');
+    if (lbl) lbl.textContent = this.value;
+  });
   // Tipos de documento: cargar INMEDIATAMENTE (no depende de TipTap)
   cargarTiposDocumento().then(() => actualizarCodigo());
   cargarMembreteEditor();

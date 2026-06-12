@@ -1,1 +1,335 @@
-"""\nroutes/proyectos.py — Gestión de Proyectos SIGCA\nIncluye: lista paginada, nuevo, ver, tareas, evidencias, reporte Excel.\nCodificación: GA (soporte PSMV, PUEAA, SSPD)\n"""\nimport os\nimport sqlite3\nimport logging\nimport time\nfrom functools import wraps\nfrom io import BytesIO\nfrom datetime import date, datetime\nfrom flask import (Blueprint, render_template, request, jsonify,\n                   redirect, url_for, flash, session, send_file)\nfrom werkzeug.utils import secure_filename\nfrom core.database_manager import get_db, obtener_consecutivo\nfrom core.seguridad import login_requerido, rol_requerido\nfrom utils.audit import log_action\nfrom utils.seguridad import verificar_token_csrf\n\nproy_bp = Blueprint("proyectos", __name__, url_prefix="/proyectos")\nlogger  = logging.getLogger("sigca.proyectos")\nUPLOAD_EVIDENCIAS = os.path.join("uploads", "evidencias_proyectos")\nos.makedirs(UPLOAD_EVIDENCIAS, exist_ok=True)\n\n\ndef with_retry(max_retries: int = 3, base_delay: float = 0.25):\n    def decorator(func):\n        @wraps(func)\n        def wrapper(*args, **kwargs):\n            last_exc = None\n            for attempt in range(max_retries):\n                try:\n                    return func(*args, **kwargs)\n                except sqlite3.OperationalError as e:\n                    last_exc = e\n                    if "database is locked" in str(e).lower() and attempt < max_retries - 1:\n                        time.sleep(base_delay * (2 ** attempt)); continue\n                    break\n                except Exception:\n                    raise\n            raise last_exc\n        return wrapper\n    return decorator\n\n\n@proy_bp.route("/")\n@login_requerido\ndef listar():\n    page     = max(request.args.get("page", 1, type=int), 1)\n    per_page = min(request.args.get("per_page", 20, type=int), 100)\n    offset   = (page - 1) * per_page\n    conn     = get_db()\n    try:\n        total = conn.execute("SELECT COUNT(*) as c FROM proyectos").fetchone()["c"]\n        proyectos = conn.execute("""\n            SELECT p.*,\n                   COUNT(t.id) as total_tareas,\n                   SUM(CASE WHEN t.estado = 'completada' THEN 1 ELSE 0 END) as tareas_ok,\n                   ROUND(COALESCE(AVG(t.porcentaje_avance), 0), 1) as avance_general\n            FROM proyectos p\n            LEFT JOIN tareas_proyecto t ON p.pk_proyecto_id = t.proyecto_id\n            GROUP BY p.pk_proyecto_id\n            ORDER BY p.pk_proyecto_id DESC\n            LIMIT ? OFFSET ?\n        """, (per_page, offset)).fetchall()\n        total_pages = (total + per_page - 1) // per_page\n        return render_template("proyectos/lista.html",\n                               proyectos=proyectos, page=page,\n                               per_page=per_page, total_pages=total_pages, total=total)\n    except Exception as e:\n        logger.error(f"Error listando proyectos: {e}")\n        flash("Error al cargar proyectos", "danger")\n        return render_template("proyectos/lista.html", proyectos=[])\n    finally:\n        conn.close()\n\n\n@proy_bp.route("/nuevo", methods=["GET", "POST"])\n@login_requerido\n@rol_requerido("admin", "coordinador", "director")\ndef nuevo():\n    if request.method == "POST":\n        if not verificar_token_csrf():\n            flash("Solicitud inválida. Recargue la página e intente de nuevo.", "danger")\n            return redirect(url_for("proyectos.nuevo"))\n        nombre = request.form.get("nombre", "").strip()\n        if not nombre:\n            flash("El nombre del proyecto es obligatorio.", "danger")\n            return redirect(url_for("proyectos.nuevo"))\n        try:\n            presupuesto = float(request.form.get("presupuesto") or 0)\n            if presupuesto < 0:\n                flash("El presupuesto no puede ser negativo.", "danger")\n                return redirect(url_for("proyectos.nuevo"))\n        except (ValueError, TypeError):\n            flash("El presupuesto debe ser un valor numérico.", "danger")\n            return redirect(url_for("proyectos.nuevo"))\n        conn = get_db()\n        try:\n            anio   = date.today().year\n            consec = obtener_consecutivo("GA", "PRY", anio)\n            codigo = f"GA-PRY-{anio}-{consec:03d}"\n            responsable_id = request.form.get("responsable_id") or None\n            tipo_periodo    = request.form.get("tipo_periodo", "ANIOS").upper()\n            if tipo_periodo not in ("MESES", "ANIOS", "TRIMESTRES", "SEMESTRES"):\n                tipo_periodo = "ANIOS"\n            try:\n                cantidad_periodo = max(1, int(request.form.get("cantidad_periodo") or 1))\n            except (ValueError, TypeError):\n                cantidad_periodo = 1\n            _MESES_FACTOR = {"MESES": 1, "TRIMESTRES": 3, "SEMESTRES": 6, "ANIOS": 12}\n            duracion_meses = cantidad_periodo * _MESES_FACTOR.get(tipo_periodo, 12)\n            conn.execute("""\n                INSERT INTO proyectos\n                (codigo, nombre, descripcion, tipo_proyecto,\n                 fecha_inicio, fecha_limite, presupuesto,\n                 responsable_id, estado, fecha_creacion, creado_por,\n                 tipo_periodo, cantidad_periodo, duracion_meses)\n                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)\n            """, (codigo, nombre,\n                  request.form.get("descripcion", "").strip(),\n                  request.form.get("tipo_proyecto", "otro"),\n                  request.form.get("fecha_inicio") or None,\n                  request.form.get("fecha_limite") or None,\n                  presupuesto,\n                  responsable_id,\n                  "planificacion",\n                  datetime.now().isoformat(),\n                  session.get("usuario_id"),\n                  tipo_periodo, cantidad_periodo, duracion_meses))\n            new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]\n            conn.commit()\n            log_action(\n                accion="CREATE_PROYECTO",\n                modulo="proyectos",\n                descripcion=f"{codigo} — {nombre} | presupuesto={presupuesto:,.0f} | periodo={cantidad_periodo}{tipo_periodo} ({duracion_meses}m)"\n            )\n            flash(f"Proyecto creado: {codigo}", "success")\n            return redirect(url_for("proyectos.ver", pid=new_id))\n        except Exception as e:\n            conn.rollback()\n            logger.error(f"Error creando proyecto: {e}")\n            flash("Error al crear el proyecto. Verifique los datos e intente de nuevo.", "danger")\n        finally:\n            conn.close()\n    conn = get_db()\n    responsables = conn.execute(\n        "SELECT pk_usuario_id, nombre_completo FROM usuarios WHERE activo=1 ORDER BY nombre_completo"\n    ).fetchall()\n    conn.close()\n    return render_template("proyectos/nuevo.html", responsables=responsables)\n\n\n@proy_bp.route("/<int:pid>")\n@login_requerido\ndef ver(pid):\n    conn = get_db()\n    try:\n        proyecto = conn.execute(\n            "SELECT * FROM proyectos WHERE pk_proyecto_id=?", (pid,)\n        ).fetchone()\n        if not proyecto:\n            flash("Proyecto no encontrado", "danger")\n            return redirect(url_for("proyectos.listar"))\n        tareas = conn.execute("""\n            SELECT t.*, u.nombre_completo as responsable_nombre\n            FROM tareas_proyecto t\n            LEFT JOIN usuarios u ON t.responsable_id = u.pk_usuario_id\n            WHERE t.proyecto_id = ? ORDER BY t.fecha_inicio_plan, t.nombre\n        """, (pid,)).fetchall()\n        avance = conn.execute(\n            "SELECT COALESCE(AVG(porcentaje_avance),0) as avg FROM tareas_proyecto WHERE proyecto_id=?",\n            (pid,)\n        ).fetchone()["avg"]\n        evidencias = conn.execute("""\n            SELECT e.*, u.nombre_completo as subido_por_nombre\n            FROM evidencias_proyecto e\n            LEFT JOIN usuarios u ON e.subido_por = u.pk_usuario_id\n            WHERE e.proyecto_id = ? ORDER BY e.fecha_subida DESC\n            LIMIT 50\n        """, (pid,)).fetchall()\n        return render_template("proyectos/ver.html",\n                               proyecto=proyecto, tareas=tareas,\n                               evidencias=evidencias, avance_general=round(avance, 1))\n    finally:\n        conn.close()\n\n\n@proy_bp.route("/<int:pid>/tarea", methods=["POST"])\n@login_requerido\n@rol_requerido("admin", "coordinador", "director")\n@with_retry()\ndef agregar_tarea(pid):\n    csrf_ok = (\n        verificar_token_csrf()\n        or request.headers.get("X-CSRFToken") == session.get("csrf_token")\n    )\n    if not csrf_ok:\n        return jsonify({"ok": False, "error": "Solicitud inválida (CSRF)"}), 403\n    data = request.get_json(silent=True) or {}\n    nombre_tarea = (data.get("nombre") or "").strip()\n    if not nombre_tarea:\n        return jsonify({"ok": False, "error": "El nombre de la tarea es obligatorio"}), 400\n    try:\n        costo = float(data.get("costo_estimado") or 0)\n        if costo < 0:\n            return jsonify({"ok": False, "error": "El costo no puede ser negativo"}), 400\n    except (ValueError, TypeError):\n        return jsonify({"ok": False, "error": "El costo debe ser un valor numérico"}), 400\n    conn = get_db()\n    try:\n        conn.execute("""\n            INSERT INTO tareas_proyecto\n            (proyecto_id, nombre, descripcion, responsable_id,\n             fecha_inicio_plan, fecha_fin_plan, costo_estimado, estado, porcentaje_avance)\n            VALUES (?,?,?,?,?,?,?,'pendiente',0)\n        """, (pid, nombre_tarea, (data.get("descripcion") or "").strip(),\n              data.get("responsable_id"),\n              data.get("fecha_inicio"), data.get("fecha_fin"),\n              costo))\n        conn.commit()\n        log_action(\n            accion="ADD_TAREA",\n            modulo="proyectos",\n            descripcion=f"Proyecto {pid} — tarea: {nombre_tarea} | costo={costo:,.0f}"\n        )\n        return jsonify({"ok": True}), 201\n    except Exception as e:\n        conn.rollback()\n        return jsonify({"ok": False, "error": "Error interno al guardar la tarea"}), 500\n    finally:\n        conn.close()\n\n\n@proy_bp.route("/<int:pid>/evidencia", methods=["POST"])\n@login_requerido\n@rol_requerido("admin", "coordinador", "director")\n@with_retry()\ndef subir_evidencia(pid):\n    if not verificar_token_csrf():\n        return jsonify({"ok": False, "error": "Solicitud inválida (CSRF)"}), 403\n    if "archivo" not in request.files:\n        return jsonify({"ok": False, "error": "No se recibió ningún archivo"}), 400\n    archivo = request.files["archivo"]\n    if not archivo.filename:\n        return jsonify({"ok": False, "error": "El archivo está vacío"}), 400\n    ext = archivo.filename.rsplit(".", 1)[-1].lower() if "." in archivo.filename else ""\n    if ext not in {"pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx"}:\n        return jsonify({"ok": False, "error": f"Formato no permitido: {ext}. Use PDF, imágenes o documentos Office"}), 400\n    fn   = secure_filename(f"PRY-{pid}-{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}")\n    ruta = os.path.join(UPLOAD_EVIDENCIAS, fn)\n    conn = get_db()\n    try:\n        conn.execute("""\n            INSERT INTO evidencias_proyecto\n            (proyecto_id, nombre_archivo, ruta, descripcion, subido_por, fecha_subida)\n            VALUES (?,?,?,?,?,datetime('now'))\n        """, (pid, fn, ruta, (request.form.get("descripcion") or ""), session.get("usuario_id")))\n        archivo.save(ruta)\n        conn.commit()\n        log_action(\n            accion="UPLOAD_EVIDENCIA",\n            modulo="proyectos",\n            descripcion=f"Proyecto {pid} — archivo: {fn}"\n        )\n        return jsonify({"ok": True}), 201\n    except Exception as e:\n        conn.rollback()\n        if os.path.exists(ruta):\n            try:\n                os.remove(ruta)\n            except OSError:\n                pass\n        logger.error(f"Error subiendo evidencia proyecto {pid}: {e}")\n        return jsonify({"ok": False, "error": "Error interno al guardar la evidencia"}), 500\n    finally:\n        conn.close()\n\n\n@proy_bp.route("/<int:pid>/reporte")\n@login_requerido\ndef reporte_proyecto(pid):\n    try:\n        from openpyxl import Workbook\n        from openpyxl.styles import Font, PatternFill, Alignment\n    except ImportError:\n        flash("openpyxl no instalado. Ejecute: pip install openpyxl", "danger")\n        return redirect(url_for("proyectos.ver", pid=pid))\n    conn = get_db()\n    try:\n        proyecto = conn.execute(\n            "SELECT * FROM proyectos WHERE pk_proyecto_id=?", (pid,)\n        ).fetchone()\n        if not proyecto:\n            flash("Proyecto no encontrado","danger")\n            return redirect(url_for("proyectos.listar"))\n        tareas = conn.execute("""\n            SELECT t.*, u.nombre_completo as responsable\n            FROM tareas_proyecto t\n            LEFT JOIN usuarios u ON t.responsable_id = u.pk_usuario_id\n            WHERE t.proyecto_id=? ORDER BY t.fecha_inicio_plan\n        """, (pid,)).fetchall()\n        wb  = Workbook()\n        ws  = wb.active\n        ws.title = "Proyecto"\n        ws["A1"] = f"{proyecto['codigo']} — {proyecto['nombre']}"\n        ws["A1"].font = Font(size=13, bold=True, color="1E3A8A")\n        ws.merge_cells("A1:F1")\n        azul = PatternFill("solid", fgColor="1E3A8A")\n        hdrs = ["Tarea","Responsable","Inicio","Fin","Avance%","Estado"]\n        for col, h in enumerate(hdrs,1):\n            c = ws.cell(2, col, h)\n            c.font = Font(bold=True, color="FFFFFF"); c.fill = azul\n            c.alignment = Alignment(horizontal="center")\n        for i,t in enumerate(tareas,3):\n            ws.cell(i,1,t["nombre"])\n            ws.cell(i,2,t.get("responsable",""))\n            ws.cell(i,3,t.get("fecha_inicio_plan",""))\n            ws.cell(i,4,t.get("fecha_fin_plan",""))\n            ws.cell(i,5,t.get("porcentaje_avance",0))\n            ws.cell(i,6,t.get("estado",""))\n        output = BytesIO(); wb.save(output); output.seek(0)\n        fn = f"Proyecto_{proyecto['codigo']}_{datetime.now().strftime('%Y%m%d')}.xlsx"\n        return send_file(output, as_attachment=True, download_name=fn,\n                         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")\n    except Exception as e:\n        logger.error(f"Error reporte proyecto {pid}: {e}")\n        flash("Error generando reporte","danger")\n        return redirect(url_for("proyectos.ver", pid=pid))\n    finally:\n        conn.close()\n\n\nprint("✅ Módulo proyectos cargado")\n
+"""
+routes/proyectos.py — Gestión de Proyectos SIGCA
+Incluye: lista paginada, nuevo, ver, tareas, evidencias, reporte Excel.
+Codificación: GA (soporte PSMV, PUEAA, SSPD)
+"""
+import os
+import sqlite3
+import logging
+import time
+from functools import wraps
+from io import BytesIO
+from datetime import date, datetime
+from flask import (Blueprint, render_template, request, jsonify,
+                   redirect, url_for, flash, session, send_file)
+from werkzeug.utils import secure_filename
+from core.database_manager import get_db, obtener_consecutivo
+from core.seguridad import login_requerido, rol_requerido
+from utils.audit import log_action
+from utils.seguridad import verificar_token_csrf
+
+proy_bp = Blueprint("proyectos", __name__, url_prefix="/proyectos")
+logger  = logging.getLogger("sigca.proyectos")
+UPLOAD_EVIDENCIAS = os.path.join("uploads", "evidencias_proyectos")
+os.makedirs(UPLOAD_EVIDENCIAS, exist_ok=True)
+
+
+def with_retry(max_retries: int = 3, base_delay: float = 0.25):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except sqlite3.OperationalError as e:
+                    last_exc = e
+                    if "database is locked" in str(e).lower() and attempt < max_retries - 1:
+                        time.sleep(base_delay * (2 ** attempt)); continue
+                    break
+                except Exception:
+                    raise
+            raise last_exc
+        return wrapper
+    return decorator
+
+
+@proy_bp.route("/")
+@login_requerido
+def listar():
+    page     = max(request.args.get("page", 1, type=int), 1)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
+    offset   = (page - 1) * per_page
+    conn     = get_db()
+    try:
+        total = conn.execute("SELECT COUNT(*) as c FROM proyectos").fetchone()["c"]
+        proyectos = conn.execute("""
+            SELECT p.*,
+                   COUNT(t.id) as total_tareas,
+                   SUM(CASE WHEN t.estado = 'completada' THEN 1 ELSE 0 END) as tareas_ok,
+                   ROUND(COALESCE(AVG(t.porcentaje_avance), 0), 1) as avance_general
+            FROM proyectos p
+            LEFT JOIN tareas_proyecto t ON p.pk_proyecto_id = t.proyecto_id
+            GROUP BY p.pk_proyecto_id
+            ORDER BY p.pk_proyecto_id DESC
+            LIMIT ? OFFSET ?
+        """, (per_page, offset)).fetchall()
+        total_pages = (total + per_page - 1) // per_page
+        return render_template("proyectos/lista.html",
+                               proyectos=proyectos, page=page,
+                               per_page=per_page, total_pages=total_pages, total=total)
+    except Exception as e:
+        logger.error(f"Error listando proyectos: {e}")
+        flash("Error al cargar proyectos", "danger")
+        return render_template("proyectos/lista.html", proyectos=[])
+    finally:
+        conn.close()
+
+
+@proy_bp.route("/nuevo", methods=["GET", "POST"])
+@login_requerido
+@rol_requerido("admin", "coordinador", "director")
+def nuevo():
+    if request.method == "POST":
+        if not verificar_token_csrf():
+            flash("Solicitud inválida. Recargue la página e intente de nuevo.", "danger")
+            return redirect(url_for("proyectos.nuevo"))
+        nombre = request.form.get("nombre", "").strip()
+        if not nombre:
+            flash("El nombre del proyecto es obligatorio.", "danger")
+            return redirect(url_for("proyectos.nuevo"))
+        try:
+            presupuesto = float(request.form.get("presupuesto") or 0)
+            if presupuesto < 0:
+                flash("El presupuesto no puede ser negativo.", "danger")
+                return redirect(url_for("proyectos.nuevo"))
+        except (ValueError, TypeError):
+            flash("El presupuesto debe ser un valor numérico.", "danger")
+            return redirect(url_for("proyectos.nuevo"))
+        conn = get_db()
+        try:
+            anio   = date.today().year
+            consec = obtener_consecutivo("GA", "PRY", anio)
+            codigo = f"GA-PRY-{anio}-{consec:03d}"
+            responsable_id = request.form.get("responsable_id") or None
+            tipo_periodo    = request.form.get("tipo_periodo", "ANIOS").upper()
+            if tipo_periodo not in ("MESES", "ANIOS", "TRIMESTRES", "SEMESTRES"):
+                tipo_periodo = "ANIOS"
+            try:
+                cantidad_periodo = max(1, int(request.form.get("cantidad_periodo") or 1))
+            except (ValueError, TypeError):
+                cantidad_periodo = 1
+            _MESES_FACTOR = {"MESES": 1, "TRIMESTRES": 3, "SEMESTRES": 6, "ANIOS": 12}
+            duracion_meses = cantidad_periodo * _MESES_FACTOR.get(tipo_periodo, 12)
+            conn.execute("""
+                INSERT INTO proyectos
+                (codigo, nombre, descripcion, tipo_proyecto,
+                 fecha_inicio, fecha_limite, presupuesto,
+                 responsable_id, estado, fecha_creacion, creado_por,
+                 tipo_periodo, cantidad_periodo, duracion_meses)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (codigo, nombre,
+                  request.form.get("descripcion", "").strip(),
+                  request.form.get("tipo_proyecto", "otro"),
+                  request.form.get("fecha_inicio") or None,
+                  request.form.get("fecha_limite") or None,
+                  presupuesto,
+                  responsable_id,
+                  "planificacion",
+                  datetime.now().isoformat(),
+                  session.get("usuario_id"),
+                  tipo_periodo, cantidad_periodo, duracion_meses))
+            new_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            conn.commit()
+            log_action(
+                accion="CREATE_PROYECTO",
+                modulo="proyectos",
+                descripcion=f"{codigo} — {nombre} | presupuesto={presupuesto:,.0f} | periodo={cantidad_periodo}{tipo_periodo} ({duracion_meses}m)"
+            )
+            flash(f"Proyecto creado: {codigo}", "success")
+            return redirect(url_for("proyectos.ver", pid=new_id))
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error creando proyecto: {e}")
+            flash("Error al crear el proyecto. Verifique los datos e intente de nuevo.", "danger")
+        finally:
+            conn.close()
+    conn = get_db()
+    responsables = conn.execute(
+        "SELECT pk_usuario_id, nombre_completo FROM usuarios WHERE activo=1 ORDER BY nombre_completo"
+    ).fetchall()
+    conn.close()
+    return render_template("proyectos/nuevo.html", responsables=responsables)
+
+
+@proy_bp.route("/<int:pid>")
+@login_requerido
+def ver(pid):
+    conn = get_db()
+    try:
+        proyecto = conn.execute(
+            "SELECT * FROM proyectos WHERE pk_proyecto_id=?", (pid,)
+        ).fetchone()
+        if not proyecto:
+            flash("Proyecto no encontrado", "danger")
+            return redirect(url_for("proyectos.listar"))
+        tareas = conn.execute("""
+            SELECT t.*, u.nombre_completo as responsable_nombre
+            FROM tareas_proyecto t
+            LEFT JOIN usuarios u ON t.responsable_id = u.pk_usuario_id
+            WHERE t.proyecto_id = ? ORDER BY t.fecha_inicio_plan, t.nombre
+        """, (pid,)).fetchall()
+        avance = conn.execute(
+            "SELECT COALESCE(AVG(porcentaje_avance),0) as avg FROM tareas_proyecto WHERE proyecto_id=?",
+            (pid,)
+        ).fetchone()["avg"]
+        evidencias = conn.execute("""
+            SELECT e.*, u.nombre_completo as subido_por_nombre
+            FROM evidencias_proyecto e
+            LEFT JOIN usuarios u ON e.subido_por = u.pk_usuario_id
+            WHERE e.proyecto_id = ? ORDER BY e.fecha_subida DESC
+            LIMIT 50
+        """, (pid,)).fetchall()
+        return render_template("proyectos/ver.html",
+                               proyecto=proyecto, tareas=tareas,
+                               evidencias=evidencias, avance_general=round(avance, 1))
+    finally:
+        conn.close()
+
+
+@proy_bp.route("/<int:pid>/tarea", methods=["POST"])
+@login_requerido
+@rol_requerido("admin", "coordinador", "director")
+@with_retry()
+def agregar_tarea(pid):
+    csrf_ok = (
+        verificar_token_csrf()
+        or request.headers.get("X-CSRFToken") == session.get("csrf_token")
+    )
+    if not csrf_ok:
+        return jsonify({"ok": False, "error": "Solicitud inválida (CSRF)"}), 403
+    data = request.get_json(silent=True) or {}
+    nombre_tarea = (data.get("nombre") or "").strip()
+    if not nombre_tarea:
+        return jsonify({"ok": False, "error": "El nombre de la tarea es obligatorio"}), 400
+    try:
+        costo = float(data.get("costo_estimado") or 0)
+        if costo < 0:
+            return jsonify({"ok": False, "error": "El costo no puede ser negativo"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"ok": False, "error": "El costo debe ser un valor numérico"}), 400
+    conn = get_db()
+    try:
+        conn.execute("""
+            INSERT INTO tareas_proyecto
+            (proyecto_id, nombre, descripcion, responsable_id,
+             fecha_inicio_plan, fecha_fin_plan, costo_estimado, estado, porcentaje_avance)
+            VALUES (?,?,?,?,?,?,?,'pendiente',0)
+        """, (pid, nombre_tarea, (data.get("descripcion") or "").strip(),
+              data.get("responsable_id"),
+              data.get("fecha_inicio"), data.get("fecha_fin"),
+              costo))
+        conn.commit()
+        log_action(
+            accion="ADD_TAREA",
+            modulo="proyectos",
+            descripcion=f"Proyecto {pid} — tarea: {nombre_tarea} | costo={costo:,.0f}"
+        )
+        return jsonify({"ok": True}), 201
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"ok": False, "error": "Error interno al guardar la tarea"}), 500
+    finally:
+        conn.close()
+
+
+@proy_bp.route("/<int:pid>/evidencia", methods=["POST"])
+@login_requerido
+@rol_requerido("admin", "coordinador", "director")
+@with_retry()
+def subir_evidencia(pid):
+    if not verificar_token_csrf():
+        return jsonify({"ok": False, "error": "Solicitud inválida (CSRF)"}), 403
+    if "archivo" not in request.files:
+        return jsonify({"ok": False, "error": "No se recibió ningún archivo"}), 400
+    archivo = request.files["archivo"]
+    if not archivo.filename:
+        return jsonify({"ok": False, "error": "El archivo está vacío"}), 400
+    ext = archivo.filename.rsplit(".", 1)[-1].lower() if "." in archivo.filename else ""
+    if ext not in {"pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx"}:
+        return jsonify({"ok": False, "error": f"Formato no permitido: {ext}. Use PDF, imágenes o documentos Office"}), 400
+    fn   = secure_filename(f"PRY-{pid}-{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}")
+    ruta = os.path.join(UPLOAD_EVIDENCIAS, fn)
+    conn = get_db()
+    try:
+        conn.execute("""
+            INSERT INTO evidencias_proyecto
+            (proyecto_id, nombre_archivo, ruta, descripcion, subido_por, fecha_subida)
+            VALUES (?,?,?,?,?,datetime('now'))
+        """, (pid, fn, ruta, (request.form.get("descripcion") or ""), session.get("usuario_id")))
+        archivo.save(ruta)
+        conn.commit()
+        log_action(
+            accion="UPLOAD_EVIDENCIA",
+            modulo="proyectos",
+            descripcion=f"Proyecto {pid} — archivo: {fn}"
+        )
+        return jsonify({"ok": True}), 201
+    except Exception as e:
+        conn.rollback()
+        if os.path.exists(ruta):
+            try:
+                os.remove(ruta)
+            except OSError:
+                pass
+        logger.error(f"Error subiendo evidencia proyecto {pid}: {e}")
+        return jsonify({"ok": False, "error": "Error interno al guardar la evidencia"}), 500
+    finally:
+        conn.close()
+
+
+@proy_bp.route("/<int:pid>/reporte")
+@login_requerido
+def reporte_proyecto(pid):
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+    except ImportError:
+        flash("openpyxl no instalado. Ejecute: pip install openpyxl", "danger")
+        return redirect(url_for("proyectos.ver", pid=pid))
+    conn = get_db()
+    try:
+        proyecto = conn.execute(
+            "SELECT * FROM proyectos WHERE pk_proyecto_id=?", (pid,)
+        ).fetchone()
+        if not proyecto:
+            flash("Proyecto no encontrado","danger")
+            return redirect(url_for("proyectos.listar"))
+        tareas = conn.execute("""
+            SELECT t.*, u.nombre_completo as responsable
+            FROM tareas_proyecto t
+            LEFT JOIN usuarios u ON t.responsable_id = u.pk_usuario_id
+            WHERE t.proyecto_id=? ORDER BY t.fecha_inicio_plan
+        """, (pid,)).fetchall()
+        wb  = Workbook()
+        ws  = wb.active
+        ws.title = "Proyecto"
+        ws["A1"] = f"{proyecto['codigo']} — {proyecto['nombre']}"
+        ws["A1"].font = Font(size=13, bold=True, color="1E3A8A")
+        ws.merge_cells("A1:F1")
+        azul = PatternFill("solid", fgColor="1E3A8A")
+        hdrs = ["Tarea","Responsable","Inicio","Fin","Avance%","Estado"]
+        for col, h in enumerate(hdrs,1):
+            c = ws.cell(2, col, h)
+            c.font = Font(bold=True, color="FFFFFF"); c.fill = azul
+            c.alignment = Alignment(horizontal="center")
+        for i,t in enumerate(tareas,3):
+            ws.cell(i,1,t["nombre"])
+            ws.cell(i,2,t.get("responsable",""))
+            ws.cell(i,3,t.get("fecha_inicio_plan",""))
+            ws.cell(i,4,t.get("fecha_fin_plan",""))
+            ws.cell(i,5,t.get("porcentaje_avance",0))
+            ws.cell(i,6,t.get("estado",""))
+        output = BytesIO(); wb.save(output); output.seek(0)
+        fn = f"Proyecto_{proyecto['codigo']}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        return send_file(output, as_attachment=True, download_name=fn,
+                         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    except Exception as e:
+        logger.error(f"Error reporte proyecto {pid}: {e}")
+        flash("Error generando reporte","danger")
+        return redirect(url_for("proyectos.ver", pid=pid))
+    finally:
+        conn.close()
+
+
+print("✅ Módulo proyectos cargado")
