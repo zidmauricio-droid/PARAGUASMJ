@@ -191,6 +191,19 @@ def crear_backup_manual():
     return redirect(url_for("dashboard.index"))
 
 
+# ── WAL checkpoint periódico (#16) ────────────────────────────────
+def _wal_checkpoint():
+    """PRAGMA wal_checkpoint(TRUNCATE) — previene crecimiento indefinido del WAL."""
+    try:
+        from core.database_manager import get_db
+        conn = get_db()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        conn.close()
+        logger.info("WAL checkpoint ejecutado")
+    except Exception as e:
+        logger.warning(f"WAL checkpoint falló: {e}")
+
+
 # ── Scheduler APScheduler ──────────────────────────────────────────
 def iniciar_scheduler():
     try:
@@ -199,6 +212,8 @@ def iniciar_scheduler():
         sched = BackgroundScheduler(daemon=True)
         sched.add_job(tarea_diaria_completa, "cron",
                       hour=Config.SCHEDULER_HORA, minute=Config.SCHEDULER_MINUTO)
+        # WAL checkpoint cada 6 horas para mantener BD compacta (#16)
+        sched.add_job(_wal_checkpoint, "interval", hours=6, id="wal_checkpoint")
         sched.start()
         atexit.register(lambda: sched.shutdown(wait=False))
         logger.info("Scheduler iniciado: tareas diarias a las %d:%02d",

@@ -29,6 +29,7 @@ def otp_enviar():
 
 
 @api_bp.route("/otp/verificar", methods=["POST"])
+@login_requerido
 def otp_verificar():
     data = request.get_json()
     registro_id = data.get("registro_id")
@@ -65,11 +66,20 @@ def obtener_firmantes(doc_id):
 def asignar_firmantes(doc_id):
     """Asigna firmantes dinámicamente a un documento."""
     data = request.get_json()
-    firmantes = data.get("firmantes", [])  # [{firmante_id, orden_firma}]
+    firmantes = data.get("firmantes", [])
     if not firmantes:
         return jsonify({"ok": False, "error": "Sin firmantes"}), 400
     conn = get_db()
     try:
+        # Verificar ownership — solo el creador o admin/supervisor puede modificar (#13)
+        doc = conn.execute(
+            "SELECT creado_por FROM registro_central WHERE pk_registro_id=?", (doc_id,)
+        ).fetchone()
+        if not doc:
+            return jsonify({"ok": False, "error": "Documento no encontrado"}), 404
+        if (doc["creado_por"] != session.get("nombre_usuario") and
+                session.get("rol") not in ("admin", "supervisor")):
+            return jsonify({"ok": False, "error": "Sin permiso para modificar este documento"}), 403
         # Limpiar asignaciones previas pendientes
         conn.execute("""
             DELETE FROM documento_firmantes
@@ -91,6 +101,7 @@ def asignar_firmantes(doc_id):
 
 
 @api_bp.route("/documento/<int:doc_id>/validar_otp", methods=["POST"])
+@login_requerido
 def validar_otp_documento(doc_id):
     """Valida OTP para firmante dinámico. PROGRAMA.doc patrón."""
     data       = request.get_json()
@@ -159,22 +170,33 @@ def listar_documentos_api():
 
     conn = get_db()
     try:
-        sql    = """SELECT r.pk_registro_id, r.codigo_completo, r.asunto_resumen,
-                           r.estado, r.fecha_radicacion, r.area, r.tipo_documento
-                    FROM registro_central r WHERE 1=1"""
+        where  = " WHERE 1=1"
         params = []
         if area:
-            sql += " AND r.area=?"; params.append(area)
+            where += " AND r.area=?"; params.append(area)
         if estado:
-            sql += " AND r.estado=?"; params.append(estado)
+            where += " AND r.estado=?"; params.append(estado)
         if q:
-            sql += " AND (r.codigo_completo LIKE ? OR r.asunto_resumen LIKE ?)"; params.extend([f"%{q}%"]*2)
-        sql += f" ORDER BY r.pk_registro_id DESC LIMIT {per_page} OFFSET {offset}"
+            where += " AND (r.codigo_completo LIKE ? OR r.asunto_resumen LIKE ?)"; params.extend([f"%{q}%"]*2)
+
+        # Total count para paginación real (#15)
+        total = conn.execute(
+            f"SELECT COUNT(*) as c FROM registro_central r{where}", params
+        ).fetchone()["c"]
+
+        sql  = f"""SELECT r.pk_registro_id, r.codigo_completo, r.asunto_resumen,
+                          r.estado, r.fecha_radicacion, r.area, r.tipo_documento
+                   FROM registro_central r{where}
+                   ORDER BY r.pk_registro_id DESC LIMIT {per_page} OFFSET {offset}"""
         rows = conn.execute(sql, params).fetchall()
+        total_pages = (total + per_page - 1) // per_page if total else 1
         return jsonify({
-            "items":    [dict(r) for r in rows],
-            "has_more": len(rows) == per_page,
-            "page":     page
+            "items":       [dict(r) for r in rows],
+            "has_more":    len(rows) == per_page,
+            "page":        page,
+            "per_page":    per_page,
+            "total":       total,
+            "total_pages": total_pages,
         })
     finally:
         conn.close()
@@ -211,6 +233,28 @@ def dashboard_kpis():
 def baseline_status():
     """Estado del baseline RC5.5: perfil activo, capas, integridad."""
     return jsonify(CapabilityRegistry().get_baseline_info())
+
+
+# ── Estado de filtros para deep linking (#14) ────────────────────────
+@api_bp.route("/documentos/estado", methods=["POST"])
+@login_requerido
+def guardar_estado_lista():
+    """Guarda filtros actuales en sesión para restaurar al volver a la lista."""
+    data = request.get_json(silent=True) or {}
+    session["documentos_filtros"] = {
+        "area":   data.get("area", ""),
+        "estado": data.get("estado", ""),
+        "q":      data.get("q", ""),
+        "page":   int(data.get("page", 1)),
+    }
+    return jsonify({"ok": True})
+
+
+@api_bp.route("/documentos/estado")
+@login_requerido
+def obtener_estado_lista():
+    """Retorna los filtros guardados para restaurar estado de la lista."""
+    return jsonify({"ok": True, "filtros": session.get("documentos_filtros", {})})
 
 
 # ── Firmantes disponibles para asignar ──────────────────────────────

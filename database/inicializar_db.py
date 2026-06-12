@@ -806,13 +806,19 @@ def inicializar_base_datos():
         fecha_subida TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(proyecto_id) REFERENCES proyectos(pk_proyecto_id)
     )""")
-    # Índices adicionales para columnas de consulta frecuente
+    # Índices adicionales para columnas de consulta frecuente (#17)
     for _idx in [
         "CREATE INDEX IF NOT EXISTS idx_pqrs_fecha_limite    ON pqrs(fecha_limite)",
         "CREATE INDEX IF NOT EXISTS idx_pqrs_sui_export      ON pqrs(mes_reporte, reportado_sui)",
         "CREATE INDEX IF NOT EXISTS idx_audit_usuario         ON audit_log(usuario)",
         "CREATE INDEX IF NOT EXISTS idx_rc_area_estado        ON registro_central(area, estado)",
         "CREATE INDEX IF NOT EXISTS idx_tp_estado             ON tareas_proyecto(estado, proyecto_id)",
+        # Índices de búsqueda textual en campos frecuentes (#17)
+        "CREATE INDEX IF NOT EXISTS idx_registro_codigo      ON registro_central(codigo_completo)",
+        "CREATE INDEX IF NOT EXISTS idx_registro_fecha_desc  ON registro_central(fecha_radicacion DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_doc_firmantes_doc    ON documento_firmantes(documento_id, estado)",
+        "CREATE INDEX IF NOT EXISTS idx_expedientes_codigo   ON expedientes(codigo_expediente)",
+        "CREATE INDEX IF NOT EXISTS idx_rc_expediente        ON registro_central(fk_expediente_id)",
     ]:
         try: conn.execute(_idx)
         except Exception: pass

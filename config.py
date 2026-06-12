@@ -50,6 +50,11 @@ class Config:
     PERMANENT_SESSION_LIFETIME = 28800
     # Timeout de sesión por inactividad (segundos) — unificado para todos los blueprints
     SESSION_TIMEOUT          = 28800
+    # Sesiones en filesystem — sobreviven reinicio del servidor (#18)
+    SESSION_TYPE             = "filesystem"
+    SESSION_FILE_DIR         = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                            "instance", "flask_sessions")
+    SESSION_PERMANENT        = False
     # Límite de tamaño de uploads: 25 MB — previene DoS por disco
     MAX_CONTENT_LENGTH       = 25 * 1024 * 1024
     DB_PATH                  = definir_ruta_base_datos()
@@ -80,7 +85,8 @@ class Config:
     @staticmethod
     def crear_carpetas():
         for c in [Config.UPLOAD_FOLDER, Config.PDF_FOLDER,
-                  Config.BACKUP_FOLDER, Config.LOG_FOLDER]:
+                  Config.BACKUP_FOLDER, Config.LOG_FOLDER,
+                  Config.SESSION_FILE_DIR]:
             os.makedirs(c, exist_ok=True)
 
 Config.crear_carpetas()
