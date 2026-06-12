@@ -9,6 +9,7 @@ from core.seguridad import login_requerido, rol_requerido
 from core.auditoria import auditar
 from utils.seguridad import verificar_token_csrf
 from datetime import datetime, date
+from functools import wraps
 from io import BytesIO, StringIO
 import csv
 
@@ -121,6 +122,18 @@ def _verificar_csrf_o_abortar():
     return True
 
 
+def csrf_protegido(f):
+    """Decorador CSRF para endpoints POST del módulo financiero."""
+    @wraps(f)
+    def _wrapper(*args, **kwargs):
+        if request.method == "POST" and not verificar_token_csrf():
+            flash("Token de seguridad inválido. Recargue la página e intente de nuevo.", "danger")
+            referrer = request.referrer or url_for("finanzas.bancos")
+            return redirect(referrer)
+        return f(*args, **kwargs)
+    return _wrapper
+
+
 # ── Caja Menor ──────────────────────────────────────────────────────
 @fin_bp.route("/caja")
 @login_requerido
@@ -145,10 +158,8 @@ def caja_consultar():
 
 @fin_bp.route("/caja/nuevo", methods=["POST"])
 @login_requerido
+@csrf_protegido
 def caja_nuevo():
-    if not _verificar_csrf_o_abortar():
-        return redirect(url_for("finanzas.caja"))
-
     try:
         importe = float(request.form["importe"])
         if importe <= 0:
@@ -158,12 +169,14 @@ def caja_nuevo():
         flash("Importe inválido. Ingrese un número mayor a cero.", "danger")
         return redirect(url_for("finanzas.caja"))
 
-    concepto = request.form.get("concepto", "").strip()
+    concepto = _sanitizar_texto(request.form.get("concepto", ""), 200)
     if not concepto:
         flash("El concepto es obligatorio.", "danger")
         return redirect(url_for("finanzas.caja"))
 
     tipo_mov = request.form.get("tipo_mov", "EGRESO")
+    if tipo_mov not in ("INGRESO", "EGRESO"):
+        tipo_mov = "EGRESO"
     fecha    = request.form.get("fecha", date.today().isoformat())
     usuario  = session.get("nombre_usuario", "anonimo")
 
@@ -183,7 +196,8 @@ def caja_nuevo():
         flash("Movimiento registrado exitosamente.", "success")
     except Exception as e:
         conn.rollback()
-        flash(f"Error al registrar: {e}", "danger")
+        _log_fin.error("caja_nuevo: %s", e, exc_info=True)
+        flash("Error al registrar el movimiento. Contacte al administrador.", "danger")
     finally:
         conn.close()
     return redirect(url_for("finanzas.caja"))
@@ -192,9 +206,8 @@ def caja_nuevo():
 @fin_bp.route("/caja/eliminar/<int:mov_id>", methods=["POST"])
 @login_requerido
 @rol_requerido("admin", "tesorera")
+@csrf_protegido
 def caja_eliminar(mov_id):
-    if not _verificar_csrf_o_abortar():
-        return redirect(url_for("finanzas.caja"))
 
     conn = get_db()
     try:
@@ -216,7 +229,8 @@ def caja_eliminar(mov_id):
         flash("Movimiento eliminado.", "info")
     except Exception as e:
         conn.rollback()
-        flash(f"Error al eliminar: {e}", "danger")
+        _log_fin.error("caja_eliminar mov_id=%s: %s", mov_id, e, exc_info=True)
+        flash("Error al eliminar el movimiento. Contacte al administrador.", "danger")
     finally:
         conn.close()
     return redirect(url_for("finanzas.caja"))
@@ -233,11 +247,15 @@ def caja_exportar():
 
     try:
         import openpyxl
-        import pandas as pd
-        df = pd.DataFrame(movs)
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Caja Menor"
+        ws.append(["Fecha", "Concepto", "Tipo", "Ingreso", "Egreso", "Saldo", "Usuario"])
+        for m in movs:
+            ws.append([m["fecha"], m["concepto"], m["tipo_mov"],
+                       m["ingreso"] or "", m["egreso"] or "", m["saldo"], m.get("usuario", "")])
         buf = BytesIO()
-        with pd.ExcelWriter(buf, engine="openpyxl") as wr:
-            df.to_excel(wr, sheet_name="Caja Menor", index=False)
+        wb.save(buf)
         buf.seek(0)
         return send_file(buf, as_attachment=True,
                          download_name=f"CajaMenor_SIGCA_{fd}_{fh}.xlsx",
@@ -269,11 +287,9 @@ def bancos():
 @fin_bp.route("/bancos/crear", methods=["POST"])
 @login_requerido
 @rol_requerido("admin", "tesorera")
+@csrf_protegido
 def banco_crear():
-    if not _verificar_csrf_o_abortar():
-        return redirect(url_for("finanzas.bancos"))
-
-    # Sanitización profunda de entradas (#4)
+    # Sanitización profunda de entradas
     codigo    = _sanitizar_texto(request.form.get("codigo_cuenta", ""), 20).upper()
     nombre    = _sanitizar_texto(request.form.get("banco_nombre", ""), 100)
     ejecutivo = _sanitizar_texto(request.form.get("ejecutivo", ""), 80)
@@ -286,6 +302,15 @@ def banco_crear():
         flash("Código y nombre del banco son obligatorios.", "danger")
         return redirect(url_for("finanzas.bancos"))
 
+    # Formato código: solo mayúsculas, números, guiones y guión bajo
+    if not _re.match(r'^[A-Z0-9\-_]+$', codigo):
+        flash("El código solo puede contener letras mayúsculas, números, guiones y guión bajo.", "danger")
+        return redirect(url_for("finanzas.bancos"))
+
+    tipo_cuenta = request.form.get("tipo_cuenta", "AHORRO")
+    if tipo_cuenta not in ("AHORRO", "CORRIENTE", "EFECTIVO"):
+        tipo_cuenta = "AHORRO"
+
     try:
         saldo_ini = float(request.form.get("saldo_inicial", 0) or 0)
         if saldo_ini < 0:
@@ -297,20 +322,28 @@ def banco_crear():
 
     conn = get_db()
     try:
-        # Verificar código duplicado (#2 — duplicados)
+        # Verificar código duplicado (activa o inactiva — no reutilizar códigos)
         if conn.execute(
-            "SELECT 1 FROM bancos WHERE codigo_cuenta=? AND status='ACTIVA'", (codigo,)
+            "SELECT 1 FROM bancos WHERE codigo_cuenta=? AND status!='ELIMINADA'", (codigo,)
         ).fetchone():
-            flash(f"Ya existe una cuenta activa con el código '{codigo}'.", "danger")
+            flash(f"Ya existe una cuenta con el código '{codigo}'.", "danger")
             return redirect(url_for("finanzas.bancos"))
+
+        # Advertir si nombre duplicado (no bloquea)
+        if conn.execute(
+            "SELECT 1 FROM bancos WHERE banco_nombre=? AND status='ACTIVA'", (nombre,)
+        ).fetchone():
+            flash(f"Ya existe una cuenta activa con el nombre '{nombre}'. Verifique si es duplicado.", "warning")
+
+        # Advertir saldo 0 en cuenta bancaria real
+        if tipo_cuenta != "EFECTIVO" and saldo_ini == 0:
+            flash("Para cuentas bancarias reales se recomienda ingresar el saldo inicial.", "warning")
 
         conn.execute("""
             INSERT INTO bancos (codigo_cuenta, banco_nombre, tipo_cuenta, moneda,
                                saldo_actual, ejecutivo, telefono, status)
             VALUES (?,?,?,?,?,?,?,?)
-        """, (codigo, nombre,
-              request.form.get("tipo_cuenta", "AHORRO"),
-              moneda, saldo_ini, ejecutivo, telefono, "ACTIVA"))
+        """, (codigo, nombre, tipo_cuenta, moneda, saldo_ini, ejecutivo, telefono, "ACTIVA"))
         conn.commit()
         auditar(
             "BANCO_CREAR",
@@ -331,9 +364,8 @@ def banco_crear():
 @fin_bp.route("/bancos/eliminar/<int:bid>", methods=["POST"])
 @login_requerido
 @rol_requerido("admin", "tesorera")
+@csrf_protegido
 def banco_eliminar(bid):
-    if not _verificar_csrf_o_abortar():
-        return redirect(url_for("finanzas.bancos"))
 
     conn = get_db()
     try:
@@ -401,10 +433,8 @@ def movimientos():
 
 @fin_bp.route("/movimientos/nuevo", methods=["POST"])
 @login_requerido
+@csrf_protegido
 def movimiento_nuevo():
-    if not _verificar_csrf_o_abortar():
-        return redirect(url_for("finanzas.movimientos"))
-
     try:
         importe = float(request.form["importe"])
         if importe <= 0:
@@ -414,12 +444,14 @@ def movimiento_nuevo():
         flash("Importe inválido. Ingrese un número mayor a cero.", "danger")
         return redirect(url_for("finanzas.movimientos"))
 
-    concepto = request.form.get("concepto", "").strip()
+    concepto = _sanitizar_texto(request.form.get("concepto", ""), 200)
     if not concepto:
         flash("El concepto es obligatorio.", "danger")
         return redirect(url_for("finanzas.movimientos"))
 
     tipo_mov = request.form.get("tipo_mov", "EGRESO")
+    if tipo_mov not in ("INGRESO", "EGRESO"):
+        tipo_mov = "EGRESO"
     fecha    = request.form.get("fecha", date.today().isoformat())
     banco_id = request.form.get("fk_banco_id") or None
     if banco_id:
@@ -486,7 +518,8 @@ def movimiento_nuevo():
         flash("Movimiento bancario registrado.", "success")
     except Exception as e:
         conn.rollback()
-        flash(f"Error al registrar movimiento: {e}", "danger")
+        _log_fin.error("movimiento_nuevo: %s", e, exc_info=True)
+        flash("Error al registrar el movimiento. Contacte al administrador.", "danger")
     finally:
         conn.close()
     return redirect(url_for("finanzas.movimientos"))

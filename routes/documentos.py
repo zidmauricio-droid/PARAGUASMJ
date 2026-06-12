@@ -11,7 +11,8 @@ Mejoras del documento del editor:
   - Estadisticas de documentos
   - Vista previa en linea del PDF
 """
-import re, os, json, tempfile
+import re, os, json, tempfile, logging as _logging
+_log_docs = _logging.getLogger("sigca.documentos")
 from io import BytesIO
 import hashlib
 import secrets
@@ -412,7 +413,8 @@ def nuevo():
 
             except Exception as e:
                 conn.rollback()
-                flash(f"Error al crear documento: {e}", "danger")
+                _log_docs.error("crear documento: %s", e, exc_info=True)
+                flash("Error al crear el documento. Contacte al administrador.", "danger")
 
         contactos  = conn.execute(
             "SELECT pk_contacto_id,razon_social FROM contactos WHERE activo=1 ORDER BY razon_social"
@@ -1235,7 +1237,8 @@ def limpiar_borradores_antiguos():
         flash(f"Se eliminaron {len(borradores)} borradores antiguos.", "success")
     except Exception as e:
         conn.rollback()
-        flash(f"Error: {e}", "danger")
+        _log_docs.error("limpiar_borradores: %s", e, exc_info=True)
+        flash("Error al limpiar borradores. Contacte al administrador.", "danger")
     finally:
         conn.close()
     return redirect(url_for("documentos.listar"))
@@ -1250,7 +1253,8 @@ def desactivar_indicador(registro_id):
         conn.commit()
         flash("Indicador de plazo desactivado.", "info")
     except Exception as e:
-        flash(f"Error: {e}", "danger")
+        _log_docs.error("desactivar_indicador reg=%s: %s", registro_id, e, exc_info=True)
+        flash("Error al desactivar el indicador. Contacte al administrador.", "danger")
     finally:
         conn.close()
     return redirect(url_for("documentos.ver", registro_id=registro_id))

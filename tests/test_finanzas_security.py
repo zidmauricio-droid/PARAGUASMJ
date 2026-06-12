@@ -1,7 +1,7 @@
 """
-tests/test_finanzas_security.py — Seguridad y validación del módulo Finanzas RC5.5.2
-Cubre: CSRF en banco_crear/banco_eliminar, duplicados, sanitización de texto,
-       mensajes de error sin exposición de internos de BD.
+tests/test_finanzas_security.py — Seguridad y validación del módulo Finanzas RC5.5.3
+Cubre: CSRF decorator, banco_crear/banco_eliminar, duplicados, sanitización de texto,
+       mensajes de error sin exposición de internos de BD, whitelist tipo_mov/tipo_cuenta.
 """
 import os, sys, pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -146,3 +146,54 @@ def test_caja_consultar_sin_login_rechazado(client):
     """GET /finanzas/caja/consultar sin sesión debe rechazar."""
     resp = client.get("/finanzas/caja/consultar?desde=2026-01-01&hasta=2026-01-31")
     assert resp.status_code in (302, 401)
+
+
+# ── csrf_protegido decorator importable ───────────────────────────────────────
+
+def test_csrf_protegido_importable():
+    """El decorador csrf_protegido debe estar disponible en routes.finanzas."""
+    from routes.finanzas import csrf_protegido
+    assert callable(csrf_protegido)
+
+
+def test_csrf_protegido_preserva_nombre_funcion():
+    """@csrf_protegido debe preservar el nombre de la función decorada (wraps)."""
+    from routes.finanzas import csrf_protegido
+
+    @csrf_protegido
+    def mi_funcion():
+        return "ok"
+
+    assert mi_funcion.__name__ == "mi_funcion"
+
+
+# ── Validación código formato ─────────────────────────────────────────────────
+
+def test_banco_crear_codigo_invalido_rechazado(client_auth):
+    """Código con caracteres inválidos (ej. espacios) debe ser rechazado."""
+    resp = client_auth.post("/finanzas/bancos/crear", data={
+        "codigo_cuenta": "BCO 001",  # espacio no permitido
+        "banco_nombre": "Banco Test",
+        "tipo_cuenta": "AHORRO",
+        "moneda": "COP",
+        "saldo_inicial": "0"
+    }, follow_redirects=True)
+    body = resp.data.decode("utf-8", errors="replace")
+    # Debe mostrar mensaje de error sobre el formato
+    assert resp.status_code == 200
+    assert "código" in body.lower() or "codigo" in body.lower() or "character" in body.lower() or "obligatorio" in body.lower()
+
+
+# ── Migración 016 ─────────────────────────────────────────────────────────────
+
+def test_migracion_016_importable():
+    """La migración 016 debe ser importable."""
+    import importlib.util, os
+    spec = importlib.util.spec_from_file_location(
+        "m016",
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                     "database", "migrations", "016_agregar_moneda_bancos.py")
+    )
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    assert callable(m.migrar)

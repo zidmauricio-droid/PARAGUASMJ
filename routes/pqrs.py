@@ -13,7 +13,8 @@ Cumplimiento normativo:
   Ley 1755/2015        — Plazos en días hábiles
   Res. CRA 943/2021    — Esquemas diferenciales rurales
 """
-import os
+import os, logging as _logging
+_log_pqrs = _logging.getLogger("sigca.pqrs")
 from flask import (Blueprint, render_template, request, jsonify,
                    redirect, url_for, flash, session, send_file)
 from werkzeug.utils import secure_filename
@@ -319,7 +320,8 @@ def nueva():
             return redirect(url_for("pqrs.ver", pid=pid))
         except Exception as e:
             conn.rollback()
-            flash(f"❌ Error: {e}", "danger")
+            _log_pqrs.error("nueva PQRS: %s", e, exc_info=True)
+            flash("Error al registrar la PQRS. Contacte al administrador.", "danger")
 
     suscriptores = conn.execute(
         "SELECT pk_contacto_id, razon_social, telefono, direccion_predio as direccion "
