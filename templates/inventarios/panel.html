@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}Inventarios — SIGCA{% endblock %}
+{% block content %}
+<div class="modulo-header modulo-financiero">
+  <i class="bi bi-box-seam"></i>
+  <span>GF-05 — Inventarios</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex gap-2">
+    <select id="sel-cat" class="form-select form-select-sm" style="width:180px;" onchange="cargarItems()">
+      <option value="">Todas las categorías</option>
+      <option value="material">Material</option>
+      <option value="equipo">Equipo</option>
+      <option value="herramienta">Herramienta</option>
+      <option value="quimico">Químico</option>
+      <option value="activo">Activo</option>
+      <option value="epp">EPP</option>
+    </select>
+    <input type="text" id="inp-buscar" class="form-control form-control-sm" placeholder="Buscar…"
+           oninput="cargarItems()" style="width:200px;">
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-sm btn-warning" onclick="cargarAlertas()">
+      <i class="bi bi-exclamation-triangle me-1"></i>Alertas Stock
+    </button>
+    <button class="btn btn-sm btn-primary" onclick="abrirModalItem()">
+      <i class="bi bi-plus-circle me-1"></i>Nuevo Item
+    </button>
+  </div>
+</div>
+
+<!-- Alertas -->
+<div id="div-alertas" class="d-none mb-3">
+  <div class="alert alert-warning alert-dismissible">
+    <strong><i class="bi bi-exclamation-triangle me-2"></i>Stock mínimo alcanzado:</strong>
+    <ul id="ul-alertas" class="mb-0 mt-1"></ul>
+    <button type="button" class="btn-close" onclick="document.getElementById('div-alertas').classList.add('d-none')"></button>
+  </div>
+</div>
+
+<!-- Tabla -->
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Código</th><th>Nombre</th><th>Categoría</th>
+          <th class="text-center">Existencia</th><th>Unidad</th><th>Ubicación</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-items">
+        <tr><td colspan="7" class="text-center text-muted py-3">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal item -->
+<div class="modal fade" id="modalItem" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">Nuevo Item</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">Nombre *</label>
+            <input type="text" id="i-nombre" class="form-control" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Categoría</label>
+            <select id="i-cat" class="form-select">
+              <option value="material">Material</option>
+              <option value="equipo">Equipo</option>
+              <option value="herramienta">Herramienta</option>
+              <option value="quimico">Químico</option>
+              <option value="activo">Activo</option>
+              <option value="epp">EPP</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Unidad</label>
+            <input type="text" id="i-unidad" class="form-control" value="und">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Stock mínimo</label>
+            <input type="number" id="i-min" class="form-control" value="0" min="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Ubicación</label>
+            <input type="text" id="i-ubic" class="form-control" placeholder="Ej: Bodega 1">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarItem()"><i class="bi bi-floppy me-1"></i>Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal movimiento -->
+<div class="modal fade" id="modalMov" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="tit-mov">Registrar Movimiento</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="mov-item-id">
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold">Tipo</label>
+            <select id="mov-tipo" class="form-select">
+              <option value="ENTRADA">Entrada</option>
+              <option value="SALIDA">Salida</option>
+              <option value="AJUSTE">Ajuste</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">Cantidad *</label>
+            <input type="number" id="mov-cant" class="form-control" min="0.01" step="0.01">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">Fecha</label>
+            <input type="date" id="mov-fecha" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Concepto</label>
+            <input type="text" id="mov-concepto" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-success" onclick="guardarMovimiento()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function api(url, opts={}) {
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+async function cargarItems() {
+  const cat = document.getElementById('sel-cat').value;
+  const q   = document.getElementById('inp-buscar').value;
+  const d = await api(`/inventarios/api/items?categoria=${cat}&q=${encodeURIComponent(q)}`);
+  const tbody = document.getElementById('tbody-items');
+  if (!d.ok || !d.items.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Sin ítems</td></tr>';
+    return;
+  }
+  tbody.innerHTML = d.items.map(i => `<tr>
+    <td><code>${i.codigo}</code></td>
+    <td>${i.nombre}</td>
+    <td><span class="badge bg-light text-dark">${i.categoria}</span></td>
+    <td class="text-center fw-bold ${i.existencia <= i.existencia_min && i.existencia_min > 0 ? 'text-danger' : 'text-success'}">
+      ${i.existencia}</td>
+    <td>${i.unidad}</td>
+    <td>${i.ubicacion || '—'}</td>
+    <td>
+      <button class="btn btn-xs btn-outline-success me-1" onclick="abrirMov(${i.pk_item_id}, '${i.nombre}')">
+        <i class="bi bi-arrow-left-right"></i></button>
+    </td>
+  </tr>`).join('');
+}
+
+async function cargarAlertas() {
+  const d = await api('/inventarios/api/alertas');
+  if (!d.ok) return;
+  const div = document.getElementById('div-alertas');
+  if (!d.alertas.length) { alert('No hay alertas de stock mínimo'); return; }
+  document.getElementById('ul-alertas').innerHTML = d.alertas.map(a =>
+    `<li>${a.nombre} (${a.codigo}): ${a.existencia} ${a.unidad} — mín: ${a.existencia_min}</li>`
+  ).join('');
+  div.classList.remove('d-none');
+}
+
+function abrirModalItem() {
+  document.getElementById('i-nombre').value = '';
+  new bootstrap.Modal(document.getElementById('modalItem')).show();
+}
+
+async function guardarItem() {
+  const nombre = document.getElementById('i-nombre').value.trim();
+  if (!nombre) { alert('Nombre obligatorio'); return; }
+  const d = await api('/inventarios/api/items', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      nombre,
+      categoria:    document.getElementById('i-cat').value,
+      unidad:       document.getElementById('i-unidad').value,
+      existencia_min: parseFloat(document.getElementById('i-min').value)||0,
+      ubicacion:    document.getElementById('i-ubic').value,
+    })
+  });
+  if (d.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('modalItem'))?.hide();
+    cargarItems();
+  } else alert('Error: ' + d.error);
+}
+
+function abrirMov(id, nombre) {
+  document.getElementById('mov-item-id').value = id;
+  document.getElementById('tit-mov').textContent = `Movimiento — ${nombre}`;
+  document.getElementById('mov-cant').value = '';
+  document.getElementById('mov-fecha').value = new Date().toISOString().slice(0,10);
+  new bootstrap.Modal(document.getElementById('modalMov')).show();
+}
+
+async function guardarMovimiento() {
+  const d = await api('/inventarios/api/movimiento', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      fk_item_id: parseInt(document.getElementById('mov-item-id').value),
+      tipo_mov:   document.getElementById('mov-tipo').value,
+      cantidad:   parseFloat(document.getElementById('mov-cant').value)||0,
+      fecha:      document.getElementById('mov-fecha').value,
+      concepto:   document.getElementById('mov-concepto').value,
+    })
+  });
+  if (d.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('modalMov'))?.hide();
+    cargarItems();
+  } else alert('Error: ' + d.error);
+}
+
+document.addEventListener('DOMContentLoaded', cargarItems);
+</script>
+{% endblock %}

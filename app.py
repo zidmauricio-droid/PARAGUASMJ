@@ -41,6 +41,8 @@ from routes.emergencias      import em_bp
 from routes.convenios        import conv_bp
 from routes.carpetas_bp      import carpetas_bp
 from routes.expedientes      import expedientes_bp
+from routes.calidad_agua     import cal_bp
+from routes.inventarios      import inv_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(dash_bp)
@@ -59,6 +61,8 @@ app.register_blueprint(em_bp)
 app.register_blueprint(conv_bp)
 app.register_blueprint(carpetas_bp)
 app.register_blueprint(expedientes_bp)
+app.register_blueprint(cal_bp)
+app.register_blueprint(inv_bp)
 
 # ── Filtros Jinja2 ──────────────────────────────────────────────────
 from utils.helpers import formatear_moneda, truncar
@@ -250,6 +254,9 @@ def _run_migrations():
         "database.migrations.019_indices_rendimiento",
         "database.migrations.020_proyectos_periodo_flexible",
         "database.migrations.021_tipos_proyecto_e_indices",
+        "database.migrations.022_rc6_areas_estructura",
+        "database.migrations.023_calidad_agua_estructurada",
+        "database.migrations.024_balance_hidrico_mensual",
     ]
     for mod_name in migraciones:
         try:

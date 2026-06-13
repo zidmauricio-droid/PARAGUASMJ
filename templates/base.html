@@ -57,32 +57,40 @@
                         <i class="bi bi-envelope"></i> Comunicaciones
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ '/proyectos2/' }}">
-                        <i class="bi bi-kanban"></i> Proyectos
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('balance_hidrico.panel') }}">
-                        <i class="bi bi-water"></i> Balance Hidrico
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('gis.mapa') }}">
-                        <i class="bi bi-map"></i> Mapa GIS
-                    </a>
-                </li>
+                <!-- GA — Gestión Ambiental y Operativa -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                        <i class="bi bi-cash-coin"></i> Finanzas
+                        <i class="bi bi-droplet-half"></i> GA
                     </a>
                     <ul class="dropdown-menu">
+                        <li><h6 class="dropdown-header">Gestión Ambiental y Operativa</h6></li>
+                        <li><a class="dropdown-item" href="{{ url_for('calidad_agua.panel') }}">
+                            <i class="bi bi-droplet-fill me-2 text-info"></i>GA-02 Calidad del Agua</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('balance_hidrico.panel') }}">
+                            <i class="bi bi-water me-2 text-primary"></i>GA-03 Balance Hídrico</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('gis.mapa') }}">
+                            <i class="bi bi-map me-2 text-success"></i>GA-08 Mapa GIS</a></li>
+                        <li><a class="dropdown-item" href="{{ '/proyectos2/' }}">
+                            <i class="bi bi-kanban me-2"></i>GA-09 Proyectos</a></li>
+                    </ul>
+                </li>
+                <!-- GF — Gestión Financiera -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-cash-coin"></i> GF
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><h6 class="dropdown-header">Gestión Financiera</h6></li>
                         <li><a class="dropdown-item" href="{{ url_for('finanzas.caja') }}">
-                            <i class="bi bi-cash me-2"></i>Caja Menor</a></li>
+                            <i class="bi bi-cash me-2"></i>GF-06 Caja Menor</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('finanzas.bancos') }}">
-                            <i class="bi bi-bank me-2"></i>Cuentas Bancarias</a></li>
+                            <i class="bi bi-bank me-2"></i>GF-02 Cuentas Bancarias</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('finanzas.movimientos') }}">
-                            <i class="bi bi-arrow-left-right me-2"></i>Movimientos</a></li>
+                            <i class="bi bi-arrow-left-right me-2"></i>GF-02 Movimientos</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('inventarios.panel') }}">
+                            <i class="bi bi-box-seam me-2"></i>GF-05 Inventarios</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('convenios.panel') }}">
+                            <i class="bi bi-file-earmark-check me-2"></i>GF-04 Contratos/Convenios</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
