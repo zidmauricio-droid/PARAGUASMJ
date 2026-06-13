@@ -35,24 +35,26 @@
 
     <a class="sidebar-item {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
        href="{{ url_for('dashboard.index') }}">
-      <i class="bi bi-speedometer2"></i><span>Panel</span>
+      <i class="bi bi-speedometer2"></i><span>Centro de Control</span>
     </a>
 
-    <!-- Documentos -->
-    <div class="sidebar-section-label">Gestión Documental</div>
-    <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-docs" role="button" aria-expanded="false">
-      <i class="bi bi-file-earmark-text"></i><span>Documentos</span>
+    <!-- GE -->
+    <div class="sidebar-section-label">GE — Gobierno y Estrategia</div>
+    <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-ge" role="button" aria-expanded="false">
+      <i class="bi bi-building"></i><span>GE — Gobierno</span>
       <i class="bi bi-chevron-down ms-auto small chevron-icon"></i>
     </a>
-    <div class="collapse" id="sb-docs">
+    <div class="collapse" id="sb-ge">
+      <a class="sidebar-subitem" href="{{ url_for('gobierno.panel') }}">
+        <i class="bi bi-journal-text me-1"></i>GE-01 Gobierno Corporativo</a>
       <a class="sidebar-subitem" href="{{ url_for('documentos.listar') }}">
-        <i class="bi bi-list-ul me-1"></i>Todos los documentos</a>
-      <a class="sidebar-subitem" href="{{ url_for('documentos.nuevo') }}">
-        <i class="bi bi-plus-circle me-1"></i>Nuevo documento</a>
+        <i class="bi bi-file-earmark-text me-1"></i>GE-03 Gestión Documental</a>
+      <a class="sidebar-subitem" href="{{ url_for('reportes_normativos.panel') }}">
+        <i class="bi bi-bar-chart-fill me-1"></i>GE-05 Reportes Normativos</a>
     </div>
 
     <!-- GC -->
-    <div class="sidebar-section-label">Gestión Comercial</div>
+    <div class="sidebar-section-label">GC — Gestión Comercial</div>
     <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-gc" role="button" aria-expanded="false">
       <i class="bi bi-people-fill"></i><span>GC — Comercial</span>
       <i class="bi bi-chevron-down ms-auto small chevron-icon"></i>
@@ -63,11 +65,11 @@
       <a class="sidebar-subitem" href="{{ url_for('pqrs.listar') }}">
         <i class="bi bi-chat-dots me-1"></i>GC-02 PQRS</a>
       <a class="sidebar-subitem" href="{{ url_for('comunicaciones.listar') }}">
-        <i class="bi bi-envelope me-1"></i>Comunicaciones</a>
+        <i class="bi bi-envelope me-1"></i>GC-04 Comunicaciones</a>
     </div>
 
     <!-- GF -->
-    <div class="sidebar-section-label">Gestión Financiera</div>
+    <div class="sidebar-section-label">GF — Gestión Financiera</div>
     <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-gf" role="button" aria-expanded="false">
       <i class="bi bi-cash-coin"></i><span>GF — Finanzas</span>
       <i class="bi bi-chevron-down ms-auto small chevron-icon"></i>
@@ -75,51 +77,46 @@
     <div class="collapse" id="sb-gf">
       <a class="sidebar-subitem" href="{{ url_for('finanzas.comprobantes') }}">
         <i class="bi bi-receipt me-1"></i>GF-02 Comprobantes</a>
-      <a class="sidebar-subitem" href="{{ url_for('finanzas.caja') }}">
-        <i class="bi bi-cash me-1"></i>GF-06 Caja Menor</a>
-      <a class="sidebar-subitem" href="{{ url_for('finanzas.bancos') }}">
-        <i class="bi bi-bank me-1"></i>Cuentas Bancarias</a>
       <a class="sidebar-subitem" href="{{ url_for('finanzas.movimientos') }}">
-        <i class="bi bi-arrow-left-right me-1"></i>Movimientos</a>
+        <i class="bi bi-arrow-left-right me-1"></i>GF-03 Movimientos</a>
+      <a class="sidebar-subitem" href="{{ url_for('finanzas.bancos') }}">
+        <i class="bi bi-bank me-1"></i>GF-04 Cuentas Bancarias</a>
       <a class="sidebar-subitem" href="{{ url_for('inventarios.panel') }}">
         <i class="bi bi-box-seam me-1"></i>GF-05 Inventarios</a>
+      <a class="sidebar-subitem" href="{{ url_for('finanzas.caja') }}">
+        <i class="bi bi-cash me-1"></i>GF-06 Caja Menor</a>
       <a class="sidebar-subitem" href="{{ url_for('convenios.panel') }}">
-        <i class="bi bi-file-earmark-check me-1"></i>Contratos</a>
+        <i class="bi bi-file-earmark-check me-1"></i>GF-07 Contratos</a>
       <a class="sidebar-subitem" href="{{ url_for('finanzas.plan_cuentas') }}">
-        <i class="bi bi-diagram-3 me-1"></i>Plan de Cuentas</a>
+        <i class="bi bi-diagram-3 me-1"></i>GF-08 Plan de Cuentas</a>
     </div>
 
     <!-- GA -->
-    <div class="sidebar-section-label">Gestión Ambiental</div>
+    <div class="sidebar-section-label">GA — Gestión Ambiental y Operativa</div>
     <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-ga" role="button" aria-expanded="false">
       <i class="bi bi-droplet-half"></i><span>GA — Operativa</span>
       <i class="bi bi-chevron-down ms-auto small chevron-icon"></i>
     </a>
     <div class="collapse" id="sb-ga">
       <a class="sidebar-subitem" href="{{ url_for('gis.mapa') }}">
-        <i class="bi bi-map me-1"></i>GA-01 Operación Acueducto</a>
+        <i class="bi bi-map me-1"></i>GA-01 Operación / GIS</a>
       <a class="sidebar-subitem" href="{{ url_for('calidad_agua.panel') }}">
         <i class="bi bi-droplet-fill me-1"></i>GA-02 Calidad del Agua</a>
       <a class="sidebar-subitem" href="{{ url_for('balance_hidrico.panel') }}">
         <i class="bi bi-water me-1"></i>GA-03 Balance Hídrico</a>
+      <a class="sidebar-subitem" href="{{ url_for('balance_hidrico.panel') }}#tab-fuentes">
+        <i class="bi bi-tsunami me-1"></i>GA-04 Fuentes Hídricas</a>
       <a class="sidebar-subitem" href="{{ url_for('ordenes_trabajo.panel') }}">
         <i class="bi bi-tools me-1"></i>GA-07 Órdenes de Trabajo</a>
-      <a class="sidebar-subitem" href="/proyectos2/">
+      <a class="sidebar-subitem" href="{{ url_for('proyectos2.panel') }}">
         <i class="bi bi-kanban me-1"></i>GA-08 Proyectos</a>
     </div>
 
     <!-- GL -->
-    <div class="sidebar-section-label">Gestión Laboral</div>
+    <div class="sidebar-section-label">GL — Gestión Laboral</div>
     <a class="sidebar-item {% if request.endpoint and 'laboral' in request.endpoint %}active{% endif %}"
        href="{{ url_for('laboral.panel') }}">
       <i class="bi bi-person-badge"></i><span>GL-01 Personal</span>
-    </a>
-
-    <!-- Reportes -->
-    <div class="sidebar-section-label">Informes</div>
-    <a class="sidebar-item {% if request.endpoint and 'reportes' in request.endpoint %}active{% endif %}"
-       href="{{ url_for('reportes_normativos.panel') }}">
-      <i class="bi bi-bar-chart-fill"></i><span>Reportes CAR/SSPD</span>
     </a>
 
     {% if session.rol == 'admin' %}

@@ -31,7 +31,6 @@ from routes.pqrs           import pqrs_bp
 from routes.gis            import gis_bp
 from routes.balance_hidrico import bh_bp
 from routes.comunicaciones  import com_bp
-from routes.proyectos       import proy_bp
 from routes.api             import api_bp
 from routes.finanzas        import fin_bp
 from routes.reportes_normativos import rep_bp
@@ -46,6 +45,7 @@ from routes.inventarios      import inv_bp
 from routes.suscriptores     import sus_bp
 from routes.ordenes_trabajo_rc6 import ot_bp
 from routes.laboral          import lab_bp
+from routes.gobierno         import gobierno_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(dash_bp)
@@ -54,7 +54,6 @@ app.register_blueprint(pqrs_bp)
 app.register_blueprint(gis_bp)
 app.register_blueprint(bh_bp)
 app.register_blueprint(com_bp)
-app.register_blueprint(proy_bp)
 app.register_blueprint(api_bp)
 app.register_blueprint(fin_bp)
 app.register_blueprint(rep_bp)
@@ -69,6 +68,7 @@ app.register_blueprint(inv_bp)
 app.register_blueprint(sus_bp)
 app.register_blueprint(ot_bp)
 app.register_blueprint(lab_bp)
+app.register_blueprint(gobierno_bp)
 
 # ── Filtros Jinja2 ──────────────────────────────────────────────────
 from utils.helpers import formatear_moneda, truncar
@@ -272,6 +272,7 @@ def _run_migrations():
         "database.migrations.031_pqrs_jerarquia",
         "database.migrations.032_pqrs_rc6_campos",
         "database.migrations.033_ga03_fuentes_hidricas",
+        "database.migrations.034_unificar_nivel_quebrada",
     ]
     for mod_name in migraciones:
         try:

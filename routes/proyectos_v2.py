@@ -1,5 +1,5 @@
 """
-routes/proyectos_v2.py
+routes/proyectos_v2.py — GA-08 Proyectos (PUEAA · PSMV · PEC · Obras · cualquier proyecto)
 Módulo de proyectos PUEAA/PSMV/Obras — con Gantt, documentos asociados,
 metas con soporte documental, informe de avance Excel.
 PROGRAMA_4 + PROGRAMA_5 integrados.
@@ -27,9 +27,9 @@ from utils.audit import log_action
 from datetime import datetime
 from io import BytesIO
 
-proy2_bp = Blueprint("proyectos2", __name__, url_prefix="/proyectos2")
+proy2_bp = Blueprint("proyectos2", __name__, url_prefix="/proyectos")
 
-logger = logging.getLogger("sigca.proyectos2")
+logger = logging.getLogger("sigca.proyectos")
 
 
 def with_retry(max_retries: int = 3, base_delay: float = 0.25):
