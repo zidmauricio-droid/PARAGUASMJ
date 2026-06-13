@@ -708,16 +708,7 @@ const PLANTILLAS_DATA = {
 };
 </script>
 
-<!-- ═══ TipTap 2.x — solo local (offline-first, sin CDN) ═══ -->
-<script>
-(function() {
-  function load(u){ return new Promise(function(ok,fail){
-    var s=document.createElement('script'); s.src=u; s.onload=ok; s.onerror=fail;
-    document.head.appendChild(s);
-  });}
-  window._tiptapReady = load('/static/vendor/tiptap/tiptap-bundle.min.js').catch(function(){});
-})();
-</script>
+<!-- TipTap bundle cargado globalmente desde base.html — sin re-carga aquí -->
 <script>
 // ════════════════════════════════════════════════════════════════════
 // EDITOR TIPTAP PROFESIONAL PARAGUASMJ
@@ -1461,10 +1452,9 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarTiposDocumento().then(() => actualizarCodigo());
   cargarMembreteEditor();
 
-  // Editor TipTap: esperar que los scripts UMD carguen
+  // Editor TipTap: bundle ya disponible (cargado por base.html)
   (async function() {
-    if (window._tiptapReady) { try { await window._tiptapReady; } catch(e){} }
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 100));
     initEditor();
   })();
 
