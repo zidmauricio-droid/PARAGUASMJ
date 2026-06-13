@@ -28,7 +28,7 @@ TIPOS_DOC     = ["Resolución", "Acta", "Oficio", "Circular", "Informe", "Contra
 ESTADOS_PQRS  = ["Recibida", "En_tramite", "Respondida", "Cerrada"]
 TIPOS_PQRS    = ["Peticion", "Queja", "Reclamo", "Sugerencia", "Denuncia"]
 TIPOS_MOV     = ["Ingreso", "Egreso", "Transferencia"]
-RAZONES       = ["ASUACAP", "Alcaldía Villeta", "CAR", "Usuario {n}", "Proveedor {n}", "SSPD"]
+RAZONES       = ["Acueducto Comunitario", "Alcaldía Villeta", "CAR", "Usuario {n}", "Proveedor {n}", "SSPD"]
 
 
 def _fecha_aleatoria(inicio: date, fin: date) -> str:

@@ -526,7 +526,7 @@ function macroFirma() {
   ins(`<br><div style="margin-top:30px;">
     <p>Cordialmente,</p><br>
     <p>___________________________</p>
-    <p><strong>José Humberto Ramírez</strong><br>Representante Legal — ASUACAP<br>Villeta, Cundinamarca</p>
+    <p><strong>Representante Legal</strong><br>{{ session.nombre_completo or 'Acueducto Comunitario' }}<br>Villeta, Cundinamarca</p>
   </div>`);
 }
 function macroEncabezado() {
@@ -536,8 +536,8 @@ function macroEncabezado() {
   ins(`<table style="width:100%;border-collapse:collapse;border:1px solid #94a3b8;font-size:10px;">
     <tr>
       <td style="padding:6px;border:1px solid #94a3b8;" colspan="3">
-        <strong style="color:#1E3A8A;font-size:11px;">ASOCIACIÓN DE SUSCRIPTORES DEL ACUEDUCTO COMUNITARIO EL PUENTE — ASUACAP</strong><br>
-        NIT: 832.001.389-2 | Caserío El Puente, Villeta, Cundinamarca
+        <strong style="color:#1E3A8A;font-size:11px;" id="hdr-nombre-ent">SIGCA — Sistema Integral de Gestión para Acueductos Comunitarios</strong><br>
+        <span id="hdr-nit-ent">Villeta, Cundinamarca</span>
       </td>
       <td style="padding:6px;border:1px solid #94a3b8;text-align:center;width:70px;">
         <strong style="font-size:20px;color:#1E3A8A;">A</strong>
@@ -629,8 +629,10 @@ function previsualizar() {
   doc.write('<title>' + titulo.replace(/</g,'&lt;') + '</title>');
   doc.write('<style>' + css + '</style></head><body>');
   doc.write('<div class="hdr">');
-  doc.write('<strong style="font-size:13pt;color:#1E3A8A;">ASUACAP — Acueducto Comunitario El Puente</strong><br>');
-  doc.write('<span style="font-size:10pt;color:#64748b;">NIT: 832.001.389-2 | Villeta, Cundinamarca</span>');
+  const _nomEnt = document.getElementById('hdr-nombre-ent')?.textContent || 'Acueducto Comunitario';
+  const _nitEnt = document.getElementById('hdr-nit-ent')?.textContent  || 'Villeta, Cundinamarca';
+  doc.write('<strong style="font-size:13pt;color:#1E3A8A;">' + _nomEnt + '</strong><br>');
+  doc.write('<span style="font-size:10pt;color:#64748b;">' + _nitEnt + '</span>');
   doc.write('<h3 style="margin:10px 0 2px;">' + titulo.replace(/</g,'&lt;') + '</h3>');
   doc.write('<small>Fecha: ' + new Date().toLocaleDateString('es-CO') + '</small></div>');
   doc.write(contenido);
