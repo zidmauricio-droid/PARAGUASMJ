@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Diagnóstico del Sistema — SIGCA{% endblock %}
+{% block content %}
+<div class="modulo-header modulo-admin">
+  <i class="bi bi-speedometer2"></i>
+  <span>Observabilidad del Sistema</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0 fw-bold">Panel de Diagnóstico — RC5.5.3</h5>
+  <div class="d-flex gap-2">
+    <span class="badge bg-secondary" id="lbl-timestamp">—</span>
+    <button class="btn btn-sm btn-outline-primary" onclick="cargarDiagnostico()">
+      <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+    </button>
+  </div>
+</div>
+
+<!-- KPIs superiores -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="fs-3 fw-bold text-primary" id="kpi-ram">—</div>
+      <div class="text-muted small">RAM proceso (MB)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="fs-3 fw-bold text-info" id="kpi-db">—</div>
+      <div class="text-muted small">Tamaño BD (MB)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="fs-3 fw-bold" id="kpi-wal">—</div>
+      <div class="text-muted small">Modo WAL</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="fs-3 fw-bold text-success" id="kpi-indices">—</div>
+      <div class="text-muted small">Índices activos</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Crecimiento de tablas -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-database me-2"></i>Crecimiento de Tablas
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>Tabla</th><th class="text-end">Registros</th><th class="text-end">Estado</th></tr>
+          </thead>
+          <tbody id="tbody-tablas">
+            <tr><td colspan="3" class="text-center text-muted py-3">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Benchmarks de consultas -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-stopwatch me-2"></i>Tiempos de Consulta (ms)
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr><th>Consulta</th><th class="text-end">ms</th><th class="text-end">Nivel</th></tr>
+          </thead>
+          <tbody id="tbody-benchmarks">
+            <tr><td colspan="3" class="text-center text-muted py-3">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Caché del clasificador -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-tags me-2"></i>Caché Clasificador TRD
+      </div>
+      <div class="card-body" id="div-cache">
+        <div class="text-muted small">Cargando…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Integridad -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-shield-check me-2"></i>Integridad de BD
+      </div>
+      <div class="card-body text-center py-4">
+        <div class="fs-2 fw-bold" id="kpi-integridad">—</div>
+        <div class="text-muted small mt-1" id="lbl-integridad">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slow endpoints -->
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-exclamation-triangle me-2"></i>Endpoints Lentos (últimos)
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush" id="ul-slow" style="max-height:200px;overflow-y:auto;">
+          <li class="list-group-item text-muted small">Cargando…</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Errores del diagnóstico -->
+<div id="div-errores" class="d-none">
+  <div class="alert alert-warning">
+    <strong><i class="bi bi-exclamation-triangle me-2"></i>Advertencias del diagnóstico:</strong>
+    <ul id="ul-errores" class="mb-0 mt-2"></ul>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const fmtNivel = n => ({
+  OK:     '<span class="badge bg-success">OK</span>',
+  LENTO:  '<span class="badge bg-warning text-dark">LENTO</span>',
+  CRITICO:'<span class="badge bg-danger">CRITICO</span>',
+  ERROR:  '<span class="badge bg-secondary">ERROR</span>',
+}[n] || `<span class="badge bg-light text-dark">${n}</span>`);
+
+function fmtRegistros(n) {
+  if (n >= 100000) return `<span class="text-danger fw-bold">${n.toLocaleString('es-CO')}</span>`;
+  if (n >= 10000)  return `<span class="text-warning fw-bold">${n.toLocaleString('es-CO')}</span>`;
+  return `<span class="text-success">${n.toLocaleString('es-CO')}</span>`;
+}
+
+async function cargarDiagnostico() {
+  try {
+    const r = await fetch('/auditoria/api/diagnosticos');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+
+    document.getElementById('lbl-timestamp').textContent = d.timestamp || '—';
+    document.getElementById('kpi-ram').textContent   = d.ram_mb >= 0 ? d.ram_mb.toFixed(0) : 'N/A';
+    document.getElementById('kpi-db').textContent    = d.db_tamano_mb >= 0 ? d.db_tamano_mb.toFixed(1) : 'N/A';
+    const walEl = document.getElementById('kpi-wal');
+    walEl.textContent = d.modo_wal ? 'Activo' : 'Inactivo';
+    walEl.className = 'fs-3 fw-bold ' + (d.modo_wal ? 'text-success' : 'text-danger');
+    document.getElementById('kpi-indices').textContent = d.indices_count ?? '—';
+
+    // Tablas
+    const tbody = document.getElementById('tbody-tablas');
+    if (d.tablas && Object.keys(d.tablas).length) {
+      tbody.innerHTML = Object.entries(d.tablas)
+        .sort((a,b) => b[1]-a[1])
+        .map(([t, n]) => `<tr>
+          <td><code style="font-size:11px;">${t}</code></td>
+          <td class="text-end">${fmtRegistros(n)}</td>
+          <td class="text-end">${n >= 100000 ? '<span class="badge bg-warning text-dark">Monitorear</span>' : ''}</td>
+        </tr>`).join('');
+    } else {
+      tbody.innerHTML = '<tr><td colspan="3" class="text-muted text-center">Sin datos</td></tr>';
+    }
+
+    // Benchmarks
+    const tbodybm = document.getElementById('tbody-benchmarks');
+    if (d.benchmarks && d.benchmarks.length) {
+      tbodybm.innerHTML = d.benchmarks.map(b => `<tr>
+        <td><small>${b.consulta}</small></td>
+        <td class="text-end fw-bold ${b.ms > 500 ? 'text-danger' : b.ms > 50 ? 'text-warning' : 'text-success'}">${b.ms >= 0 ? b.ms.toFixed(1) : '—'}</td>
+        <td class="text-end">${fmtNivel(b.nivel)}</td>
+      </tr>`).join('');
+    }
+
+    // Caché clasificador
+    const cache = d.cache_clasificador || {};
+    document.getElementById('div-cache').innerHTML = `
+      <div class="row text-center g-2">
+        <div class="col-6"><div class="fw-bold text-success">${cache.hits ?? 0}</div><div class="text-muted small">Hits</div></div>
+        <div class="col-6"><div class="fw-bold text-warning">${cache.misses ?? 0}</div><div class="text-muted small">Misses</div></div>
+        <div class="col-6"><div class="fw-bold">${cache.currsize ?? 0}/${cache.maxsize ?? 512}</div><div class="text-muted small">Uso caché</div></div>
+        <div class="col-6"><div class="fw-bold text-primary">${cache.hit_ratio ?? 0}%</div><div class="text-muted small">Hit ratio</div></div>
+      </div>`;
+
+    // Integridad
+    const integ = d.integridad_db || 'desconocido';
+    const integEl = document.getElementById('kpi-integridad');
+    const integLbl = document.getElementById('lbl-integridad');
+    if (integ === 'ok') {
+      integEl.textContent = '✓';
+      integEl.className = 'fs-2 fw-bold text-success';
+      integLbl.textContent = 'Base de datos íntegra';
+    } else {
+      integEl.textContent = '✗';
+      integEl.className = 'fs-2 fw-bold text-danger';
+      integLbl.textContent = integ;
+    }
+
+    // Slow endpoints
+    const ulSlow = document.getElementById('ul-slow');
+    if (d.slow_endpoints && d.slow_endpoints.length) {
+      ulSlow.innerHTML = d.slow_endpoints.map(s => `
+        <li class="list-group-item py-1 px-3" style="font-size:11px;">
+          <strong>${(s.descripcion||'').substring(0,50)}</strong>
+          <span class="text-muted ms-1">${s.timestamp||''}</span>
+        </li>`).join('');
+    } else {
+      ulSlow.innerHTML = '<li class="list-group-item text-success small">Sin endpoints lentos registrados</li>';
+    }
+
+    // Errores del diagnóstico
+    if (d.errores && d.errores.length) {
+      document.getElementById('div-errores').classList.remove('d-none');
+      document.getElementById('ul-errores').innerHTML =
+        d.errores.map(e => `<li>${e}</li>`).join('');
+    }
+
+  } catch(err) {
+    console.error('cargarDiagnostico:', err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', cargarDiagnostico);
+// Auto-refresh cada 60 segundos
+setInterval(cargarDiagnostico, 60000);
+</script>
+{% endblock %}

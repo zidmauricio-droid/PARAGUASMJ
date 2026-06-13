@@ -282,3 +282,23 @@ def api_eliminar_usuario(uid):
     log_action(accion="DELETE_USER", modulo="usuarios", descripcion=f"Usuario {uid} desactivado")
     conn.close()
     return jsonify({"ok": True})
+
+# ── Panel de diagnóstico sistémico (RC5.5.3) ─────────────────────────────────
+
+@aud_bp.route("/diagnosticos")
+@login_requerido
+@rol_requerido("admin")
+def diagnosticos():
+    return render_template("auditoria/diagnosticos.html")
+
+
+@aud_bp.route("/api/diagnosticos")
+@login_requerido
+@rol_requerido("admin")
+def api_diagnosticos():
+    """Devuelve observabilidad completa del sistema en JSON."""
+    from core.system_diagnostics import obtener_diagnostico_completo
+    from core.metrics import obtener_stats_cache_clasificador
+    diag = obtener_diagnostico_completo()
+    diag["cache_clasificador"] = obtener_stats_cache_clasificador()
+    return jsonify(diag)

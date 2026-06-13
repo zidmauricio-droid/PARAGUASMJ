@@ -33,6 +33,7 @@ from utils.seguridad import verificar_token_csrf
 from core.rate_limiter import limitar
 from core.capability_registry import CapabilityRegistry
 from core.auditoria import auditar, registrar_evento
+from core.metrics import medir_tiempo
 from core.forensic_saneamiento import SaneadorForense
 from datetime import datetime, timedelta, date
 
@@ -259,6 +260,7 @@ def crear_directorio_upload(path: str) -> bool:
 # ── Listar documentos ────────────────────────────────────────────────
 @docs_bp.route("/")
 @login_requerido
+@medir_tiempo("documentos.listar")
 def listar():
     area     = request.args.get("area","")
     estado   = request.args.get("estado","")
