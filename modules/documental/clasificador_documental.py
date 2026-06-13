@@ -6,7 +6,7 @@ El motor determinístico vive en core/document_classifier.py (RC5.5.x).
 Este módulo es la fachada de alto nivel con funciones orientadas al operador
 y el stub de TRD para RC6.0 (extensiones IA opcionales).
 
-Basado en: Tabla de Retención Documental ASUACAP + OAIS ISO 14721:2012
+Basado en: Tabla de Retención Documental del Acueducto + OAIS ISO 14721:2012
 """
 
 # ── Bandera de habilitación ───────────────────────────────────────────────────
@@ -25,7 +25,7 @@ MODULO_META = {
 
 def clasificar_documento(tipo_documental: str, asunto: str, area: str = "") -> dict:
     """
-    Clasifica un documento según la TRD de ASUACAP.
+    Clasifica un documento según la TRD del acueducto.
     Delega al motor determinístico en core/document_classifier.py.
 
     Parámetros:
@@ -97,7 +97,7 @@ def calcular_fecha_eliminacion(fecha_radicacion: str, serie_codigo: str) -> dict
 
 # ── Tabla de Retención Documental — stub para RC6.0 ──────────────────────────
 # Estructura: {codigo_trd: {serie, subserie, retencion_gestion, retencion_central, disposicion}}
-TRD_ASUACAP_STUB = {
+TRD_STUB = {
     "100.01": {"serie": "Actas", "subserie": "Actas de Junta Directiva",
                "retencion_gestion": 2, "retencion_central": 8, "disposicion": "Conservar"},
     "100.02": {"serie": "Actas", "subserie": "Actas de Asamblea",

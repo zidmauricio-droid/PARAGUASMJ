@@ -61,7 +61,7 @@ _TRD_SERIES = _cargar_trd()
 
 
 # ── Tabla de retenciones por serie ────────────────────────────────────────────
-# Fallback si el JSON no tiene el campo. Basado en TRD ASUACAP vigente.
+# Fallback si el JSON no tiene el campo. Basado en TRD vigente del acueducto.
 
 _RETENCION_DEFAULT: dict[str, dict] = {
     "SUB":  {"retencion_gestion": 2,  "retencion_central": 3,  "disposicion_final": "conservacion_total"},
