@@ -711,20 +711,11 @@ const PLANTILLAS_DATA = {
 <!-- ═══ TipTap 2.x — solo local (offline-first, sin CDN) ═══ -->
 <script>
 (function() {
-  var LOC = '/static/vendor/tiptap/';
-  var pkgs=['pm','core','starter-kit','extension-table','extension-table-row',
-    'extension-table-header','extension-table-cell','extension-image',
-    'extension-text-align','extension-link','extension-underline',
-    'extension-superscript','extension-subscript','extension-color',
-    'extension-text-style','extension-highlight','extension-font-family'];
-  function load(u){ return new Promise(function(ok){
-    var s=document.createElement('script'); s.src=u; s.onload=ok; s.onerror=ok;
+  function load(u){ return new Promise(function(ok,fail){
+    var s=document.createElement('script'); s.src=u; s.onload=ok; s.onerror=fail;
     document.head.appendChild(s);
   });}
-  window._tiptapReady=(async function(){
-    for(var i=0;i<pkgs.length;i++)
-      await load(LOC+pkgs[i]+'.umd.js');
-  })();
+  window._tiptapReady = load('/static/vendor/tiptap/tiptap-bundle.min.js').catch(function(){});
 })();
 </script>
 <script>
