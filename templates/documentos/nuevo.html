@@ -565,7 +565,8 @@
         <!-- Se llena con JS al cargar la página -->
       </div>
 <div id="editor-tiptap" tabindex="0"></div>
-        <input type="hidden" name="contenido_html" id="contenido-hidden">
+        <input type="hidden" name="contenido_html" id="contenido-hidden"
+               value="{{ contenido_inicial|default('')|e }}">
 
         <!-- Upload imagen oculto -->
         <input type="file" id="input-img-upload" accept="image/*" style="display:none"
@@ -924,8 +925,8 @@ function initEditor() {
     // Garantizar estado editable (#57/#60)
     editor.setEditable(true);
 
-    // Cargar contenido guardado
-    const saved = document.getElementById('contenido-guardado')?.value;
+    // Cargar contenido inicial (edición o borrador)
+    const saved = document.getElementById('contenido-hidden')?.value;
     if (saved && saved.trim() && saved !== '<p></p>') editor.commands.setContent(saved);
 
     // Drag & drop imágenes

@@ -236,6 +236,28 @@ def inicializar_app():
     except Exception as e:
         logger.error(f"Error inicializando DB: {e}")
 
+    # Ejecutar migraciones idempotentes en orden (017-020)
+    _run_migrations()
+
+
+def _run_migrations():
+    """Corre migraciones pendientes al arranque. Cada una es idempotente."""
+    from config import Config
+    db = Config.DB_PATH
+    migraciones = [
+        "database.migrations.017_pqrs_sspd_campos",
+        "database.migrations.018_pqrs_causales_sspd",
+        "database.migrations.019_indices_rendimiento",
+        "database.migrations.020_proyectos_periodo_flexible",
+    ]
+    for mod_name in migraciones:
+        try:
+            import importlib
+            mod = importlib.import_module(mod_name)
+            mod.migrar(db)
+        except Exception as e:
+            logger.warning(f"Migración {mod_name}: {e}")
+
 
 # Inicializar siempre al cargar el módulo (gunicorn, waitress o __main__)
 inicializar_app()
