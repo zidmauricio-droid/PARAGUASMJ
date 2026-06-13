@@ -24,13 +24,13 @@ def definir_ruta_base_datos():
         return os.path.join(fb, "paraguasmj.db")
 
 def _cargar_o_crear_secret():
-    """Persiste la SECRET_KEY en disco para sobrevivir reinicios del exe."""
+    """Persiste la SECRET_KEY en disco para sobrevivir reinicios.
+    Intenta directorio de instalación; si es de solo lectura (ej. C:\\Program Files),
+    usa directorio de usuario — compatible con PyInstaller en Windows."""
     if "SECRET_KEY" in os.environ:
         return os.environ["SECRET_KEY"]
-    base = os.path.dirname(sys.executable) if hasattr(sys, "frozen") else \
-           os.path.dirname(os.path.abspath(__file__))
-    ruta = os.path.join(base, ".app_secret")
-    try:
+
+    def _leer_o_crear(ruta):
         if os.path.isfile(ruta):
             clave = open(ruta).read().strip()
             if len(clave) == 64:
@@ -38,6 +38,19 @@ def _cargar_o_crear_secret():
         clave = secrets.token_hex(32)
         open(ruta, "w").write(clave)
         return clave
+
+    base = os.path.dirname(sys.executable) if hasattr(sys, "frozen") else \
+           os.path.dirname(os.path.abspath(__file__))
+    ruta = os.path.join(base, ".app_secret")
+    try:
+        return _leer_o_crear(ruta)
+    except (IOError, OSError):
+        pass
+    # Fallback: directorio de usuario (siempre escribible)
+    user_dir = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "PARAGUASMJ")
+    os.makedirs(user_dir, exist_ok=True)
+    try:
+        return _leer_o_crear(os.path.join(user_dir, ".app_secret"))
     except (IOError, OSError):
         return secrets.token_hex(32)
 
@@ -64,14 +77,16 @@ class Config:
     BACKUP_FOLDER            = os.path.join(BASE_DIR, "database", "backups")
     LOG_FOLDER               = os.path.join(BASE_DIR, "logs")
     NOMBRE_SISTEMA           = "PARAGUASMJ"
-    NOMBRE_COMPLETO          = "Asociacion de Suscriptores del Acueducto Comunitario El Puente"
-    NIT                      = "832.001.389-2"
-    MUNICIPIO                = "Villeta, Cundinamarca"
-    CORREO_OFICIAL           = "aacueductoelpuente@yahoo.com"
-    REPRESENTANTE_LEGAL      = "Jose Humberto Ramirez"
-    CARGO_REPRESENTANTE      = "Presidente"
-    CODIGO_DIVIPOLA_DPTO     = "25"
-    CODIGO_DIVIPOLA_MUN      = "258"
+    # Valores de arranque — se sobreescriben desde tabla `configuracion` vía /configuracion
+    # Configúrelos en Admin → Configuración después de la primera instalación
+    NOMBRE_COMPLETO          = "Nombre del Acueducto Comunitario"
+    NIT                      = "NIT pendiente de configuracion"
+    MUNICIPIO                = "Municipio pendiente de configuracion"
+    CORREO_OFICIAL           = "correo@pendiente.configuracion"
+    REPRESENTANTE_LEGAL      = "Representante Legal pendiente"
+    CARGO_REPRESENTANTE      = "Representante Legal"
+    CODIGO_DIVIPOLA_DPTO     = "00"
+    CODIGO_DIVIPOLA_MUN      = "000"
     DIAS_ALERTA_DOCUMENTOS   = 4
     DIAS_PLAZO_RESPUESTA     = 7
     DIAS_PLAZO_PQRS          = 15

@@ -19,7 +19,7 @@ SQL_TABLES = [
     nombre_completo  TEXT NOT NULL,
     nombre_corto     TEXT NOT NULL,
     nit              TEXT,
-    municipio        TEXT DEFAULT 'Villeta',
+    municipio        TEXT DEFAULT 'Municipio',
     departamento     TEXT DEFAULT 'Cundinamarca',
     correo           TEXT,
     telefono         TEXT,
@@ -591,7 +591,7 @@ def inicializar_base_datos():
 
     conn.execute("""
         INSERT OR IGNORE INTO organizaciones (pk_org_id, nombre_completo, nombre_corto, nit, municipio, departamento)
-        VALUES (1, 'Asociacion de Suscriptores del Acueducto Comunitario El Puente', 'ASUACAP', '832001389-2', 'Villeta', 'Cundinamarca')
+        VALUES (1, 'Acueducto Comunitario (configure en Admin → Configuración)', 'ACU', 'NIT pendiente', 'Municipio', 'Departamento')
     """)
 
     zonas = [(1,"La Volconda","Critica: tuberias 3/8\""),(2,"Payande - Tres Esquinas","Zona residencial dispersa"),
@@ -605,8 +605,8 @@ def inicializar_base_datos():
              (4,"Tanque Principal","Tanque",5.0120,-74.4680,"Operativo",4)]
     c.executemany("INSERT OR IGNORE INTO gis_infraestructura(pk_infra_id,nombre,tipo,coordenada_lat,coordenada_lon,estado_operativo,zona_id) VALUES(?,?,?,?,?,?,?)", infra)
 
-    firm = [("Jose Humberto Ramirez","Presidente","+573001234567"),
-            ("Ana Martinez Garcia","Tesorera","+573002345678"),
+    firm = [("Representante Legal","Presidente","+57300000000"),
+            ("Firmante 2","Tesorera","+57300000001"),
             ("Maria Lopez Ruiz","Secretaria","+573003456789"),
             ("Luis Gomez Castro","Comite Juridico","+573004567890")]
     c.executemany("INSERT OR IGNORE INTO firmantes(nombre_completo,cargo,whatsapp,activo) VALUES(?,?,?,1)", firm)
@@ -626,16 +626,16 @@ def inicializar_base_datos():
     c.executemany("INSERT OR IGNORE INTO presupuesto_rubros(anio,nombre_rubro,presupuesto_inicial) VALUES(?,?,0)", [(anio,r) for r in rubros])
 
     configs = [
-        ("nombre_asociacion","ASUACAP","Nombre oficial","Institucional","texto",None,1),
-        ("nombre_completo","Asociacion de Suscriptores del Acueducto Comunitario El Puente","Nombre completo","Institucional","texto",None,2),
-        ("nit","8320013892","NIT","Institucional","texto",None,3),
-        ("representante_legal","Jose Humberto Ramirez","Representante","Institucional","texto",None,4),
+        ("nombre_asociacion","Mi Acueducto","Nombre oficial","Institucional","texto",None,1),
+        ("nombre_completo","Nombre completo del acueducto — configure en Admin","Nombre completo","Institucional","texto",None,2),
+        ("nit","000000000-0","NIT","Institucional","texto",None,3),
+        ("representante_legal","Representante Legal","Representante","Institucional","texto",None,4),
         ("cargo_representante","Presidente","Cargo","Institucional","texto",None,5),
-        ("direccion_oficina","Caserio El Puente, Villeta Cundinamarca","Direccion","Institucional","texto",None,6),
-        ("telefono_oficina","3112345678","Telefono","Institucional","texto",None,7),
+        ("direccion_oficina","Direccion de la oficina — configure en Admin","Direccion","Institucional","texto",None,6),
+        ("telefono_oficina","3100000000","Telefono","Institucional","texto",None,7),
         ("correo_oficial","correo@acueducto.org","Correo","Institucional","texto",None,8),
-        ("codigo_departamento","25","DIVIPOLA Cundinamarca","Institucional","texto",None,9),
-        ("codigo_municipio","258","DIVIPOLA Villeta","Institucional","texto",None,10),
+        ("codigo_departamento","00","DIVIPOLA Departamento","Institucional","texto",None,9),
+        ("codigo_municipio","000","DIVIPOLA Municipio","Institucional","texto",None,10),
         ("ianc_umbral_verde","15","IANC bueno %","Tecnica","numero","balance",1),
         ("ianc_umbral_naranja","25","IANC riesgo %","Tecnica","numero","balance",2),
         ("presion_minima_psi","20","Presion minima PSI","Tecnica","numero",None,3),
@@ -645,7 +645,7 @@ def inicializar_base_datos():
         ("dias_alerta_documentos","4","Dias inicio alertas doc","Tecnica","numero",None,7),
         ("dias_plazo_autorizacion","7","Dias autorizar","Tecnica","numero",None,8),
         ("whatsapp_api_key","","API Key CallMeBot","Notificaciones","texto","comunicaciones",1),
-        ("whatsapp_numero_oficial","573000000000","WhatsApp ASUACAP","Notificaciones","texto","comunicaciones",2),
+        ("whatsapp_numero_oficial","573000000000","WhatsApp Acueducto","Notificaciones","texto","comunicaciones",2),
         ("email_smtp_host","smtp.gmail.com","Servidor SMTP","Notificaciones","texto","comunicaciones",3),
         ("email_smtp_port","587","Puerto SMTP","Notificaciones","texto","comunicaciones",4),
         ("email_usuario","","Correo remitente","Notificaciones","texto","comunicaciones",5),
@@ -843,7 +843,7 @@ def inicializar_base_datos():
         cargo TEXT NOT NULL DEFAULT 'Presidente',
         firma_id INTEGER, actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )""")
-    conn.execute("INSERT OR IGNORE INTO config_aprobador_formato (id,nombre,cargo) VALUES (1,'José Humberto Ramírez','Representante Legal')")
+    conn.execute("INSERT OR IGNORE INTO config_aprobador_formato (id,nombre,cargo) VALUES (1,'Representante Legal','Representante Legal')")
 
     # Tabla expedientes (Ley 594/2000)
     conn.execute("""CREATE TABLE IF NOT EXISTS expedientes (

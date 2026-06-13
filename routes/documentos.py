@@ -772,7 +772,8 @@ def api_representante():
         rows = conn.execute("""
             SELECT clave, valor FROM configuracion
             WHERE clave IN ('representante_legal','cargo_representante',
-                            'nombre_asociacion','nit','correo','eslogan')
+                            'nombre_asociacion','nit','correo','eslogan',
+                            'municipio','dane_municipio')
         """).fetchall()
         result = dict(_REPR_DEFAULTS)
         for r in rows:
