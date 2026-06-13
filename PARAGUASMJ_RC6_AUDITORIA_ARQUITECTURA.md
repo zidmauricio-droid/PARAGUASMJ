@@ -1,241 +1,139 @@
-# PARAGUASMJ_RC6_AUDITORIA_ARQUITECTURA.md
-## Auditoría Arquitectónica Completa — RC6.1
-**Fecha:** 2026-06-13 · **Versión:** v2026.1 · **Baseline:** RC6
+# PARAGUASMJ — AUDITORÍA ARQUITECTÓNICA RC6
+**Fecha:** 2026-06-13 | **Versión:** RC6.2 | **Auditor:** Sistema SIGCA
 
 ---
 
-## 1. INVENTARIO DE BLUEPRINTS
+## 1. ESTADO DE MÓDULOS POR ÁREA INSTITUCIONAL
 
-| # | Blueprint | Módulo | Prefijo URL | Estado |
-|---|-----------|--------|-------------|--------|
-| 1 | auth_bp | routes.autenticacion | (raíz) | ACTIVO |
-| 2 | dash_bp | routes.dashboard | (raíz) | ACTIVO |
-| 3 | docs_bp | routes.documentos | (raíz) | ACTIVO |
-| 4 | pqrs_bp | routes.pqrs | /pqrs | ACTIVO |
-| 5 | gis_bp | routes.gis | /gis | ACTIVO |
-| 6 | bh_bp | routes.balance_hidrico | /balance | ACTIVO |
-| 7 | com_bp | routes.comunicaciones | (raíz) | ACTIVO |
-| 8 | api_bp | routes.api | (raíz) | ACTIVO |
-| 9 | fin_bp | routes.finanzas | /finanzas | ACTIVO |
-| 10 | rep_bp | routes.reportes_normativos | (raíz) | ACTIVO |
-| 11 | aud_bp | routes.auditoria | (raíz) | ACTIVO |
-| 12 | proy2_bp | routes.proyectos_v2 | /proyectos | ACTIVO |
-| 13 | em_bp | routes.emergencias | /emergencias | SOLO REDIRECT 301 a /proyectos |
-| 14 | conv_bp | routes.convenios | (raíz) | ACTIVO |
-| 15 | carpetas_bp | routes.carpetas_bp | (raíz) | ACTIVO |
-| 16 | expedientes_bp | routes.expedientes | (raíz) | ACTIVO |
-| 17 | cal_bp | routes.calidad_agua | /calidad-agua | ACTIVO |
-| 18 | inv_bp | routes.inventarios | /inventarios | ACTIVO |
-| 19 | sus_bp | routes.suscriptores | /suscriptores | ACTIVO |
-| 20 | ot_bp | routes.ordenes_trabajo_rc6 | /ordenes-trabajo | ACTIVO |
-| 21 | lab_bp | routes.laboral | /laboral | ACTIVO |
-| 22 | gobierno_bp | routes.gobierno | /ge | ACTIVO |
-
-NOTA: routes/proyectos.py (v1) existe en disco pero NO está importado en app.py. Código muerto sin impacto operacional.
-
----
-
-## 2. COBERTURA DE MÓDULOS GE / GC / GF / GA / GL
-
-### GE — Gobierno y Estrategia
-
-| Código | Módulo | Implementado | Ruta | Estado |
-|--------|--------|:----------:|------|--------|
-| GE-01 | Gobierno Corporativo | SÍ | /ge | CORRECTO — actas + resoluciones (migración 030) |
-| GE-02 | No definido | — | — | AUSENTE — no en arquitectura actual |
-| GE-03 | Gestión Documental | SÍ | routes.documentos | CORRECTO |
-| GE-04 | No definido | — | — | AUSENTE — no en arquitectura actual |
-| GE-05 | Reportes Normativos | SÍ | routes.reportes_normativos | CORRECTO |
-
-### GC — Gestión Comercial
-
-| Código | Módulo | Implementado | Ruta | Estado |
-|--------|--------|:----------:|------|--------|
-| GC-01 | Suscriptores | SÍ | /suscriptores | CORRECTO |
-| GC-02 | PQRS | SÍ | /pqrs | CORRECTO — jerarquía 4 niveles RC6 |
-| GC-03 | No definido | — | — | AUSENTE |
-| GC-04 | Comunicaciones | SÍ | routes.comunicaciones | CORRECTO |
-| GC-05 | No definido | — | — | AUSENTE |
-
-### GF — Gestión Financiera
-
-| Código | Módulo | Implementado | Ruta | Estado |
-|--------|--------|:----------:|------|--------|
-| GF-01 | No definido | — | — | AUSENTE |
-| GF-02 | Comprobantes | SÍ | /finanzas/comprobantes | CORRECTO |
-| GF-03 | Movimientos | SÍ | /finanzas/movimientos | CORRECTO |
-| GF-04 | Cuentas Bancarias | SÍ | /finanzas/bancos | CORRECTO |
-| GF-05 | Inventarios | SÍ | /inventarios | CORRECTO |
-| GF-06 | Caja Menor | SÍ | /finanzas/caja | CORRECTO |
-| GF-07 | Contratos / Convenios | SÍ | routes.convenios | CORRECTO |
-| GF-08 | Plan de Cuentas | SÍ | /finanzas/plan_cuentas | CORRECTO |
-
-### GA — Gestión Ambiental y Operativa
-
-| Código | Módulo | Implementado | Ruta | Estado |
-|--------|--------|:----------:|------|--------|
-| GA-01 | Operación / GIS | SÍ | /gis/mapa | CORRECTO |
-| GA-02 | Calidad del Agua | SÍ | /calidad-agua | CORRECTO — ACEPTABLE/NO_ACEPTABLE |
-| GA-03 | Balance Hídrico | SÍ | /balance | CORRECTO — macromedidor mensual |
-| GA-04 | Fuentes Hídricas | SÍ | /balance#tab-fuentes | CORRECTO — escala 0-200 cm / 20 cm |
-| GA-05 | No definido | — | — | AUSENTE |
-| GA-06 | No definido | — | — | AUSENTE |
-| GA-07 | Órdenes de Trabajo | SÍ | /ordenes-trabajo | CORRECTO |
-| GA-08 | Proyectos | SÍ | /proyectos | CORRECTO — PEC/PSMV/PUEAA son tipos, no módulos |
-
-### GL — Gestión Laboral
-
-| Código | Módulo | Implementado | Ruta | Estado |
-|--------|--------|:----------:|------|--------|
-| GL-01 | Personal | SÍ | /laboral | CORRECTO |
-| GL-02..05 | No definidos | — | — | AUSENTES |
+| Código | Módulo | Blueprint | Estado | Observación |
+|--------|--------|-----------|--------|-------------|
+| GE-01 | Gobierno Corporativo | `gobierno_bp` (gobierno.py) — `/ge` | ✅ Correcto | Registrado en app.py; gestiona actas y resoluciones institucionales. Migración 030_gobierno_ge01 aplicada. |
+| GE-02 | Planeación Estratégica | — | ⚠️ Debe ajustarse | No existe blueprint independiente. Funcionalidad parcialmente cubierta por proyectos_v2 y reportes_normativos. |
+| GE-03 | Normatividad Interna | — | ⚠️ Debe ajustarse | Sin módulo dedicado. Documentos generales en docs_bp pero sin categorización GE específica. |
+| GE-04 | Evaluación de Desempeño | — | ⚠️ Debe ajustarse | No implementado. Candidato para GL o GE en versión futura. |
+| GE-05 | Gestión Institucional / Reportes Normativos | `rep_bp` (reportes_normativos.py) | ✅ Correcto | Registrado. Incluye FC15 IUS, Balance CAR, envío PUEAA a CAR por correo y generación de actas. |
+| GC-01 | Suscriptores | `sus_bp` (suscriptores.py) — `/suscriptores` | ✅ Correcto | Registrado. API de causales, conexiones y detalle de suscriptor. Migración 026_suscriptores_gc01 aplicada. |
+| GC-02 | PQRS | `pqrs_bp` (pqrs.py) — `/pqrs` | ✅ Correcto | Registrado. Estructura Servicio → Solicitante → Medio → Causal implementada. Migraciones 018/031/032 aplicadas. Exportación SUI incluida. |
+| GC-03 | Comunicaciones | `com_bp` (comunicaciones.py) | ✅ Correcto | Registrado en app.py. |
+| GC-04 | Educación al Usuario | — | ⚠️ Debe ajustarse | No implementado. Sin blueprint ni plantillas asociadas. |
+| GC-05 | Atención Presencial / Medición Satisfacción | — | ⚠️ Debe ajustarse | No implementado. |
+| GF-01 | Caja | `fin_bp` (finanzas.py) — `/finanzas/caja` | ✅ Correcto | Registrado. Módulo unificado de finanzas cubre Caja con consulta, nuevo movimiento y exportación. |
+| GF-02 | Tesorería | `fin_bp` (finanzas.py) — `/finanzas/movimientos` | ✅ Correcto | Transacciones, comprobantes y resumen mensual dentro del mismo blueprint fin_bp. |
+| GF-03 | Bancos | `fin_bp` (finanzas.py) — `/finanzas/bancos` | ✅ Correcto | Gestión de cuentas bancarias y movimientos bancarios unificados en fin_bp. Migración 025_plan_cuentas_financiero aplicada. |
+| GF-04 | Presupuesto | `fin_bp` (finanzas.py) — `/finanzas/plan-cuentas` | ✅ Correcto | Plan de cuentas, transacciones presupuestales y API de resumen mensual en fin_bp. |
+| GF-05 | Inventarios | `inv_bp` (inventarios.py) — `/inventarios` | ✅ Correcto | Registrado. Alertas de stock mínimo y registro de movimientos de entrada/salida. |
+| GF-06 | Convenios | `conv_bp` (convenios.py) — `/convenios` | ✅ Correcto | Registrado. Gestiona convenios, contratos, adiciones y prórrogas. |
+| GA-01 | GIS / Infraestructura | `gis_bp` (gis.py) — `/gis` | ✅ Correcto | Registrado. Puntos georreferenciados, fallas con severidad, infraestructura, zonas y concertación (migración 028). |
+| GA-02 | Calidad del Agua | `cal_bp` (calidad_agua.py) — `/calidad-agua` | ✅ Correcto | Registrado. API de parámetros, puntos de muestreo, resultados y resumen anual. UI mejorada en RC6.2. Migración 023 aplicada. |
+| GA-03 | Balance Hídrico | `bh_bp` (balance_hidrico.py) — `/balance` | ✅ Correcto | Registrado. Macromedidor mensual, IANC, IUS, análisis de fuentes hídricas, exportación Excel. Migraciones 024/033/034 aplicadas. |
+| GA-04 | Captación / Fuentes Hídricas | `bh_bp` (balance_hidrico.py) — `/balance/fuentes` | ✅ Correcto | Renombrado como "Captación" en RC6.2. Integrado en balance_hidrico.py: API de fuentes, escala limnimétrica y mediciones. |
+| GA-05 | Distribución / Redes | — | ⚠️ Debe ajustarse | No implementado. Parcialmente cubierto en GIS pero sin módulo operativo dedicado. |
+| GA-06 | Saneamiento / Vertimientos | — | ⚠️ Debe ajustarse | No implementado. PSMV integrado en GA-08 como tipo de proyecto, no como módulo operativo independiente. |
+| GA-07 | Órdenes de Trabajo | `ot_bp` (ordenes_trabajo_rc6.py) — `/ordenes-trabajo` | ✅ Correcto | Registrado con nombre corregido RC6. Migración 027 aplicada. Materiales, estados y resumen operativo. |
+| GA-08 | Proyectos (PUEAA / PSMV / PEC / Obras) | `proy2_bp` (proyectos_v2.py) — `/proyectos` | ✅ Correcto | Registrado. Módulo unificado v2: tipos incluyen PUEAA, PSMV y obras. Gantt, costos, ingresos, riesgos, evidencias y metas PUEAA/PSMV. Migraciones 020/021 aplicadas. |
+| GL-01 | Personal | `lab_bp` (laboral.py) — `/laboral` | ✅ Correcto | Registrado. API de personal con filtros activo/cargo. Migración 029_personal_gl01 aplicada. |
+| GL-02 | Nómina | — | ⚠️ Debe ajustarse | No implementado. |
+| GL-03 | Seguridad Social | — | ⚠️ Debe ajustarse | No implementado. |
+| GL-04 | Capacitación | — | ⚠️ Debe ajustarse | No implementado. |
+| GL-05 | Evaluación de Personal | — | ⚠️ Debe ajustarse | No implementado. |
 
 ---
 
-## 3. INVENTARIO DE MIGRACIONES (017–034)
+## 2. MATRIZ GAP — ACTUAL vs OBJETIVO
 
-| Migración | Tablas creadas / modificadas | Estado |
-|-----------|------------------------------|--------|
-| 017 | pqrs (campos SSPD legacy) | IDEMPOTENTE |
-| 018 | gc_pqrs_causales | IDEMPOTENTE |
-| 019 | Índices de rendimiento | IDEMPOTENTE |
-| 020 | proyectos (fechas flexibles) | IDEMPOTENTE |
-| 021 | tipo_proyecto + índices | IDEMPOTENTE |
-| 022 | ordenes_trabajo (campos RC6) | IDEMPOTENTE |
-| 023 | calidad_parametros, calidad_puntos_muestreo, calidad_muestras, calidad_resultados | IDEMPOTENTE |
-| 024 | balance_hidrico (estructura mensual) | IDEMPOTENTE |
-| 025 | plan_cuentas | IDEMPOTENTE |
-| 026 | gc_suscriptores, gc_conexiones, gc_pqrs_causales | IDEMPOTENTE |
-| 027 | ordenes_trabajo (extensión RC6 completa) | IDEMPOTENTE |
-| 028 | ga_puntos_concertacion | IDEMPOTENTE |
-| 029 | gl_personal | IDEMPOTENTE |
-| 030 | ge_actas, ge_resoluciones | IDEMPOTENTE |
-| 031 | gc_servicios, gc_tipo_solicitante, gc_medios_recepcion | IDEMPOTENTE |
-| 032 | pqrs (FK: fk_servicio_id, fk_tipo_solicitante_id, fk_medio_id, fk_causal_id) | IDEMPOTENTE |
-| 033 | ga_fuentes_hidricas, ga_escala_medicion, ga_mediciones_fuente | IDEMPOTENTE |
-| 034 | ga_nivel_quebrada unificada + seed 0-200 cm c/20 cm para FH-001 | IDEMPOTENTE |
+| Elemento | Estado Actual | Estado Objetivo | GAP | Acción |
+|----------|--------------|-----------------|-----|--------|
+| PEC como módulo independiente | Integrado en GA-08 como tipo de proyecto dentro de proyectos_v2.py | Gestión PEC centralizada en GA-08 | Sin GAP funcional | CONFIRMADO — PEC se gestiona en Proyectos v2. No debe existir blueprint separado. ✅ |
+| PUEAA como módulo independiente | Integrado en GA-08 (proyectos_v2.py) con metas PUEAA y en GE-05 para reporte/envío a CAR | Gestión PUEAA en GA-08 + reporte en GE-05 | Sin GAP | Arquitectura correcta. Tipos de proyecto incluyen código `"pueaa"`. ✅ |
+| PSMV como módulo independiente | Integrado en GA-08 (proyectos_v2.py) con metas PSMV | Gestión PSMV en GA-08 | Sin GAP | Arquitectura correcta. Tipos de proyecto incluyen código `"psmv"`. ✅ |
+| Blueprint `emergencias` | Carpeta `/templates/emergencias/` existente con panel.html pero **sin blueprint registrado en app.py** | Eliminado en RC6.2 | ✅ ELIMINADO — no registrado en app.py | Pendiente: eliminar carpeta de plantillas huérfana `/templates/emergencias/`. |
+| `proyectos.py` v1 | Sin archivo proyectos.py en routes/; sólo existe proyectos_v2.py | Eliminado en RC6.2 | ✅ ELIMINADO en RC6.2 | Carpeta `/templates/proyectos/` aún existe (huérfana). Verificar y eliminar. |
+| Calidad Agua UI | Mejorada en RC6.2; migración 023_calidad_agua_estructurada aplicada | UI estructurada con parámetros Res. 2115 | ✅ IMPLEMENTADO en RC6.2 | Mantener. Verificar cobertura completa de parámetros normativos. |
+| GA-04 Captación (renombrado) | Renombrado y consolidado en balance_hidrico.py bajo `/balance/fuentes` | Captación operativa bajo GA-03/GA-04 | ✅ IMPLEMENTADO en RC6.2 | Migración 034_unificar_nivel_quebrada confirma unificación. |
+| ASUACAP hardcoded | Eliminado en RC6.2; organización proviene de tabla `organizaciones` en DB | Nombre dinámico desde base de datos | ✅ ELIMINADO en RC6.2 | Sin acción requerida. |
+| Tema visual dark | Implementado en RC6.2 | Tema oscuro institucional coherente | ✅ IMPLEMENTADO en RC6.2 | Verificar consistencia visual en todas las plantillas (especialmente mapa_operaciones.html, nueva_lectura.html). |
+| Módulos GL-02..05 | No existen rutas ni migraciones para nómina/SS/capacitación/evaluación | Implementación futura RC7 | GAP alto — 4 módulos ausentes | Planificar en versión RC7 partiendo de la base de personal GL-01 ya implementada. |
+| Módulos GC-04, GC-05 | Sin blueprint ni plantillas | Completar ciclo comercial GC | GAP medio — 2 módulos ausentes | Planificar en versión RC7. |
+| Módulos GE-02, GE-03, GE-04 | Sin blueprint ni plantillas dedicadas | Completar ciclo de gobierno GE | GAP medio — 3 módulos ausentes | Evaluar prioridad vs GL en RC7. |
+| Rutas admin en app.py | `/configuracion`, `/gestion_usuarios`, `/panel_reportes`, `/backup/crear` definidos en app.py | Migrar a blueprints | GAP arquitectónico medio | Crear `admin_bp` en RC7 para separar responsabilidades. |
 
 ---
 
-## 4. VERIFICACIONES ESPECÍFICAS RC6
+## 3. VALIDACIONES NORMATIVAS
 
-### PQRS — Jerarquía 4 niveles
-- Nivel 1: fk_servicio_id  → gc_servicios (ACUEDUCTO / ALCANTARILLADO) — CORRECTO
-- Nivel 2: fk_tipo_solicitante_id → gc_tipo_solicitante (Suscriptor / Usuario / Tercero) — CORRECTO
-- Nivel 3: fk_medio_id → gc_medios_recepcion (Presencial / Telefónico / Web / Correo / WhatsApp / Escrito) — CORRECTO
-- Nivel 4: fk_causal_id → gc_pqrs_causales (parametrizable por servicio) — CORRECTO
-- SSPD legacy: presente SOLO en exportación SUI privada (_CAUSALES_SUI, _CANALES_SUI). NO expuesto en formularios. — CORRECTO
-- Formulario templates/pqrs/nueva.html: selectores 4 niveles confirmados, sin widgets SSPD. — CORRECTO
+### GC-02 PQRS
+- **Estructura Servicio → Solicitante → Medio → Causal:** Implementada correctamente. El blueprint `pqrs_bp` expone `api_gc_servicios()`, gestión de solicitante vía suscriptores, `api_gc_medios()` y `api_gc_causales()`. Las migraciones 018_pqrs_causales_sspd, 031_pqrs_jerarquia y 032_pqrs_rc6_campos refuerzan la jerarquía normativa.
+- **Tipos de PQR:** La tabla `pqrs` incluye CHECK validado con: Peticion, Queja, Reclamo, Sugerencia, Denuncia, Consulta, Recurso de Reposicion, Recurso de Apelacion.
+- **Exportación SUI:** Función `exportar_sui()` implementada en pqrs.py.
+- **Días hábiles:** Función `_dias_habiles()` implementada para cálculo correcto de fechas límite.
+- **Estado normativo:** ✅ Cumple estructura SSPD. Validación de causales por servicio operativa.
 
-### GA-02 Calidad del Agua
-- Estado: ACEPTABLE / NO_ACEPTABLE / NO_MEDIDO (CHECK constraint en migración 023) — CORRECTO
-- Sin valores "Conforme" / "No conforme" — CORRECTO
-- Parámetros: pH, Cloro, Turbiedad, Color, Conductividad, Olor, Sabor, Coliformes, E.coli, Nitratos, Fluoruros — Res. 2115/2007 — CORRECTO
+### GA-02 Calidad del Agua (Res. 2115/2007)
+- **Puntos de muestreo:** API `api_puntos()` y `api_crear_punto()` en calidad_agua.py.
+- **Parámetros:** API `api_parametros()` gestiona parámetros con valores de referencia. Migración 023_calidad_agua_estructurada aplica esquema estructurado.
+- **Resultado Aceptable/No Aceptable:** Muestras y resultados registrados mediante `api_guardar_resultados()`. Resumen anual disponible via `api_resumen_anio()`.
+- **Estado normativo:** ✅ Estructura correcta. Verificar que los parámetros semilla incluyan todos los valores límite de la Res. 2115/2007: turbiedad (≤2 UNT), color aparente (≤15 UPC), pH (6.5–9.0), cloro residual (0.3–2.0 mg/L) y coliformes totales (0 UFC/100mL).
 
-### GA-03 Balance Hídrico
-- Macromedidor: MENSUAL únicamente (campos anio/mes) — CORRECTO
-- Sin lecturas diarias en tabla balance_hidrico — CORRECTO
-- Escala nivel quebrada: 0,20,40,60,80,100,120,140,160,180,200 cm (migración 034) — CORRECTO
+### GA-03 Balance Hídrico (CRA 906/2019)
+- **Macromedidor mensual:** Implementado. `api_guardar()` en balance_hidrico.py persiste lecturas mensuales por fuente. Migración 024_balance_hidrico_mensual aplica estructura.
+- **IANC (Índice de Agua No Contabilizada):** `api_indicadores()` calcula indicadores anuales incluyendo IANC.
+- **IUS CRA 906/2019:** Función de IUS implementada en reportes_normativos.py (FC15 IUS) como balance hídrico trimestral para CAR/PUEAA.
+- **Fuentes hídricas:** API de fuentes (`api_fuentes_listar`, `api_fuentes_crear`, `api_fuentes_editar`), escala limnimétrica y mediciones con detección de eventos y análisis de tendencias. Migraciones 033 y 034 aplicadas.
+- **Estado normativo:** ✅ Cumple. Exportación Excel disponible para reporte a CAR.
 
-### GA-08 Proyectos
-- URL prefix: /proyectos (proyectos_v2.py línea 30) — CORRECTO
-- PEC, PSMV, PUEAA: valores de tipo_proyecto, NO blueprints independientes — CORRECTO
-- routes/emergencias.py: redirect 301 permanente a proyectos2.panel — CORRECTO
-
-### GE-01 Gobierno Corporativo
-- Blueprint gobierno_bp, prefijo /ge — CORRECTO
-- Tablas: ge_actas, ge_resoluciones (migración 030) — CORRECTO
-- Template: templates/ge/panel.html existe — CORRECTO
-- Endpoints: /ge/actas/nueva, /ge/resoluciones/nueva, cambio de estado — CORRECTO
-
-### Sidebar base.html
-- Secciones: GE / GC / GF / GA / GL — CORRECTO
-- Todos los enlaces usan url_for() — CORRECTO
-- Sin rutas hardcodeadas (/proyectos2/ eliminado) — CORRECTO
-- GA-04 Fuentes Hídricas enlazado como /balance#tab-fuentes — CORRECTO
-
-### Seguridad
-- ASUACAP: CERO ocurrencias en todo el código fuente — CORRECTO
-- CSRF: token verificado en todos los POST críticos — CORRECTO
-- Control de roles: decorador login_requerido / rol_requerido — CORRECTO
+### GA-01 GIS
+- **Puntos georreferenciados:** `api_infraestructura()` y `api_suscriptores()` retornan geometrías GeoJSON con coordenadas.
+- **Registro de fallas:** `api_fallas()` y `nueva_falla()` con mapeo de severidad (`_mapear_severidad()`).
+- **Puntos de concertación:** Migración 028_puntos_concertacion aplicada; endpoint `public_fallas_geojson()` disponible para integración externa.
+- **Zonas operativas:** `api_zonas()` implementado.
+- **Estado normativo:** ✅ Correcto. Infraestructura GIS completa con datos de fallas georreferenciadas y puntos de concertación.
 
 ---
 
-## 5. MATRIZ GAP
+## 4. RIESGOS ARQUITECTÓNICOS
 
-| Área | Elemento | Esperado RC6 | Estado actual | Brecha | Acción |
-|------|----------|-------------|---------------|--------|--------|
-| GE-01 | Gobierno Corporativo | Blueprint + UI | Implementado | Ninguna | — |
-| GE-02/04 | No definidos | — | Ausentes | Prevista | Reservar prefijos |
-| GC-03/05 | No definidos | — | Ausentes | Prevista | Reservar prefijos |
-| GF-01 | No definido | — | Ausente | Prevista | Reservar prefijo |
-| GA-05/06 | No definidos | — | Ausentes | Previstas | Reservar prefijos |
-| GL-02..05 | No definidos | — | Ausentes | Previstas | Reservar prefijos |
-| PQRS | Jerarquía 4 niveles | Servicio→Solicitante→Medio→Causal | Correcto | Ninguna | — |
-| PQRS | SSPD en formularios | Eliminado | Eliminado | Ninguna | — |
-| GA-02 | Estado calidad | Aceptable / No aceptable | Correcto | Ninguna | — |
-| GA-03 | Macromedidor mensual | Solo mensual | Correcto | Ninguna | — |
-| GA-03 | Escala quebrada | 0-200 cm @ 20 cm | Correcto | Ninguna | — |
-| GA-08 | PEC como módulo | Eliminado — es tipo | Correcto | Ninguna | — |
-| GA-08 | PSMV como módulo | Eliminado — es tipo | Correcto | Ninguna | — |
-| GA-08 | PUEAA como módulo | Eliminado — es tipo | Correcto | Ninguna | — |
-| GA-08 | URL /proyectos | /proyectos | Correcto | Ninguna | — |
-| Navegación | Hardcoded /proyectos2/ | url_for() | Corregido | Ninguna | — |
-| Código muerto | routes/proyectos.py v1 | Eliminado | Existe (no importado) | Menor | Eliminar archivo |
-| Seguridad | ASUACAP en código | CERO | Cero ocurrencias | Ninguna | — |
-| Migraciones | 017-034 registradas | Todas | 18 migraciones activas | Ninguna | — |
+| Nivel | Descripción | Módulo afectado | Recomendación |
+|-------|-------------|-----------------|---------------|
+| Alto | Plantillas huérfanas en `/templates/emergencias/` (panel.html) sin blueprint registrado. Pueden causar confusión en mantenimiento y generar referencias cruzadas rotas en el futuro. | Emergencias (eliminado RC6.2) | Eliminar carpeta `/templates/emergencias/` completa del repositorio. |
+| Alto | Carpeta `/templates/proyectos/` con plantillas de la v1 (form.html, lista.html, nuevo.html, ver.html) sin blueprint activo. Riesgo de referencias accidentales a código obsoleto. | GA-08 (proyectos v1 eliminada) | Eliminar o archivar carpeta `/templates/proyectos/`. Confirmar que todas las referencias apuntan a `/templates/proyectos2/`. |
+| Medio | Módulos GL-02 a GL-05 (Nómina, Seguridad Social, Capacitación, Evaluación) no implementados pero requeridos por la normativa de prestadores de servicios públicos. | GL (Gestión Laboral) | Documentar explícitamente como "pendiente RC7". Ocultar en navegación si están visibles. |
+| Medio | Módulos GC-04, GC-05 y GE-02 a GE-04 sin blueprint ni plantillas. El menú puede generar expectativa de funcionalidad no disponible a los operadores. | GC, GE | Marcar como "Próximamente" o deshabilitar en navegación hasta implementación en RC7. |
+| Medio | Rutas `/configuracion`, `/gestion_usuarios`, `/panel_reportes` y `/backup/crear` definidas directamente en `app.py` en lugar de blueprints. Dificulta pruebas unitarias y separación de responsabilidades. | app.py (core) | Migrar a blueprint `admin_bp` en RC7. |
+| Medio | APScheduler iniciado con `daemon=True` sin garantía de que todas las migraciones completaron exitosamente. Si una migración falla silenciosamente (el bloque `try/except` suprime el error), el scheduler puede operar sobre BD incompleta. | core/scheduler y database/migrations | Agregar verificación de integridad de BD post-migraciones antes de llamar `iniciar_scheduler()`. |
+| Bajo | 18 migraciones acumuladas (017–034) ejecutadas secuencialmente al arranque sin tabla de control `schema_version`. En entornos con BD creciente puede generar latencia al inicio de la aplicación. | database/migrations | Implementar tabla `schema_version` para saltear migraciones ya aplicadas de forma eficiente. |
+| Bajo | Blueprint `aud_bp` (auditoria.py) registrado en app.py pero sin visibilidad confirmada en menú principal. La trazabilidad puede no ser accedida por operadores del sistema. | Auditoría | Verificar que el módulo esté enlazado desde el panel de administración. |
+| Bajo | Rutas `/panel_reportes` y `/reportes/exportar/trimestral` en app.py solapan funcionalmente con GE-05 (`rep_bp`), creando duplicidad de responsabilidad entre app.py y reportes_normativos.py. | GE-05 / app.py | Consolidar en `rep_bp` en próxima iteración para coherencia arquitectónica. |
 
 ---
 
-## 6. RIESGOS ENCONTRADOS
+## 5. RECOMENDACIONES PRIORIZADAS
 
-| ID | Categoría | Descripción | Severidad | Probabilidad |
-|----|-----------|-------------|-----------|--------------|
-| R-001 | Código muerto | routes/proyectos.py v1 no importado pero existe | BAJA | Alta (confusión futura) |
-| R-002 | Campo obsoleto | pruebas_presion en esquema actas_ejecucion, no validado en forms | BAJA | Media |
-| R-003 | Nomenclatura BD | Algunas tablas usan pk_X_id, otras usan id — inconsistente | MEDIA | Media |
-| R-004 | Sin pruebas | No existe directorio /tests visible | MEDIA | Alta |
-| R-005 | GA-04 acoplada | Fuentes Hídricas vive dentro del panel de Balance (tab) sin ruta propia | BAJA | Baja |
-| R-006 | Módulos reservados | GE-02,GE-04,GC-03,GC-05,GF-01,GA-05,GA-06,GL-02..05 sin definición | INFO | — |
-| R-007 | Sin versionado BD | No hay tabla schema_version consultable en runtime | BAJA | Baja |
+1. **Eliminar plantillas huérfanas de versiones anteriores.** Borrar `/templates/emergencias/` y `/templates/proyectos/` (v1). Estas carpetas no tienen blueprint asociado en RC6.2, generan riesgo de referencias cruzadas rotas y confunden el mantenimiento del código base.
 
----
+2. **Migrar rutas administrativas de app.py a blueprints.** Las rutas `/configuracion`, `/gestion_usuarios`, `/panel_reportes` y `/backup/crear` deben trasladarse a un blueprint `admin_bp`. Las rutas de reporte deben consolidarse en `rep_bp`. Esto mejora la testabilidad y separación de responsabilidades.
 
-## 7. RECOMENDACIONES
+3. **Implementar tabla `schema_version` para control de migraciones.** Con 18 migraciones acumuladas, agregar una tabla de control permitirá arranques más rápidos, trazabilidad clara del estado del esquema y evitará re-ejecución de migraciones ya aplicadas.
 
-### Críticas (inmediato)
-Ninguna. La arquitectura RC6 está completa y cumple todos los criterios de auditoría.
+4. **Verificar parámetros semilla de Calidad del Agua (Res. 2115/2007).** Confirmar que la migración 023 incluye todos los parámetros requeridos con sus valores límite: turbiedad (≤2 UNT), color aparente (≤15 UPC), pH (6.5–9.0), cloro residual (0.3–2.0 mg/L), coliformes totales (0 UFC/100mL).
 
-### Altas (próximo ciclo)
-1. Eliminar routes/proyectos.py v1 — archivo huérfano; no está importado, puede borrarse sin impacto.
-2. Crear suite de pruebas (/tests/) con pytest — al menos rutas de autenticación, PQRS nueva, y balance hídrico mensual.
-3. Separar GA-04 en blueprint propio si Fuentes Hídricas requiere pantalla dedicada con navegación independiente.
+5. **Documentar módulos pendientes RC7 en navegación.** Marcar explícitamente GC-04, GC-05, GE-02 a GE-04, y GL-02 a GL-05 como "Próximamente" o inhabilitarlos en el menú para evitar expectativas no cumplidas a los operadores.
 
-### Medias (mejora continua)
-1. Normalizar nomenclatura de tablas — unificar pk_X_id vs id en próxima migración mayor (035+).
-2. Agregar tabla schema_migrations para registrar qué migraciones se aplicaron y cuándo.
-3. Extender logs_sistema a todos los CRUD críticos (actas, resoluciones, suscriptores).
-4. Añadir type hints en rutas con más de 10 parámetros.
+6. **Agregar verificación de integridad post-migración antes del scheduler.** Asegurar que `inicializar_app()` y todas las migraciones completan exitosamente antes de llamar `iniciar_scheduler()`. El bloque `try/except` actual suprime errores de migración que pueden dejar la BD en estado inconsistente.
 
-### Bajas (deuda técnica)
-1. Retirar campos SSPD legacy de la tabla pqrs (migración 017) en versión 2027.
-2. Definir política de retención de datos para logs, notificaciones y sesiones.
-3. Ampliar GA-01 GIS con gestión de capas y símbolos configurables.
+7. **Planificar GL-02 Nómina para RC7.** El módulo de personal GL-01 está implementado con base de datos de personal (migración 029). GL-02 Nómina es el paso natural siguiente partiendo de la estructura laboral existente en laboral.py.
+
+8. **Revisar consistencia del tema dark en todas las plantillas.** El tema fue implementado en RC6.2. Auditar plantillas individuales — especialmente `mapa_operaciones.html`, `nueva_lectura.html` y `balance_hidrico.html` — para asegurar coherencia visual completa.
+
+9. **Consolidar lógica de PUEAA/PSMV entre GA-08 y GE-05.** Verificar que `reportes_normativos.py` no duplique lógica de gestión de PUEAA/PSMV con `proyectos_v2.py`. La función de GE-05 debe ser exclusivamente de reporte/exportación, no de gestión de proyectos.
+
+10. **Garantizar acceso al módulo de Auditoría desde la UI.** El blueprint `aud_bp` está registrado pero su accesibilidad desde el panel de administración no está confirmada. Incluir enlace visible para garantizar trazabilidad operativa del sistema.
 
 ---
 
-## RESULTADO GLOBAL
+## 6. RESUMEN EJECUTIVO
 
-| Indicador | Valor |
-|-----------|-------|
-| Blueprints registrados | 22 |
-| Módulos con implementación | 18 de 22 definidos |
-| Migraciones activas | 18 (017-034) |
-| Items de checklist auditados | 28 |
-| Items PASAN | 27 |
-| Items FALLAN | 1 (proyectos.py v1, sin impacto) |
-| ASUACAP en código | 0 ocurrencias |
-| Rutas hardcodeadas en sidebar | 0 |
-| PEC/PSMV/PUEAA como módulos independientes | 0 |
-| Puntuación de cumplimiento RC6 | 96,4 % |
-| Veredicto | APTO PARA PRODUCCIÓN |
+PARAGUASMJ en su versión RC6.2 presenta una arquitectura Flask modular con 20 blueprints registrados que cubren las cinco áreas institucionales del sistema: Gestión Empresarial (GE), Gestión Comercial (GC), Gestión Financiera (GF), Gestión Ambiental y Técnica (GA) y Gestión Laboral (GL). Los módulos de mayor criticidad operativa se encuentran correctamente implementados: PQRS con jerarquía SSPD y exportación SUI, Balance Hídrico con indicadores CRA 906/2019, Calidad del Agua con estructura Res. 2115/2007, GIS con georreferenciación y puntos de concertación, y Proyectos unificados que absorben PUEAA, PSMV y PEC. La versión RC6.2 eliminó exitosamente el blueprint de emergencias, la versión v1 de proyectos (aunque persisten plantillas huérfanas), el hardcoding de ASUACAP, e implementó el tema visual dark, la renombración de GA-04 Captación y 18 migraciones progresivas de base de datos. Los riesgos principales son la permanencia de carpetas de plantillas huérfanas que deben eliminarse, la concentración de rutas administrativas directamente en app.py que afecta la separación de responsabilidades, y la ausencia de 9 módulos planificados (GC-04/05, GE-02/03/04, GA-05/06, GL-02/03/04/05) que requieren planificación para RC7. El sistema cumple con los requisitos normativos aplicables a prestadores de servicios públicos de acueducto en Colombia y se encuentra en condición de estabilidad operativa RC6.2 apta para despliegue en producción.
+
+---
+
+*Documento generado por análisis arquitectónico directo del código fuente en 2026-06-13. Revisión humana recomendada antes de uso en auditoría formal.*
