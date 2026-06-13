@@ -56,10 +56,12 @@ def _cargar_o_crear_secret():
 
 class Config:
     SECRET_KEY               = _cargar_o_crear_secret()
-    SESSION_COOKIE_HTTPONLY  = True
-    SESSION_COOKIE_SAMESITE  = "Lax"
+    SESSION_COOKIE_HTTPONLY   = True
+    SESSION_COOKIE_SAMESITE   = "Lax"
+    SESSION_COOKIE_SUBDOMAIN  = False
+    SESSION_COOKIE_DOMAIN     = None
     # False en localhost; cambiar a True si se expone por HTTPS
-    SESSION_COOKIE_SECURE    = os.environ.get("HTTPS_ENABLED", "false").lower() == "true"
+    SESSION_COOKIE_SECURE     = os.environ.get("HTTPS_ENABLED", "false").lower() == "true"
     PERMANENT_SESSION_LIFETIME = 28800
     # Timeout de sesión por inactividad (segundos) — unificado para todos los blueprints
     SESSION_TIMEOUT          = 28800

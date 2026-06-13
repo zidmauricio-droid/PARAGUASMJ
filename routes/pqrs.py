@@ -177,17 +177,47 @@ def api_grupos_causal():
 @pqrs_bp.route("/api/causales")
 @login_requerido
 def api_causales():
-    """Causales planas o filtradas por grupo (?grupo=F/I/P/O)."""
+    """Causales planas o filtradas por grupo (?grupo=F/I/P/O).
+    Usa la tabla pqrs_causales_sspd si está poblada; si no, usa el dict estático."""
     grupo = request.args.get("grupo", "").upper()
+    conn = None
+    try:
+        conn = get_db()
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "pqrs_causales_sspd" in tablas:
+            q = "SELECT codigo_sui as codigo, nombre, grupo_codigo as grupo FROM pqrs_causales_sspd WHERE activo=1"
+            params = []
+            if grupo:
+                q += " AND grupo_codigo=?"
+                params.append(grupo)
+            q += " ORDER BY grupo_codigo, codigo_sui"
+            rows = conn.execute(q, params).fetchall()
+            if rows:
+                result = []
+                for r in rows:
+                    result.append({
+                        "codigo": r["codigo"],
+                        "nombre": r["nombre"],
+                        "grupo": r["grupo"],
+                        "tiene_subcausal": r["codigo"] == "01",
+                    })
+                return jsonify({"ok": True, "causales": result, "fuente": "db"})
+    except Exception as e:
+        _log_pqrs.warning("api_causales DB fallback: %s", e)
+    finally:
+        if conn:
+            conn.close()
+    # Fallback al dict estático
     result = []
     for cod, data in CAUSALES.items():
-        # Determinar grupo de este causal
         g = next((k for k, v in GRUPO_CAUSALES.items() if cod in v["causales"]), "O")
         if grupo and g != grupo:
             continue
         result.append({"codigo": cod, "nombre": data["texto"],
                         "grupo": g, "tiene_subcausal": data.get("tiene_subcausal", False)})
-    return jsonify({"ok": True, "causales": result})
+    return jsonify({"ok": True, "causales": result, "fuente": "static"})
 
 
 @pqrs_bp.route("/api/subcausales/<causal_cod>")

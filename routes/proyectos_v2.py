@@ -898,3 +898,32 @@ def api_buscar_documento():
     rows = conn.execute(sql, params).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+@proy2_bp.route("/api/configuracion/tipos")
+@login_requerido
+def api_tipos_proyecto():
+    """Retorna tipos de proyecto desde la tabla tipos_proyecto (configurable)."""
+    conn = get_db()
+    try:
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "tipos_proyecto" in tablas:
+            rows = conn.execute(
+                "SELECT codigo, nombre FROM tipos_proyecto WHERE activo=1 ORDER BY orden, nombre"
+            ).fetchall()
+            if rows:
+                return jsonify({"ok": True, "tipos": [dict(r) for r in rows]})
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    # Fallback estático
+    return jsonify({"ok": True, "tipos": [
+        {"codigo": "pueaa", "nombre": "PUEAA - Plan de Uso Eficiente de Agua"},
+        {"codigo": "psmv",  "nombre": "PSMV - Plan de Saneamiento y Manejo de Vertimientos"},
+        {"codigo": "sspd",  "nombre": "SSPD - Superintendencia de Servicios"},
+        {"codigo": "obra",  "nombre": "Obra de infraestructura"},
+        {"codigo": "otro",  "nombre": "Otro tipo de proyecto"},
+    ]})

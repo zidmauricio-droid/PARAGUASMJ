@@ -249,6 +249,7 @@ def _run_migrations():
         "database.migrations.018_pqrs_causales_sspd",
         "database.migrations.019_indices_rendimiento",
         "database.migrations.020_proyectos_periodo_flexible",
+        "database.migrations.021_tipos_proyecto_e_indices",
     ]
     for mod_name in migraciones:
         try:

@@ -845,6 +845,23 @@ async function recargar() {
   cargarProyectos();
 }
 
-document.addEventListener('DOMContentLoaded', cargarProyectos);
+async function cargarTiposProyecto() {
+  try {
+    const data = await api('/api/configuracion/tipos');
+    if (!data.tipos) return;
+    const opts = data.tipos.map(t =>
+      `<option value="${t.codigo}">${t.nombre}</option>`
+    ).join('');
+    const filtro = document.getElementById('f-tipo');
+    if (filtro) filtro.innerHTML = '<option value="">Todos los tipos</option>' + opts;
+    const form = document.getElementById('mp-tipo');
+    if (form) form.innerHTML = opts;
+  } catch(e) { /* usa opciones estáticas ya en el HTML */ }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  cargarTiposProyecto();
+  cargarProyectos();
+});
 </script>
 {% endblock %}
