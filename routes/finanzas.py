@@ -764,3 +764,116 @@ def api_resumen_mensual():
         return jsonify({"ok": True, "anio": anio, "meses": data})
     finally:
         conn.close()
+
+
+# ── Comprobantes de Tesorería GF-02 ─────────────────────────────────
+@fin_bp.route("/comprobantes")
+@login_requerido
+def comprobantes():
+    return render_template("finanzas/comprobantes.html")
+
+
+@fin_bp.route("/api/comprobantes")
+@login_requerido
+def api_comprobantes_get():
+    anio = int(request.args.get("anio", date.today().year))
+    tipo = request.args.get("tipo", "")
+    conn = get_db()
+    try:
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "gf_comprobantes" not in tablas:
+            return jsonify({"ok": False, "error": "Módulo no inicializado"})
+        q = "SELECT * FROM gf_comprobantes WHERE strftime('%Y',fecha)=?"
+        params = [str(anio)]
+        if tipo in ("INGRESO", "EGRESO"):
+            q += " AND tipo=?"; params.append(tipo)
+        q += " ORDER BY fecha DESC, pk_comp_id DESC"
+        rows = conn.execute(q, params).fetchall()
+        ingresos = sum(r["valor"] for r in rows if r["tipo"] == "INGRESO")
+        egresos  = sum(r["valor"] for r in rows if r["tipo"] == "EGRESO")
+        return jsonify({
+            "ok": True, "comprobantes": [dict(r) for r in rows],
+            "kpis": {"ingresos": round(ingresos, 2), "egresos": round(egresos, 2),
+                     "neto": round(ingresos - egresos, 2), "count": len(rows)}
+        })
+    finally:
+        conn.close()
+
+
+@fin_bp.route("/api/comprobantes", methods=["POST"])
+@login_requerido
+def api_comprobantes_post():
+    d = request.get_json(silent=True) or {}
+    tipo = str(d.get("tipo", "")).upper()
+    if tipo not in ("INGRESO", "EGRESO"):
+        return jsonify({"ok": False, "error": "tipo debe ser INGRESO o EGRESO"})
+    if not d.get("concepto") or not d.get("valor") or not d.get("fecha"):
+        return jsonify({"ok": False, "error": "concepto, valor y fecha requeridos"})
+    conn = get_db()
+    try:
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "gf_comprobantes" not in tablas:
+            return jsonify({"ok": False, "error": "Módulo no inicializado"})
+        anio = int(str(d["fecha"])[:4])
+        # Consecutivo por año y tipo
+        conn.execute(
+            "INSERT OR IGNORE INTO gf_consecutivos_comp (anio,tipo,ultimo) VALUES (?,?,0)",
+            (anio, tipo)
+        )
+        conn.execute(
+            "UPDATE gf_consecutivos_comp SET ultimo=ultimo+1 WHERE anio=? AND tipo=?",
+            (anio, tipo)
+        )
+        ultimo = conn.execute(
+            "SELECT ultimo FROM gf_consecutivos_comp WHERE anio=? AND tipo=?",
+            (anio, tipo)
+        ).fetchone()["ultimo"]
+        numero = f"{tipo[:1]}{anio}-{str(ultimo).zfill(4)}"
+        cur = conn.execute("""
+            INSERT INTO gf_comprobantes
+            (tipo, numero, fecha, concepto, valor, beneficiario, fk_banco_id,
+             medio_pago, estado, observaciones, usuario)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            tipo, numero, str(d["fecha"])[:10],
+            _sanitizar_texto(str(d["concepto"]), 300),
+            float(d["valor"]),
+            d.get("beneficiario", ""),
+            d.get("fk_banco_id"),
+            d.get("medio_pago", "TRANSFERENCIA"),
+            "BORRADOR",
+            _sanitizar_texto(str(d.get("observaciones", "")), 500, allow_newlines=True),
+            session.get("nombre_usuario", "anonimo"),
+        ))
+        conn.commit()
+        auditar("COMP_NUEVO",
+                detalle=f"{tipo} | {numero} | {d['concepto']} | ${float(d['valor']):,.0f}",
+                modulo="finanzas")
+        return jsonify({"ok": True, "numero": numero, "pk_comp_id": cur.lastrowid})
+    except Exception as e:
+        conn.rollback()
+        _log_fin.error("api_comprobantes_post: %s", e, exc_info=True)
+        return jsonify({"ok": False, "error": "Error interno"})
+    finally:
+        conn.close()
+
+
+@fin_bp.route("/api/comprobantes/<int:cid>/aprobar", methods=["POST"])
+@login_requerido
+@rol_requerido("admin", "presidente", "tesorera")
+def api_comp_aprobar(cid):
+    conn = get_db()
+    try:
+        conn.execute("""
+            UPDATE gf_comprobantes
+            SET estado='APROBADO', aprobado_por=?, fecha_aprobacion=date('now')
+            WHERE pk_comp_id=?
+        """, (session.get("nombre_usuario"), cid))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()

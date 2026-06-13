@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Personal — SIGCA{% endblock %}
+{% block content %}
+<div class="modulo-header modulo-laboral">
+  <i class="bi bi-person-badge"></i>
+  <span>GL-01 — Personal</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+
+<div class="d-flex gap-2 mb-3">
+  <select id="f-estado" class="form-select form-select-sm" style="width:150px;" onchange="cargar()">
+    <option value="ACTIVO">Activo</option>
+    <option value="INACTIVO">Inactivo</option>
+    <option value="LICENCIA">En Licencia</option>
+  </select>
+  <button class="btn btn-sm btn-primary ms-auto" onclick="abrirModal()">
+    <i class="bi bi-person-plus me-1"></i>Nuevo Personal
+  </button>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark">
+        <tr><th>Nombre</th><th>Cargo</th><th>Contrato</th><th>Ingreso</th>
+            <th class="text-center">Estado</th></tr>
+      </thead>
+      <tbody id="tbody-per">
+        <tr><td colspan="5" class="text-center text-muted py-3">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="modalPer" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-person-badge me-2"></i>Nuevo Personal</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Cargo *</label>
+            <input type="text" id="p-cargo" class="form-control" placeholder="Ej: Fontanero, Secretaria">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Tipo Contrato</label>
+            <select id="p-contrato" class="form-select">
+              <option value="TERMINO_INDEFINIDO">Término Indefinido</option>
+              <option value="TERMINO_FIJO">Término Fijo</option>
+              <option value="PRESTACION_SERVICIOS">Prestación de Servicios</option>
+              <option value="OBRA_LABOR">Obra/Labor</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Salario Base</label>
+            <div class="input-group"><span class="input-group-text">$</span>
+            <input type="number" id="p-salario" class="form-control" value="0"></div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Fecha Ingreso</label>
+            <input type="date" id="p-fecha" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">EPS</label>
+            <input type="text" id="p-eps" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardar()"><i class="bi bi-floppy me-1"></i>Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function cargar() {
+  const estado = document.getElementById('f-estado').value;
+  const d = await fetch(`/laboral/api/personal?estado=${estado}`).then(r=>r.json());
+  const tbody = document.getElementById('tbody-per');
+  if (!d.ok || !d.personal.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Sin personal registrado</td></tr>';
+    return;
+  }
+  const color = {ACTIVO:'success', INACTIVO:'secondary', LICENCIA:'warning'};
+  tbody.innerHTML = d.personal.map(p => `<tr>
+    <td>${p.nombre_completo || '—'}</td>
+    <td>${p.cargo}</td>
+    <td><span class="badge bg-light text-dark">${p.tipo_contrato.replace('_',' ')}</span></td>
+    <td>${p.fecha_ingreso||'—'}</td>
+    <td class="text-center"><span class="badge bg-${color[p.estado]||'secondary'}">${p.estado}</span></td>
+  </tr>`).join('');
+}
+
+function abrirModal() { new bootstrap.Modal(document.getElementById('modalPer')).show(); }
+
+async function guardar() {
+  const cargo = document.getElementById('p-cargo').value.trim();
+  if (!cargo) { alert('El cargo es requerido'); return; }
+  const d = await fetch('/laboral/api/personal', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      cargo, tipo_contrato: document.getElementById('p-contrato').value,
+      salario_base: parseFloat(document.getElementById('p-salario').value)||0,
+      fecha_ingreso: document.getElementById('p-fecha').value,
+      eps: document.getElementById('p-eps').value,
+    })
+  }).then(r=>r.json());
+  if (d.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('modalPer'))?.hide();
+    cargar();
+  } else alert('Error: ' + d.error);
+}
+
+document.addEventListener('DOMContentLoaded', cargar);
+</script>
+{% endblock %}

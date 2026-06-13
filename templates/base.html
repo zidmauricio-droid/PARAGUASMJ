@@ -57,6 +57,19 @@
                         <i class="bi bi-envelope"></i> Comunicaciones
                     </a>
                 </li>
+                <!-- GC — Gestión Comercial -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-people-fill"></i> GC
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><h6 class="dropdown-header">Gestión Comercial</h6></li>
+                        <li><a class="dropdown-item" href="{{ url_for('suscriptores.panel') }}">
+                            <i class="bi bi-people me-2 text-primary"></i>GC-01 Suscriptores</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('pqrs.listar') }}">
+                            <i class="bi bi-chat-dots me-2 text-warning"></i>GC-02 PQRS</a></li>
+                    </ul>
+                </li>
                 <!-- GA — Gestión Ambiental y Operativa -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
@@ -68,6 +81,8 @@
                             <i class="bi bi-droplet-fill me-2 text-info"></i>GA-02 Calidad del Agua</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('balance_hidrico.panel') }}">
                             <i class="bi bi-water me-2 text-primary"></i>GA-03 Balance Hídrico</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('ordenes_trabajo.panel') }}">
+                            <i class="bi bi-tools me-2 text-warning"></i>GA-07 Órdenes de Trabajo</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('gis.mapa') }}">
                             <i class="bi bi-map me-2 text-success"></i>GA-08 Mapa GIS</a></li>
                         <li><a class="dropdown-item" href="{{ '/proyectos2/' }}">
@@ -96,6 +111,19 @@
                             <i class="bi bi-journal-text me-2 text-primary"></i>GF Transacciones</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('finanzas.plan_cuentas') }}">
                             <i class="bi bi-diagram-3 me-2 text-secondary"></i>Plan de Cuentas</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('finanzas.comprobantes') }}">
+                            <i class="bi bi-receipt me-2 text-success"></i>GF-02 Comprobantes</a></li>
+                    </ul>
+                </li>
+                <!-- GL — Gestión Laboral -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-badge"></i> GL
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><h6 class="dropdown-header">Gestión Laboral</h6></li>
+                        <li><a class="dropdown-item" href="{{ url_for('laboral.panel') }}">
+                            <i class="bi bi-person-lines-fill me-2 text-primary"></i>GL-01 Personal</a></li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown">
