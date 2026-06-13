@@ -8,15 +8,15 @@
     <link href="/static/vendor/bootstrap/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
 </head>
-<body class="bg-login d-flex align-items-center justify-content-center min-vh-100">
+<body style="background:var(--bg-main);" class="d-flex align-items-center justify-content-center min-vh-100">
 
-<div class="card shadow-lg" style="max-width:420px;width:100%;">
-    <div class="card-header bg-sigca text-white text-center py-4">
-        <i class="bi bi-droplet-half fs-1 text-info d-block mb-2"></i>
+<div class="card shadow-lg" style="max-width:420px;width:100%;background:var(--bg-card);border:1px solid var(--border);box-shadow:0 8px 32px rgba(0,0,0,.35);">
+    <div class="card-header text-white text-center py-4" style="background:var(--color-accent);border-bottom:1px solid var(--border);">
+        <i class="bi bi-droplet-half fs-1 d-block mb-2" style="color:var(--text-primary);opacity:.85;"></i>
         <h4 class="fw-bold mb-0">SIGCA</h4>
         <small class="opacity-75">Sistema Integral de Gestión para Comunidades de Agua</small>
     </div>
-    <div class="card-body p-4">
+    <div class="card-body p-4" style="background:var(--bg-card);">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for cat, msg in messages %}
@@ -51,20 +51,20 @@
             </button>
         </form>
     </div>
-    <div class="card-footer py-3" style="background:#f8fafc;border-top:1px solid #e2e8f0;">
+    <div class="card-footer py-3" style="background:var(--bg-main);border-top:1px solid var(--border);">
         <div class="text-center mb-2">
-            <span class="badge bg-primary" style="font-size:10px;letter-spacing:.5px;">ACUEDUCTO PILOTO</span>
+            <span class="badge" style="background:var(--color-accent);font-size:10px;letter-spacing:.5px;">ACUEDUCTO PILOTO</span>
         </div>
-        <div class="text-center fw-semibold" style="font-size:13px;color:#1E3A8A;">
+        <div class="text-center fw-semibold" style="font-size:13px;color:var(--text-primary);">
             Sistema de Gesti&oacute;n — Acueducto Comunitario
         </div>
-        <hr class="my-2">
-        <p class="text-muted text-center mb-0" style="font-size:10.5px;line-height:1.5;">
+        <hr class="my-2" style="border-color:var(--border);">
+        <p class="text-center mb-0" style="font-size:10.5px;line-height:1.5;color:var(--text-secondary);">
             El sistema es gen&eacute;rico y puede ser utilizado por cualquier acueducto rural,
             organizaci&oacute;n comunitaria, prestador rural, asociaci&oacute;n de usuarios
             o gestor comunitario del agua.
         </p>
-        <div class="text-center mt-2" style="font-size:10px;color:#94a3b8;">
+        <div class="text-center mt-2" style="font-size:10px;color:var(--text-secondary);">
             <i class="bi bi-shield-lock me-1"></i>PARAGUASMJ &middot; v2026
         </div>
     </div>

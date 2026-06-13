@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block title %}GF-02 Tesorería — SIGCA{% endblock %}
+{% block extra_css %}
+<style>
+.tr-ingreso td:first-child { border-left:4px solid var(--color-success); }
+.tr-gasto   td:first-child { border-left:4px solid var(--color-danger); }
+</style>
+{% endblock %}
 {% block content %}
 <div class="modulo-header modulo-financiero">
   <i class="bi bi-receipt"></i>
@@ -125,7 +131,7 @@ async function cargar() {
     return;
   }
   const estado_c = {BORRADOR:'secondary', APROBADO:'success', ANULADO:'danger'};
-  tbody.innerHTML = d.comprobantes.map(c => `<tr class="${c.tipo==='INGRESO'?'table-success':'table-danger'}" style="--bs-table-bg-type:transparent;border-left:4px solid ${c.tipo==='INGRESO'?'#198754':'#dc3545'}">
+  tbody.innerHTML = d.comprobantes.map(c => `<tr class="${c.tipo==='INGRESO'?'tr-ingreso':'tr-gasto'}"
     <td><code>${c.numero}</code></td>
     <td>${c.fecha}</td>
     <td>${c.concepto}</td>

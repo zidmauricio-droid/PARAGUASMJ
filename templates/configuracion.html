@@ -3,14 +3,14 @@
 {% block extra_css %}
 <style>
 .cfg-card{border-radius:10px;margin-bottom:20px;}
-.cfg-label{font-size:12px;font-weight:600;color:#475569;margin-bottom:3px;}
+.cfg-label{font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:3px;}
 .cfg-input{font-size:13px;}
-.cat-header{background:linear-gradient(135deg,#1E3A8A,#2563eb);color:#fff;
+.cat-header{background:var(--color-accent);color:#fff;
   border-radius:10px 10px 0 0;padding:10px 16px;font-weight:700;}
 .cat-icon{font-size:16px;margin-right:8px;}
 .logo-preview{max-height:70px;max-width:160px;object-fit:contain;
-  border:1px solid #e2e8f0;border-radius:8px;padding:4px;background:#fff;}
-.color-swatch{width:36px;height:36px;border-radius:6px;border:1px solid #e2e8f0;
+  border:1px solid var(--border);border-radius:8px;padding:4px;background:var(--bg-main);}
+.color-swatch{width:36px;height:36px;border-radius:6px;border:1px solid var(--border);
   display:inline-block;vertical-align:middle;margin-left:6px;}
 </style>
 {% endblock %}
@@ -312,7 +312,7 @@
         <div class="text-center text-muted small py-2">Cargando...</div>
       </div>
     </div>
-    <div id="form-firma" style="display:none;" class="card-footer bg-light">
+    <div id="form-firma" style="display:none;" class="card-footer" style="background:var(--bg-main);border-top:1px solid var(--border);">
       <div class="row g-2">
         <div class="col-md-3">
           <label class="cfg-label">Nombre *</label>
@@ -349,7 +349,7 @@
         <div class="text-center text-muted py-2">Cargando...</div>
       </div>
     </div>
-    <div id="form-tipo" style="display:none;" class="card-footer bg-light">
+    <div id="form-tipo" style="display:none;" class="card-footer" style="background:var(--bg-main);border-top:1px solid var(--border);">
       <div class="row g-2">
         <div class="col-md-2">
           <label class="cfg-label">Código (sigla) *</label>
@@ -383,7 +383,7 @@
         <div class="text-center text-muted py-3 small">Cargando...</div>
       </div>
     </div>
-    <div id="form-autorizador" style="display:none;" class="card-footer bg-light">
+    <div id="form-autorizador" style="display:none;" class="card-footer" style="background:var(--bg-main);border-top:1px solid var(--border);">
       <div class="row g-2">
         <div class="col-md-3">
           <label class="cfg-label">Nombre *</label>

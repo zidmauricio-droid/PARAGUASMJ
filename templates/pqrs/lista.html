@@ -2,14 +2,14 @@
 {% block title %}PQRS — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
-.estado-Radicada     { background:#dbeafe;color:#1e40af; }
-.estado-En.proceso   { background:#fef3c7;color:#92400e; }
-.estado-Respondida   { background:#d1fae5;color:#065f46; }
-.estado-Cerrada      { background:#f1f5f9;color:#475569; }
-.estado-Archivada    { background:#f1f5f9;color:#94a3b8; }
-.badge-vencida       { background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700; }
-.badge-ok            { background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:10px; }
-.stat-card           { background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px;text-align:center; }
+.estado-Radicada     { background:rgba(30,136,229,.2);color:#60a5fa; }
+.estado-En\.proceso  { background:rgba(217,119,6,.2);color:#fbbf24; }
+.estado-Respondida   { background:rgba(13,148,136,.2);color:#2dd4bf; }
+.estado-Cerrada      { background:rgba(148,163,184,.15);color:var(--text-secondary); }
+.estado-Archivada    { background:rgba(148,163,184,.1);color:var(--text-secondary); }
+.badge-vencida       { background:rgba(224,82,82,.2);color:var(--color-danger);padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700; }
+.badge-ok            { background:rgba(13,148,136,.2);color:var(--color-success);padding:2px 8px;border-radius:12px;font-size:10px; }
+.stat-card           { background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;text-align:center;color:var(--text-primary); }
 </style>
 {% endblock %}
 {% block content %}
@@ -44,7 +44,7 @@
   {% endfor %}
   {% if vencidas %}
   <div class="col">
-    <div class="stat-card" style="background:#fee2e2;border-color:#fca5a5;">
+    <div class="stat-card" style="border-color:var(--color-danger);">
       <div class="fw-bold fs-4 text-danger">{{ vencidas }}</div>
       <div class="small text-danger fw-semibold">⚠️ Vencidas</div>
     </div>
@@ -138,7 +138,7 @@
   </div>
 </div>
 
-<div class="mt-3 p-3 bg-light rounded" style="font-size:11px;color:#64748b;">
+<div class="mt-3 p-3 rounded" style="font-size:11px;color:var(--text-secondary);background:var(--bg-card);border:1px solid var(--border);">
   <strong>⚖️ Base legal:</strong>
   Ley 142/1994 Art. 9 | Ley 1755/2015 (peticiones) |
   Res. SSPD 20191300008895/2019 (reporte SUI) |

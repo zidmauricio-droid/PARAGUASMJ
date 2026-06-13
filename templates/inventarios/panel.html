@@ -165,7 +165,7 @@ async function cargarItems() {
   tbody.innerHTML = d.items.map(i => `<tr>
     <td><code>${i.codigo}</code></td>
     <td>${i.nombre}</td>
-    <td><span class="badge bg-light text-dark">${i.categoria}</span></td>
+    <td><span class="badge bg-secondary">${i.categoria}</span></td>
     <td class="text-center fw-bold ${i.existencia <= i.existencia_min && i.existencia_min > 0 ? 'text-danger' : 'text-success'}">
       ${i.existencia}</td>
     <td>${i.unidad}</td>

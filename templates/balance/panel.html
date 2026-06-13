@@ -420,8 +420,8 @@ function renderPanelFuente(fid, d) {
         <span class="fw-bold"><i class="bi bi-droplet-fill text-primary me-1"></i>${f.nombre || 'Fuente'}</span>
         <div class="d-flex gap-2">
           <span class="badge bg-secondary">${f.tipo_fuente || ''}</span>
-          <span class="badge bg-info text-dark">${unidad}</span>
-          <span class="badge bg-${f.escala_tipo === 'controlada' ? 'warning text-dark' : 'success'}">${f.escala_tipo || 'libre'}</span>
+          <span class="badge bg-info" style="color:var(--text-primary)">${unidad}</span>
+          <span class="badge bg-${f.escala_tipo === 'controlada' ? 'warning' : 'success'}" style="color:var(--text-primary)">${f.escala_tipo || 'libre'}</span>
           <a href="/balance/fuentes/${fid}/exportar?anio=${ANIO}" class="btn btn-outline-success btn-sm py-0">
             <i class="bi bi-file-earmark-excel"></i>
           </a>
@@ -587,7 +587,7 @@ async function cargarMedicionesRecientes(fid) {
           return `<tr class="${cls}"><td>${r.fecha}</td><td>${r.hora||'—'}</td>
             <td>${r.punto_medicion}</td>
             <td><strong>${r.valor_observado} ${r.unidad}</strong></td>
-            <td><span class="badge bg-${r.nivel_alerta==='rojo'?'danger':r.nivel_alerta==='naranja'?'warning text-dark':'success'}">${r.nivel_alerta}</span></td>
+            <td><span class="badge bg-${r.nivel_alerta==='rojo'?'danger':r.nivel_alerta==='naranja'?'warning':'success'}" style="color:var(--text-primary)">${r.nivel_alerta}</span></td>
             <td>${r.responsable||'—'}</td></tr>`;
         }).join('')}</tbody>
       </table>`
