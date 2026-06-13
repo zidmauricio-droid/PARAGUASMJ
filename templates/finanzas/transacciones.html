@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% block title %}Transacciones — SIGCA{% endblock %}
+
+{% block extra_css %}
+<style>
+.kpi-fin { border-radius:12px; padding:1rem 1.2rem; border:0; }
+.kpi-ing  { background:linear-gradient(135deg,#00695c,#00897b); color:#fff; }
+.kpi-gas  { background:linear-gradient(135deg,#b71c1c,#e53935); color:#fff; }
+.kpi-net  { background:linear-gradient(135deg,#1565c0,#1976d2); color:#fff; }
+.kpi-pend { background:linear-gradient(135deg,#e65100,#fb8c00); color:#fff; }
+.kpi-num  { font-size:1.6rem; font-weight:800; letter-spacing:-1px; }
+.tr-ingreso td { border-left:4px solid #00897b; }
+.tr-gasto   td { border-left:4px solid #e53935; }
+.badge-pagado   { background:#e8f5e9; color:#2e7d32; }
+.badge-pendiente{ background:#fff3e0; color:#e65100; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="modulo-header modulo-financiero">
+  <i class="bi bi-journal-text"></i>
+  <span>GF-02 — Registro de Transacciones</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex gap-3 align-items-end flex-wrap">
+      <div>
+        <label class="form-label mb-0 small">Año</label>
+        <select id="f-anio" class="form-select form-select-sm" onchange="cargar()">
+          {% for y in range(2026, 2023, -1) %}
+          <option value="{{ y }}" {% if y==2026 %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label mb-0 small">Mes</label>
+        <select id="f-mes" class="form-select form-select-sm" onchange="cargar()">
+          <option value="">Todos</option>
+          {% for m, n in [(1,'Enero'),(2,'Febrero'),(3,'Marzo'),(4,'Abril'),(5,'Mayo'),(6,'Junio'),
+                          (7,'Julio'),(8,'Agosto'),(9,'Septiembre'),(10,'Octubre'),(11,'Noviembre'),(12,'Diciembre')] %}
+          <option value="{{ m }}">{{ n }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-check mt-3">
+        <input type="checkbox" id="f-pend" class="form-check-input" onchange="cargar()">
+        <label class="form-check-label small" for="f-pend">Solo pendientes</label>
+      </div>
+      <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-success" onclick="abrirModal('INGRESO')">
+          <i class="bi bi-plus-circle me-1"></i>Ingreso
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="abrirModal('GASTO')">
+          <i class="bi bi-dash-circle me-1"></i>Gasto
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card kpi-fin kpi-ing shadow-sm">
+      <div class="kpi-num" id="kpi-ing">—</div>
+      <div class="small opacity-75">Total Ingresos</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-fin kpi-gas shadow-sm">
+      <div class="kpi-num" id="kpi-gas">—</div>
+      <div class="small opacity-75">Total Gastos</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-fin kpi-net shadow-sm">
+      <div class="kpi-num" id="kpi-net">—</div>
+      <div class="small opacity-75">Saldo Neto</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-fin kpi-pend shadow-sm">
+      <div class="kpi-num" id="kpi-pend">—</div>
+      <div class="small opacity-75">Pendientes</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla de transacciones -->
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Fecha</th><th>Cuenta</th><th>Descripción</th>
+          <th class="text-end">Valor</th><th>Tipo</th>
+          <th class="text-center">Estado Pago</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-trans">
+        <tr><td colspan="7" class="text-center text-muted py-3">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal nueva transacción -->
+<div class="modal fade" id="modalTrans" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" id="modal-header-trans">
+        <h5 class="modal-title" id="modal-title-trans">Nueva Transacción</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="t-tipo">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Fecha de registro *</label>
+            <input type="date" id="t-fecha" class="form-control" required>
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">Cuenta del Plan de Cuentas *</label>
+            <select id="t-cuenta" class="form-select" required>
+              <option value="">Seleccione cuenta…</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Descripción *</label>
+            <input type="text" id="t-desc" class="form-control" placeholder="Detalle de la transacción" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Valor *</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" id="t-valor" class="form-control" min="0.01" step="0.01" required>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Estado de Pago</label>
+            <select id="t-estado" class="form-select">
+              <option value="PENDIENTE">Pendiente</option>
+              <option value="PAGADO">Pagado</option>
+              <option value="NO_APLICA">No Aplica</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Fecha de Pago</label>
+            <input type="date" id="t-fpago" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Observación</label>
+            <input type="text" id="t-obs" class="form-control" placeholder="Opcional">
+          </div>
+          <div class="col-12">
+            <div class="form-check">
+              <input type="checkbox" id="t-recur" class="form-check-input">
+              <label class="form-check-label" for="t-recur">Transacción recurrente (nómina, alquiler, etc.)</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarTransaccion()">
+          <i class="bi bi-floppy me-1"></i>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let _cuentas = [];
+
+const fmt = v => new Intl.NumberFormat('es-CO', {style:'currency', currency:'COP', maximumFractionDigits:0}).format(v);
+
+async function cargarCuentas(tipo) {
+  const d = await fetch(`/finanzas/api/plan-cuentas?tipo=${tipo}`).then(r=>r.json());
+  return d.cuentas || [];
+}
+
+async function cargar() {
+  const anio  = document.getElementById('f-anio').value;
+  const mes   = document.getElementById('f-mes').value;
+  const pend  = document.getElementById('f-pend').checked ? '1' : '0';
+  const url   = `/finanzas/api/transacciones?anio=${anio}&mes=${mes}&pendientes=${pend}`;
+  const d     = await fetch(url).then(r=>r.json());
+  if (!d.ok) return;
+
+  // KPIs
+  const k = d.kpis;
+  document.getElementById('kpi-ing').textContent  = fmt(k.total_ingresos);
+  document.getElementById('kpi-gas').textContent  = fmt(k.total_gastos);
+  document.getElementById('kpi-net').textContent  = fmt(k.saldo_neto);
+  document.getElementById('kpi-pend').textContent = fmt(k.pendientes);
+
+  const tbody = document.getElementById('tbody-trans');
+  if (!d.transacciones.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Sin transacciones para el período</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = d.transacciones.map(t => {
+    const esIng = t.tipo === 'INGRESO';
+    const badge = t.estado_pago === 'PAGADO'
+      ? '<span class="badge badge-pagado">✔ Pagado</span>'
+      : t.estado_pago === 'PENDIENTE'
+        ? '<span class="badge badge-pendiente">⏳ Pendiente</span>'
+        : '<span class="badge bg-light text-dark">—</span>';
+    const pagarBtn = t.estado_pago === 'PENDIENTE'
+      ? `<button class="btn btn-xs btn-outline-success me-1" onclick="marcarPagado(${t.pk_trans_id})" title="Marcar como pagado">
+           <i class="bi bi-check2"></i></button>`
+      : '';
+    return `<tr class="${esIng ? 'tr-ingreso' : 'tr-gasto'}">
+      <td>${t.fecha_registro}</td>
+      <td><small><code>${t.cod_cuenta}</code><br>${t.nombre_cuenta||''}</small></td>
+      <td>${t.descripcion}</td>
+      <td class="text-end fw-bold ${esIng ? 'text-success' : 'text-danger'}">
+        ${esIng ? '+' : '-'}${fmt(t.valor)}</td>
+      <td><span class="badge ${esIng ? 'bg-success' : 'bg-danger'}">${esIng ? 'Ingreso' : 'Gasto'}</span></td>
+      <td class="text-center">${badge}</td>
+      <td>${pagarBtn}<button class="btn btn-xs btn-outline-danger" onclick="eliminarTrans(${t.pk_trans_id})" title="Eliminar">
+        <i class="bi bi-trash"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function abrirModal(tipo) {
+  document.getElementById('t-tipo').value  = tipo;
+  document.getElementById('t-fecha').value = new Date().toISOString().slice(0,10);
+  document.getElementById('t-valor').value = '';
+  document.getElementById('t-desc').value  = '';
+  document.getElementById('t-obs').value   = '';
+  document.getElementById('t-recur').checked = false;
+  document.getElementById('t-estado').value = 'PENDIENTE';
+  document.getElementById('t-fpago').value  = '';
+
+  const hdr = document.getElementById('modal-header-trans');
+  hdr.className = `modal-header ${tipo === 'INGRESO' ? 'bg-success' : 'bg-danger'} text-white`;
+  document.getElementById('modal-title-trans').textContent = tipo === 'INGRESO' ? 'Nuevo Ingreso' : 'Nuevo Gasto';
+
+  const cuentas = await cargarCuentas(tipo);
+  const sel = document.getElementById('t-cuenta');
+  sel.innerHTML = '<option value="">Seleccione cuenta…</option>';
+  cuentas.filter(c => c.nivel > 0).forEach(c => {
+    const indent = c.nivel === 2 ? '　　' : c.nivel === 1 ? '　' : '';
+    sel.innerHTML += `<option value="${c.codigo}" ${c.nivel < 2 ? 'disabled' : ''}>${indent}${c.codigo} — ${c.nombre}</option>`;
+  });
+
+  new bootstrap.Modal(document.getElementById('modalTrans')).show();
+}
+
+async function guardarTransaccion() {
+  const tipo  = document.getElementById('t-tipo').value;
+  const cuenta = document.getElementById('t-cuenta').value;
+  const desc  = document.getElementById('t-desc').value.trim();
+  const valor = parseFloat(document.getElementById('t-valor').value);
+  if (!cuenta || !desc || !valor) { alert('Complete los campos requeridos'); return; }
+
+  const d = await fetch('/finanzas/api/transacciones', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      fecha_registro: document.getElementById('t-fecha').value,
+      cod_cuenta:     cuenta,
+      descripcion:    desc,
+      valor:          valor,
+      tipo:           tipo,
+      estado_pago:    document.getElementById('t-estado').value,
+      fecha_pago:     document.getElementById('t-fpago').value || null,
+      es_recurrente:  document.getElementById('t-recur').checked,
+      observacion:    document.getElementById('t-obs').value,
+    })
+  }).then(r=>r.json());
+
+  if (d.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('modalTrans'))?.hide();
+    cargar();
+  } else {
+    alert('Error: ' + d.error);
+  }
+}
+
+async function marcarPagado(id) {
+  const d = await fetch(`/finanzas/api/transacciones/${id}/pagar`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({fecha_pago: new Date().toISOString().slice(0,10)})
+  }).then(r=>r.json());
+  if (d.ok) cargar();
+}
+
+async function eliminarTrans(id) {
+  if (!confirm('¿Eliminar esta transacción?')) return;
+  const d = await fetch(`/finanzas/api/transacciones/${id}`, {method:'DELETE'}).then(r=>r.json());
+  if (d.ok) cargar(); else alert('Error al eliminar');
+}
+
+document.addEventListener('DOMContentLoaded', cargar);
+</script>
+{% endblock %}

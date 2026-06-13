@@ -257,6 +257,7 @@ def _run_migrations():
         "database.migrations.022_rc6_areas_estructura",
         "database.migrations.023_calidad_agua_estructurada",
         "database.migrations.024_balance_hidrico_mensual",
+        "database.migrations.025_plan_cuentas_financiero",
     ]
     for mod_name in migraciones:
         try:

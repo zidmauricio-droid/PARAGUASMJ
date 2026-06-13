@@ -541,3 +541,226 @@ def movimiento_nuevo():
 def banco_nuevo():
     """Alias de banco_crear — mantiene compatibilidad con formularios anteriores."""
     return banco_crear()
+
+
+# ── Plan de Cuentas ───────────────────────────────────────────────────
+@fin_bp.route("/plan-cuentas")
+@login_requerido
+def plan_cuentas():
+    return render_template("finanzas/plan_cuentas.html")
+
+
+@fin_bp.route("/api/plan-cuentas")
+@login_requerido
+def api_plan_cuentas():
+    tipo = request.args.get("tipo", "").upper()
+    conn = get_db()
+    try:
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "fin_plan_cuentas" not in tablas:
+            return jsonify({"ok": False, "error": "Tabla no disponible"})
+        q = "SELECT * FROM fin_plan_cuentas WHERE activo=1"
+        params = []
+        if tipo in ("INGRESO", "GASTO"):
+            q += " AND tipo=?"
+            params.append(tipo)
+        q += " ORDER BY orden, codigo"
+        rows = conn.execute(q, params).fetchall()
+        return jsonify({"ok": True, "cuentas": [dict(r) for r in rows]})
+    finally:
+        conn.close()
+
+
+# ── Transacciones mensuales ───────────────────────────────────────────
+@fin_bp.route("/transacciones")
+@login_requerido
+def transacciones():
+    return render_template("finanzas/transacciones.html")
+
+
+@fin_bp.route("/api/transacciones")
+@login_requerido
+def api_transacciones_get():
+    anio = int(request.args.get("anio", date.today().year))
+    mes  = request.args.get("mes", "")
+    solo_pendientes = request.args.get("pendientes", "0") == "1"
+    conn = get_db()
+    try:
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "fin_transacciones" not in tablas:
+            return jsonify({"ok": False, "error": "Módulo no inicializado"})
+        q = """
+            SELECT t.*, c.nombre as nombre_cuenta
+            FROM fin_transacciones t
+            LEFT JOIN fin_plan_cuentas c ON c.codigo = t.cod_cuenta
+            WHERE t.anio=?
+        """
+        params = [anio]
+        if mes:
+            q += " AND t.mes=?"
+            params.append(int(mes))
+        if solo_pendientes:
+            q += " AND t.estado_pago='PENDIENTE'"
+        q += " ORDER BY t.fecha_registro, t.pk_trans_id"
+        rows = conn.execute(q, params).fetchall()
+        data = [dict(r) for r in rows]
+
+        # KPIs del período
+        ingresos = sum(r["valor"] for r in data if r["tipo"] == "INGRESO")
+        gastos   = sum(r["valor"] for r in data if r["tipo"] == "GASTO")
+        pendientes = sum(r["valor"] for r in data if r["estado_pago"] == "PENDIENTE")
+        return jsonify({
+            "ok": True,
+            "transacciones": data,
+            "kpis": {
+                "total_ingresos": round(ingresos, 2),
+                "total_gastos": round(gastos, 2),
+                "saldo_neto": round(ingresos - gastos, 2),
+                "pendientes": round(pendientes, 2),
+                "count": len(data),
+            }
+        })
+    finally:
+        conn.close()
+
+
+@fin_bp.route("/api/transacciones", methods=["POST"])
+@login_requerido
+def api_transacciones_post():
+    d = request.get_json(silent=True) or {}
+    required = ("fecha_registro", "cod_cuenta", "descripcion", "valor", "tipo")
+    for f in required:
+        if not d.get(f):
+            return jsonify({"ok": False, "error": f"Campo requerido: {f}"})
+
+    tipo = str(d["tipo"]).upper()
+    if tipo not in ("INGRESO", "GASTO"):
+        return jsonify({"ok": False, "error": "tipo debe ser INGRESO o GASTO"})
+
+    try:
+        valor = abs(float(d["valor"]))
+        if valor <= 0:
+            return jsonify({"ok": False, "error": "valor debe ser mayor a 0"})
+    except (ValueError, TypeError):
+        return jsonify({"ok": False, "error": "valor inválido"})
+
+    fecha = str(d["fecha_registro"])[:10]
+    try:
+        from datetime import datetime as _dt
+        dt = _dt.strptime(fecha, "%Y-%m-%d")
+        anio, mes = dt.year, dt.month
+    except ValueError:
+        return jsonify({"ok": False, "error": "fecha_registro inválida (use YYYY-MM-DD)"})
+
+    estado_pago = str(d.get("estado_pago", "PENDIENTE")).upper()
+    if estado_pago not in ("PAGADO", "PENDIENTE", "NO_APLICA"):
+        estado_pago = "PENDIENTE"
+
+    conn = get_db()
+    try:
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "fin_transacciones" not in tablas:
+            return jsonify({"ok": False, "error": "Módulo no inicializado"})
+        cur = conn.execute("""
+            INSERT INTO fin_transacciones
+            (anio, mes, fecha_registro, cod_cuenta, descripcion, valor, tipo,
+             fecha_pago, estado_pago, es_recurrente, observacion, usuario)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            anio, mes, fecha,
+            str(d["cod_cuenta"]),
+            _sanitizar_texto(str(d["descripcion"]), 300, allow_newlines=False),
+            valor, tipo,
+            str(d.get("fecha_pago", "") or "")[:10] or None,
+            estado_pago,
+            1 if d.get("es_recurrente") else 0,
+            _sanitizar_texto(str(d.get("observacion", "") or ""), 500, allow_newlines=True),
+            session.get("nombre_usuario", "anonimo"),
+        ))
+        conn.commit()
+        auditar("FIN_TRANS_NUEVA",
+                detalle=f"{tipo}|{d['cod_cuenta']}|{d['descripcion']}|${valor:,.0f}|{fecha}",
+                modulo="finanzas")
+        return jsonify({"ok": True, "pk_trans_id": cur.lastrowid})
+    except Exception as e:
+        conn.rollback()
+        _log_fin.error("api_transacciones_post: %s", e, exc_info=True)
+        return jsonify({"ok": False, "error": "Error interno al guardar"})
+    finally:
+        conn.close()
+
+
+@fin_bp.route("/api/transacciones/<int:trans_id>/pagar", methods=["POST"])
+@login_requerido
+def api_marcar_pagado(trans_id):
+    fecha_pago = (request.get_json(silent=True) or {}).get(
+        "fecha_pago", date.today().isoformat()
+    )
+    conn = get_db()
+    try:
+        conn.execute("""
+            UPDATE fin_transacciones
+            SET estado_pago='PAGADO', fecha_pago=?
+            WHERE pk_trans_id=?
+        """, (str(fecha_pago)[:10], trans_id))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@fin_bp.route("/api/transacciones/<int:trans_id>", methods=["DELETE"])
+@login_requerido
+@rol_requerido("admin", "tesorera")
+def api_trans_eliminar(trans_id):
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM fin_transacciones WHERE pk_trans_id=?", (trans_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
+
+
+@fin_bp.route("/api/resumen-mensual")
+@login_requerido
+def api_resumen_mensual():
+    """KPIs agrupados por mes para el año dado."""
+    anio = int(request.args.get("anio", date.today().year))
+    conn = get_db()
+    try:
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "fin_transacciones" not in tablas:
+            return jsonify({"ok": False, "error": "Módulo no inicializado"})
+        rows = conn.execute("""
+            SELECT mes,
+                   SUM(CASE WHEN tipo='INGRESO' THEN valor ELSE 0 END) as ingresos,
+                   SUM(CASE WHEN tipo='GASTO'   THEN valor ELSE 0 END) as gastos,
+                   COUNT(*) as transacciones
+            FROM fin_transacciones
+            WHERE anio=?
+            GROUP BY mes ORDER BY mes
+        """, (anio,)).fetchall()
+        meses_nombres = ["","Ene","Feb","Mar","Abr","May","Jun",
+                         "Jul","Ago","Sep","Oct","Nov","Dic"]
+        data = []
+        for r in rows:
+            data.append({
+                "mes": r["mes"],
+                "nombre": meses_nombres[r["mes"]],
+                "ingresos": round(float(r["ingresos"] or 0), 2),
+                "gastos":   round(float(r["gastos"]   or 0), 2),
+                "neto":     round(float(r["ingresos"] or 0) - float(r["gastos"] or 0), 2),
+                "transacciones": r["transacciones"],
+            })
+        return jsonify({"ok": True, "anio": anio, "meses": data})
+    finally:
+        conn.close()
