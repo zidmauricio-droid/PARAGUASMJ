@@ -2,16 +2,20 @@
 {% block title %}GE-01 Gobierno Corporativo — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
-.modulo-header{background:linear-gradient(135deg,#1a3a5c,#2563eb);color:#fff;border-radius:10px;padding:18px 24px;margin-bottom:1.5rem;}
-.estado-vigente{background:#198754;color:#fff;}
-.estado-derogada{background:#6c757d;color:#fff;}
-.estado-suspendida{background:#ffc107;color:#000;}
+.modulo-header-ge{background:linear-gradient(135deg,var(--color-accent),color-mix(in srgb,var(--color-accent) 60%,var(--color-accent)));
+  color:var(--text-primary);border-radius:10px;padding:18px 24px;margin-bottom:1.5rem;
+  border:1px solid var(--border);}
+.estado-vigente{background:var(--color-success);color:var(--text-primary);}
+.estado-derogada{background:var(--border);color:var(--text-secondary);}
+.estado-suspendida{background:var(--color-warning);color:var(--text-primary);}
 .estado-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;}
+.card-body{background:var(--bg-card);color:var(--text-primary);}
+.card{background:var(--bg-card);border-color:var(--border);}
 </style>
 {% endblock %}
 {% block content %}
 
-<div class="modulo-header d-flex justify-content-between align-items-center">
+<div class="modulo-header modulo-header-ge d-flex justify-content-between align-items-center">
   <div>
     <h5 class="mb-0 fw-bold"><i class="bi bi-bank me-2"></i>GE-01 Gobierno Corporativo</h5>
     <small class="opacity-75">Actas de Junta y Resoluciones / Acuerdos</small>
@@ -94,7 +98,7 @@
     {% if actas %}
     <div class="table-responsive">
       <table class="table table-sm table-hover align-middle">
-        <thead class="table-light">
+        <thead class="table-dark">
           <tr>
             <th>N° / Año</th>
             <th>Tipo</th>
@@ -183,7 +187,7 @@
     {% if resoluciones %}
     <div class="table-responsive">
       <table class="table table-sm table-hover align-middle">
-        <thead class="table-light">
+        <thead class="table-dark">
           <tr>
             <th>N° / Año</th>
             <th>Fecha</th>

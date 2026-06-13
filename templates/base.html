@@ -1,27 +1,28 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}SIGCA{% endblock %}</title>
-    <link href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='vendor/bootstrap/bootstrap-icons.min.css') }}" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
-    {% block extra_css %}{% endblock %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SIGCA{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
+  {% block extra_css %}{% endblock %}
 </head>
 <body>
 
 {% if session.usuario_id %}
-<!-- ══ SIDEBAR OVERLAY (mobile) ═══════════════════════════════════ -->
+
+<!-- ══ MOBILE OVERLAY ════════════════════════════════════════════════ -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-<!-- ══ SIDEBAR ════════════════════════════════════════════════════ -->
+<!-- ══ SIDEBAR ════════════════════════════════════════════════════════ -->
 <aside class="sigca-sidebar" id="sigcaSidebar">
 
   <!-- Brand -->
   <div class="sidebar-brand">
     <div id="sb-logo-wrap">
-      <img id="sb-logo-img" src="" alt="" style="height:32px;max-width:36px;object-fit:contain;display:none;border-radius:4px;">
+      <img id="sb-logo-img" src="" alt="Logo" style="height:32px;max-width:36px;object-fit:contain;display:none;border-radius:4px;">
       <i class="bi bi-droplet-half text-info fs-4" id="sb-logo-icon"></i>
     </div>
     <div class="ms-2 lh-1">
@@ -33,119 +34,158 @@
   <!-- Nav -->
   <nav class="sidebar-nav flex-grow-1 py-2">
 
+    <!-- Dashboard -->
     <a class="sidebar-item {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
        href="{{ url_for('dashboard.index') }}">
       <i class="bi bi-speedometer2"></i><span>Centro de Control</span>
     </a>
 
-    <!-- GE -->
-    <div class="sidebar-section-label">GE — Gobierno y Estrategia</div>
+    <!-- ── GE — Gestión Estratégica ───────────────────────────────── -->
+    <div class="sidebar-section-label">GE — Gestión Estratégica</div>
     <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-ge" role="button" aria-expanded="false">
-      <i class="bi bi-building"></i><span>GE — Gobierno</span>
+      <i class="bi bi-building"></i><span>GE — Estratégica</span>
       <i class="bi bi-chevron-down ms-auto small chevron-icon"></i>
     </a>
     <div class="collapse" id="sb-ge">
-      <a class="sidebar-subitem" href="{{ url_for('gobierno.panel') }}">
-        <i class="bi bi-journal-text me-1"></i>GE-01 Gobierno Corporativo</a>
-      <a class="sidebar-subitem" href="{{ url_for('documentos.listar') }}">
-        <i class="bi bi-file-earmark-text me-1"></i>GE-03 Gestión Documental</a>
-      <a class="sidebar-subitem" href="{{ url_for('reportes_normativos.panel') }}">
-        <i class="bi bi-bar-chart-fill me-1"></i>GE-05 Reportes Normativos</a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('gobierno.') %}active{% endif %}"
+         href="{{ url_for('gobierno.panel') }}">
+        <i class="bi bi-journal-text me-1"></i>GE-01 Gobierno Corporativo
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('reportes_normativos.') %}active{% endif %}"
+         href="{{ url_for('reportes_normativos.panel') }}">
+        <i class="bi bi-bar-chart-fill me-1"></i>GE-05 Gestión Institucional
+      </a>
     </div>
 
-    <!-- GC -->
+    <!-- ── GC — Gestión Comercial ─────────────────────────────────── -->
     <div class="sidebar-section-label">GC — Gestión Comercial</div>
     <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-gc" role="button" aria-expanded="false">
       <i class="bi bi-people-fill"></i><span>GC — Comercial</span>
       <i class="bi bi-chevron-down ms-auto small chevron-icon"></i>
     </a>
     <div class="collapse" id="sb-gc">
-      <a class="sidebar-subitem" href="{{ url_for('suscriptores.panel') }}">
-        <i class="bi bi-people me-1"></i>GC-01 Suscriptores</a>
-      <a class="sidebar-subitem" href="{{ url_for('pqrs.listar') }}">
-        <i class="bi bi-chat-dots me-1"></i>GC-02 PQRS</a>
-      <a class="sidebar-subitem" href="{{ url_for('comunicaciones.listar') }}">
-        <i class="bi bi-envelope me-1"></i>GC-04 Comunicaciones</a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('suscriptores.') %}active{% endif %}"
+         href="{{ url_for('suscriptores.panel') }}">
+        <i class="bi bi-people me-1"></i>GC-01 Suscriptores
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('pqrs.') %}active{% endif %}"
+         href="{{ url_for('pqrs.listar') }}">
+        <i class="bi bi-chat-dots me-1"></i>GC-02 PQRS
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('comunicaciones.') %}active{% endif %}"
+         href="{{ url_for('comunicaciones.listar') }}">
+        <i class="bi bi-envelope me-1"></i>GC-03 Comunicaciones
+      </a>
     </div>
 
-    <!-- GF -->
+    <!-- ── GF — Gestión Financiera ────────────────────────────────── -->
     <div class="sidebar-section-label">GF — Gestión Financiera</div>
     <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-gf" role="button" aria-expanded="false">
-      <i class="bi bi-cash-coin"></i><span>GF — Finanzas</span>
+      <i class="bi bi-cash-coin"></i><span>GF — Financiera</span>
       <i class="bi bi-chevron-down ms-auto small chevron-icon"></i>
     </a>
     <div class="collapse" id="sb-gf">
-      <a class="sidebar-subitem" href="{{ url_for('finanzas.comprobantes') }}">
-        <i class="bi bi-receipt me-1"></i>GF-02 Comprobantes</a>
-      <a class="sidebar-subitem" href="{{ url_for('finanzas.movimientos') }}">
-        <i class="bi bi-arrow-left-right me-1"></i>GF-03 Movimientos</a>
-      <a class="sidebar-subitem" href="{{ url_for('finanzas.bancos') }}">
-        <i class="bi bi-bank me-1"></i>GF-04 Cuentas Bancarias</a>
-      <a class="sidebar-subitem" href="{{ url_for('inventarios.panel') }}">
-        <i class="bi bi-box-seam me-1"></i>GF-05 Inventarios</a>
-      <a class="sidebar-subitem" href="{{ url_for('finanzas.caja') }}">
-        <i class="bi bi-cash me-1"></i>GF-06 Caja Menor</a>
-      <a class="sidebar-subitem" href="{{ url_for('convenios.panel') }}">
-        <i class="bi bi-file-earmark-check me-1"></i>GF-07 Contratos</a>
-      <a class="sidebar-subitem" href="{{ url_for('finanzas.plan_cuentas') }}">
-        <i class="bi bi-diagram-3 me-1"></i>GF-08 Plan de Cuentas</a>
+      <a class="sidebar-subitem {% if request.endpoint == 'finanzas.caja' %}active{% endif %}"
+         href="{{ url_for('finanzas.caja') }}">
+        <i class="bi bi-cash me-1"></i>GF-01 Caja
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint == 'finanzas.comprobantes' %}active{% endif %}"
+         href="{{ url_for('finanzas.comprobantes') }}">
+        <i class="bi bi-receipt me-1"></i>GF-02 Tesorería
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint == 'finanzas.bancos' %}active{% endif %}"
+         href="{{ url_for('finanzas.bancos') }}">
+        <i class="bi bi-bank me-1"></i>GF-03 Bancos
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint == 'finanzas.plan_cuentas' %}active{% endif %}"
+         href="{{ url_for('finanzas.plan_cuentas') }}">
+        <i class="bi bi-diagram-3 me-1"></i>GF-04 Presupuesto
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('inventarios.') %}active{% endif %}"
+         href="{{ url_for('inventarios.panel') }}">
+        <i class="bi bi-box-seam me-1"></i>GF-05 Inventarios
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('convenios.') %}active{% endif %}"
+         href="{{ url_for('convenios.panel') }}">
+        <i class="bi bi-file-earmark-check me-1"></i>GF-06 Convenios
+      </a>
     </div>
 
-    <!-- GA -->
+    <!-- ── GA — Gestión Ambiental y Operativa ────────────────────── -->
     <div class="sidebar-section-label">GA — Gestión Ambiental y Operativa</div>
     <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-ga" role="button" aria-expanded="false">
-      <i class="bi bi-droplet-half"></i><span>GA — Operativa</span>
+      <i class="bi bi-droplet-half"></i><span>GA — Ambiental/Operativa</span>
       <i class="bi bi-chevron-down ms-auto small chevron-icon"></i>
     </a>
     <div class="collapse" id="sb-ga">
-      <a class="sidebar-subitem" href="{{ url_for('gis.mapa') }}">
-        <i class="bi bi-map me-1"></i>GA-01 Operación / GIS</a>
-      <a class="sidebar-subitem" href="{{ url_for('calidad_agua.panel') }}">
-        <i class="bi bi-droplet-fill me-1"></i>GA-02 Calidad del Agua</a>
-      <a class="sidebar-subitem" href="{{ url_for('balance_hidrico.panel') }}">
-        <i class="bi bi-water me-1"></i>GA-03 Balance Hídrico</a>
-      <a class="sidebar-subitem" href="{{ url_for('balance_hidrico.panel') }}#tab-fuentes">
-        <i class="bi bi-tsunami me-1"></i>GA-04 Fuentes Hídricas</a>
-      <a class="sidebar-subitem" href="{{ url_for('ordenes_trabajo.panel') }}">
-        <i class="bi bi-tools me-1"></i>GA-07 Órdenes de Trabajo</a>
-      <a class="sidebar-subitem" href="{{ url_for('proyectos2.panel') }}">
-        <i class="bi bi-kanban me-1"></i>GA-08 Proyectos</a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('gis.') %}active{% endif %}"
+         href="{{ url_for('gis.mapa') }}">
+        <i class="bi bi-map me-1"></i>GA-01 GIS
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('calidad_agua.') %}active{% endif %}"
+         href="{{ url_for('calidad_agua.panel') }}">
+        <i class="bi bi-droplet-fill me-1"></i>GA-02 Calidad del Agua
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('balance_hidrico.') %}active{% endif %}"
+         href="{{ url_for('balance_hidrico.panel') }}">
+        <i class="bi bi-water me-1"></i>GA-03 Balance Hídrico
+      </a>
+      <a class="sidebar-subitem"
+         href="{{ url_for('balance_hidrico.panel') }}#tab-fuentes">
+        <i class="bi bi-tsunami me-1"></i>GA-04 Captación
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('ordenes_trabajo.') %}active{% endif %}"
+         href="{{ url_for('ordenes_trabajo.panel') }}">
+        <i class="bi bi-tools me-1"></i>GA-07 Órdenes de Trabajo
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint and request.endpoint.startswith('proyectos2.') %}active{% endif %}"
+         href="{{ url_for('proyectos2.panel') }}">
+        <i class="bi bi-kanban me-1"></i>GA-08 Proyectos
+      </a>
     </div>
 
-    <!-- GL -->
+    <!-- ── GL — Gestión Laboral ───────────────────────────────────── -->
     <div class="sidebar-section-label">GL — Gestión Laboral</div>
-    <a class="sidebar-item {% if request.endpoint and 'laboral' in request.endpoint %}active{% endif %}"
+    <a class="sidebar-item {% if request.endpoint and request.endpoint.startswith('laboral.') %}active{% endif %}"
        href="{{ url_for('laboral.panel') }}">
       <i class="bi bi-person-badge"></i><span>GL-01 Personal</span>
     </a>
 
+    <!-- ── Admin (solo admin) ─────────────────────────────────────── -->
     {% if session.rol == 'admin' %}
-    <!-- Admin -->
     <div class="sidebar-section-label">Administración</div>
     <a class="sidebar-item" data-bs-toggle="collapse" href="#sb-admin" role="button" aria-expanded="false">
       <i class="bi bi-gear"></i><span>Admin</span>
       <i class="bi bi-chevron-down ms-auto small chevron-icon"></i>
     </a>
     <div class="collapse" id="sb-admin">
-      <a class="sidebar-subitem" href="{{ url_for('auditoria.usuarios') }}">
-        <i class="bi bi-people me-1"></i>Gestión Usuarios</a>
-      <a class="sidebar-subitem" href="{{ url_for('auditoria.panel') }}">
-        <i class="bi bi-shield-check me-1"></i>Auditoría</a>
-      <a class="sidebar-subitem" href="{{ url_for('configuracion') }}">
-        <i class="bi bi-sliders me-1"></i>Configuración</a>
-      <a class="sidebar-subitem" href="{{ url_for('auditoria.diagnosticos') }}">
-        <i class="bi bi-speedometer2 me-1"></i>Diagnóstico</a>
+      <a class="sidebar-subitem {% if request.endpoint == 'auditoria.usuarios' %}active{% endif %}"
+         href="{{ url_for('auditoria.usuarios') }}">
+        <i class="bi bi-people me-1"></i>Gestión Usuarios
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint == 'auditoria.panel' %}active{% endif %}"
+         href="{{ url_for('auditoria.panel') }}">
+        <i class="bi bi-shield-check me-1"></i>Auditoría
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint == 'configuracion' %}active{% endif %}"
+         href="{{ url_for('configuracion') }}">
+        <i class="bi bi-sliders me-1"></i>Configuración
+      </a>
+      <a class="sidebar-subitem {% if request.endpoint == 'auditoria.diagnosticos' %}active{% endif %}"
+         href="{{ url_for('auditoria.diagnosticos') }}">
+        <i class="bi bi-speedometer2 me-1"></i>Diagnóstico
+      </a>
     </div>
     {% endif %}
 
   </nav>
 
-  <!-- User info at bottom -->
+  <!-- Sidebar footer: user info + logout -->
   <div class="sidebar-footer">
     <i class="bi bi-person-circle text-info"></i>
     <div class="ms-2 lh-1">
       <div class="text-white small fw-semibold">{{ session.nombre_completo }}</div>
-      <div style="font-size:.72rem;color:rgba(255,255,255,.45);">{{ session.rol|capitalize }}</div>
+      <div style="font-size:.72rem;color:rgba(255,255,255,.45);">{{ session.rol | capitalize }}</div>
     </div>
     <a href="{{ url_for('autenticacion.logout') }}" class="ms-auto text-danger" title="Cerrar sesión">
       <i class="bi bi-box-arrow-right"></i>
@@ -154,10 +194,10 @@
 
 </aside>
 
-<!-- ══ MAIN WRAPPER ════════════════════════════════════════════════ -->
-<div class="sigca-main">
+<!-- ══ MAIN WRAPPER ════════════════════════════════════════════════════ -->
+<div class="sigca-main" id="sigcaMain">
 
-  <!-- Topbar (always visible; sidebar toggle on mobile) -->
+  <!-- Topbar -->
   <div class="sigca-topbar">
     <button class="btn-sidebar-toggle" onclick="openSidebar()" aria-label="Menú">
       <i class="bi bi-list fs-5"></i>
@@ -166,7 +206,8 @@
       <i class="bi bi-calendar3 me-1"></i>{{ hoy }}
     </span>
     <div class="ms-auto d-flex align-items-center gap-3">
-      <a href="{{ url_for('autenticacion.perfil') }}" class="text-decoration-none text-secondary d-flex align-items-center gap-1 small">
+      <a href="{{ url_for('autenticacion.perfil') }}"
+         class="text-decoration-none text-secondary d-flex align-items-center gap-1 small">
         <i class="bi bi-person-circle"></i>
         <span class="d-none d-md-inline">{{ session.nombre_completo }}</span>
       </a>
@@ -190,7 +231,7 @@
   {% endif %}
   {% endwith %}
 
-  <!-- Content -->
+  <!-- Page content -->
   <main class="sigca-content">
     {% block content %}{% endblock %}
   </main>
@@ -203,83 +244,111 @@
     <span class="ms-2 me-2 opacity-50">·</span>
     <span id="footer-nit-ent">NIT 832.001.389-2</span>
     <span class="ms-2 me-2 opacity-50">·</span>
-    <span>SIGCA v2026.1</span>
+    <span>SIGCA v{{ version }}</span>
     <span class="ms-2 me-2 opacity-50">·</span>
-    <span><i class="bi bi-clock me-1"></i><span id="ultima-sync">{{ hoy }}</span></span>
+    <span><i class="bi bi-clock me-1"></i>{{ hoy }}</span>
   </footer>
 
 </div><!-- /sigca-main -->
 
 {% else %}
-<!-- Sin sesión: layout simple para login -->
+<!-- Sin sesión: layout simple para login/registro -->
 <main class="container-fluid py-3 px-4">{% block content %}{% endblock %}</main>
 {% endif %}
 
-<!-- Bootstrap JS -->
+<!-- Bootstrap Bundle JS -->
 <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
-<script src="{{ url_for('static', filename='vendor/tiptap/tiptap-bundle.min.js') }}"></script>
 {% block extra_js %}{% endblock %}
 
 <script>
-function openSidebar()  { document.getElementById('sigcaSidebar').classList.add('show'); document.getElementById('sidebarOverlay').classList.add('show'); }
-function closeSidebar() { document.getElementById('sigcaSidebar').classList.remove('show'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+/* ── Sidebar open / close ─────────────────────────────────────────── */
+function openSidebar() {
+  document.getElementById('sigcaSidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('show');
+}
+function closeSidebar() {
+  document.getElementById('sigcaSidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
 
-// Marca el grupo activo en el sidebar
+/* ── Chevron rotation on collapse ────────────────────────────────── */
+document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(tog) {
+  var targetId = tog.getAttribute('href') || tog.getAttribute('data-bs-target');
+  if (!targetId) return;
+  var collapseEl = document.querySelector(targetId);
+  if (!collapseEl) return;
+  collapseEl.addEventListener('show.bs.collapse', function() {
+    var chevron = tog.querySelector('.chevron-icon');
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+    tog.setAttribute('aria-expanded', 'true');
+  });
+  collapseEl.addEventListener('hide.bs.collapse', function() {
+    var chevron = tog.querySelector('.chevron-icon');
+    if (chevron) chevron.style.transform = '';
+    tog.setAttribute('aria-expanded', 'false');
+  });
+});
+
+/* ── Auto-expand active sidebar group on load ────────────────────── */
 (function() {
   var path = window.location.pathname;
   var map = {
-    '/suscriptores':'#sb-gc', '/pqrs':'#sb-gc', '/comunicaciones':'#sb-gc',
-    '/finanzas':'#sb-gf', '/inventarios':'#sb-gf', '/convenios':'#sb-gf',
-    '/gis':'#sb-ga', '/calidad-agua':'#sb-ga', '/balance':'#sb-ga',
-    '/ordenes-trabajo':'#sb-ga', '/proyectos2':'#sb-ga',
-    '/laboral':'#sb-lab',
-    '/documentos':'#sb-docs',
-    '/admin':'#sb-admin', '/configuracion':'#sb-admin', '/auditoria':'#sb-admin',
+    '/gobierno':         '#sb-ge',
+    '/reportes':         '#sb-ge',
+    '/suscriptores':     '#sb-gc',
+    '/pqrs':             '#sb-gc',
+    '/comunicaciones':   '#sb-gc',
+    '/finanzas':         '#sb-gf',
+    '/inventarios':      '#sb-gf',
+    '/convenios':        '#sb-gf',
+    '/gis':              '#sb-ga',
+    '/calidad-agua':     '#sb-ga',
+    '/balance':          '#sb-ga',
+    '/ordenes-trabajo':  '#sb-ga',
+    '/proyectos2':       '#sb-ga',
+    '/auditoria':        '#sb-admin',
+    '/configuracion':    '#sb-admin'
   };
   for (var prefix in map) {
     if (path.startsWith(prefix)) {
-      var el = document.querySelector(map[prefix]);
-      if (el) { el.classList.add('show'); }
-      var tog = document.querySelector('[href="'+map[prefix]+'"]');
-      if (tog) { tog.setAttribute('aria-expanded','true'); tog.querySelector('.chevron-icon')&&(tog.querySelector('.chevron-icon').style.transform='rotate(180deg)'); }
+      var collapseEl = document.querySelector(map[prefix]);
+      if (collapseEl) {
+        collapseEl.classList.add('show');
+        var tog = document.querySelector('[href="' + map[prefix] + '"]');
+        if (tog) {
+          tog.setAttribute('aria-expanded', 'true');
+          var chevron = tog.querySelector('.chevron-icon');
+          if (chevron) chevron.style.transform = 'rotate(180deg)';
+        }
+      }
       break;
     }
   }
 })();
 
-// Rotar chevron al abrir/cerrar collapse
-document.addEventListener('show.bs.collapse', function(e) {
-  var tog = document.querySelector('[href="#'+e.target.id+'"]');
-  if (tog) { var c = tog.querySelector('.chevron-icon'); if (c) c.style.transform='rotate(180deg)'; }
-});
-document.addEventListener('hide.bs.collapse', function(e) {
-  var tog = document.querySelector('[href="#'+e.target.id+'"]');
-  if (tog) { var c = tog.querySelector('.chevron-icon'); if (c) c.style.transform=''; }
-});
-
-// Cargar logo y nombre institucional
+/* ── Load org name + logo from API ───────────────────────────────── */
 (async function() {
   try {
-    var r = await fetch('/logo/actual');
+    var r = await fetch('/api/config/organizacion');
+    if (!r.ok) return;
     var d = await r.json();
-    if (d.tiene_logo && d.base64) {
-      var img = document.getElementById('sb-logo-img');
-      var ico = document.getElementById('sb-logo-icon');
-      if (img) { img.src = d.base64; img.style.display='block'; }
-      if (ico) ico.style.display='none';
-    }
     if (d.nombre_asoc) {
       var nb = document.getElementById('sb-nombre');
       if (nb) nb.textContent = d.nombre_asoc;
       var fn = document.getElementById('footer-nombre-ent');
       if (fn) fn.innerHTML = '<i class="bi bi-building me-1"></i>' + d.nombre_asoc;
-      if (d.nit) {
-        var fi = document.getElementById('footer-nit-ent');
-        if (fi) fi.textContent = 'NIT ' + d.nit;
-      }
     }
-  } catch(e) {}
+    if (d.nit) {
+      var fi = document.getElementById('footer-nit-ent');
+      if (fi) fi.textContent = 'NIT ' + d.nit;
+    }
+    if (d.tiene_logo && d.base64) {
+      var img = document.getElementById('sb-logo-img');
+      var ico = document.getElementById('sb-logo-icon');
+      if (img) { img.src = d.base64; img.style.display = 'block'; }
+      if (ico) ico.style.display = 'none';
+    }
+  } catch (e) {}
 })();
 </script>
 </body>

@@ -1,19 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Convenios y Contratos — PARAGUASMJ{% endblock %}
+{% block title %}GF-06 Convenios — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
-.conv-card{border-left:4px solid #1E3A8A;transition:box-shadow .2s;}
-.conv-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.12);}
+.conv-card{border-left:4px solid var(--color-accent);transition:box-shadow .2s;}
+.conv-card:hover{box-shadow:var(--shadow-hover);}
 .estado-badge{font-size:11px;padding:3px 8px;border-radius:20px;}
-.stat-card{border-radius:12px;padding:18px;color:#fff;text-align:center;}
-.kpi-num{font-size:28px;font-weight:800;}
-.empty-state{padding:60px 20px;text-align:center;color:#94a3b8;}
+.stat-card{border-radius:var(--radius);padding:18px;color:var(--text-primary);text-align:center;background:var(--bg-card);border:1px solid var(--border);}
+.kpi-num{font-size:28px;font-weight:800;color:var(--text-primary);}
+.empty-state{padding:60px 20px;text-align:center;color:var(--text-secondary);}
 </style>
 {% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="modulo-header modulo-financiero">
+  <i class="bi bi-file-earmark-check-fill"></i>
+  <span>GF-06 Convenios</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-4 mt-3">
   <div>
-    <h5 class="mb-0"><i class="bi bi-file-earmark-check-fill me-2 text-primary"></i>Convenios y Contratos</h5>
+    <h5 class="mb-0"><i class="bi bi-file-earmark-check-fill me-2 text-primary"></i>GF-06 Convenios</h5>
     <small class="text-muted">Gestión de convenios con entidades financiadoras (PNUD, Alcaldía, Gobernación, MinVivienda)</small>
   </div>
   <button class="btn btn-primary fw-bold" onclick="abrirFormConvenio()">
@@ -24,21 +29,21 @@
 <!-- KPIs -->
 <div class="row g-3 mb-4">
   <div class="col-md-4">
-    <div class="stat-card" style="background:linear-gradient(135deg,#1E3A8A,#2563eb);">
+    <div class="stat-card" style="border-left:4px solid var(--color-accent);">
       <div class="kpi-num">{{ stats.total }}</div>
-      <div>Convenios totales</div>
+      <div style="color:var(--text-secondary);">Convenios totales</div>
     </div>
   </div>
   <div class="col-md-4">
-    <div class="stat-card" style="background:linear-gradient(135deg,#0F6E56,#10b981);">
-      <div class="kpi-num">{{ stats.activos }}</div>
-      <div>Activos</div>
+    <div class="stat-card" style="border-left:4px solid var(--color-success);">
+      <div class="kpi-num" style="color:var(--color-success);">{{ stats.activos }}</div>
+      <div style="color:var(--text-secondary);">Activos</div>
     </div>
   </div>
   <div class="col-md-4">
-    <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa);">
-      <div class="kpi-num">$ {{ "{:,.0f}".format(stats.valor) }}</div>
-      <div>Valor total aprobado</div>
+    <div class="stat-card" style="border-left:4px solid var(--color-warning);">
+      <div class="kpi-num" style="color:var(--color-warning);">$ {{ "{:,.0f}".format(stats.valor) }}</div>
+      <div style="color:var(--text-secondary);">Valor total aprobado</div>
     </div>
   </div>
 </div>

@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Cuentas Bancarias — PARAGUASMJ{% endblock %}
+{% block title %}GF-03 Bancos — SIGCA{% endblock %}
 {% block content %}
 <div class="modulo-header modulo-financiero">
     <i class="bi bi-bank"></i>
-    <span>Finanzas — Cuentas Bancarias</span>
+    <span>GF-03 Bancos</span>
     <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h5 class="mb-0">Cuentas Bancarias</h5>
+  <h5 class="mb-0">GF-03 Bancos</h5>
   <a href="{{ url_for('finanzas.movimientos') }}" class="btn btn-sm btn-primary">
     <i class="bi bi-arrow-left-right me-1"></i>Ver Movimientos
   </a>
@@ -44,7 +44,7 @@
         <td><code>{{ c.codigo_cuenta }}</code></td>
         <td class="fw-semibold">{{ c.banco_nombre }}</td>
         <td>{{ c.tipo_cuenta }}</td>
-        <td><span class="badge bg-light text-dark border">{{ c.moneda }}</span></td>
+        <td><span class="badge" style="background:var(--border);color:var(--text-primary);">{{ c.moneda }}</span></td>
         <td class="text-end fw-bold {% if c.saldo_actual >= 0 %}text-success{% else %}text-danger{% endif %}">
           {{ c.saldo_actual | moneda }}
         </td>
@@ -81,7 +81,7 @@
 </div>
 
 <div class="card border-0 shadow-sm">
-  <div class="card-header bg-primary text-white fw-bold">
+  <div class="card-header fw-bold" style="border-left:3px solid var(--color-accent);">
     <i class="bi bi-plus-circle me-2"></i>Registrar nueva cuenta bancaria
   </div>
   <div class="card-body">

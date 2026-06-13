@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Personal — SIGCA{% endblock %}
+{% block title %}GL-01 Personal — SIGCA{% endblock %}
 {% block content %}
 <div class="modulo-header modulo-laboral">
   <i class="bi bi-person-badge"></i>
-  <span>GL-01 — Personal</span>
+  <span>GL-01 Personal</span>
   <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
 
@@ -92,7 +92,7 @@ async function cargar() {
   tbody.innerHTML = d.personal.map(p => `<tr>
     <td>${p.nombre_completo || '—'}</td>
     <td>${p.cargo}</td>
-    <td><span class="badge bg-light text-dark">${p.tipo_contrato.replace('_',' ')}</span></td>
+    <td><span class="badge" style="background:var(--border);color:var(--text-primary);">${p.tipo_contrato.replace('_',' ')}</span></td>
     <td>${p.fecha_ingreso||'—'}</td>
     <td class="text-center"><span class="badge bg-${color[p.estado]||'secondary'}">${p.estado}</span></td>
   </tr>`).join('');

@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Plan de Cuentas — SIGCA{% endblock %}
+{% block title %}GF-04 Presupuesto — SIGCA{% endblock %}
 {% block content %}
 <div class="modulo-header modulo-financiero">
   <i class="bi bi-diagram-3"></i>
-  <span>GF — Plan de Cuentas</span>
+  <span>GF-04 Presupuesto</span>
   <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
 
@@ -11,7 +11,7 @@
   <!-- Ingresos -->
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-success text-white fw-semibold">
+      <div class="card-header fw-semibold" style="border-left:3px solid var(--color-success);color:var(--color-success);">
         <i class="bi bi-arrow-up-circle me-2"></i>Ingresos (1.x)
       </div>
       <div class="card-body p-0">
@@ -24,7 +24,7 @@
   <!-- Gastos -->
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-danger text-white fw-semibold">
+      <div class="card-header fw-semibold" style="border-left:3px solid var(--color-danger);color:var(--color-danger);">
         <i class="bi bi-arrow-down-circle me-2"></i>Gastos (2.x)
       </div>
       <div class="card-body p-0">

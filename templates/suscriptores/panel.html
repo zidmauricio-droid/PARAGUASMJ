@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Suscriptores — SIGCA{% endblock %}
+{% block title %}GC-01 Suscriptores — SIGCA{% endblock %}
 {% block content %}
 <div class="modulo-header modulo-comercial">
   <i class="bi bi-people-fill"></i>
-  <span>GC-01 — Suscriptores</span>
+  <span>GC-01 Suscriptores</span>
   <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
 
@@ -131,7 +131,7 @@ async function cargar() {
     <td><code>${s.codigo_suscriptor}</code></td>
     <td>${s.nombre || '—'}</td>
     <td>${s.numero_medidor || '—'}</td>
-    <td><span class="badge bg-light text-dark">${s.tipo_suscriptor}</span></td>
+    <td><span class="badge" style="background:var(--border);color:var(--text-primary);">${s.tipo_suscriptor}</span></td>
     <td class="text-center">${s.estrato}</td>
     <td class="text-center"><span class="badge bg-${estados[s.estado]||'secondary'}">${s.estado}</span></td>
     <td><button class="btn btn-xs btn-outline-info" onclick="verDetalle(${s.pk_suscriptor_id})">

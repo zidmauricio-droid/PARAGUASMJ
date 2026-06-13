@@ -1,189 +1,330 @@
 {% extends "base.html" %}
-{% block title %}Panel Principal — SIGCA{% endblock %}
+{% block title %}Centro de Control Institucional — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
-.kpi-card-v3 {
-  background:#fff;border:1px solid #e2e8f0;border-radius:12px;
-  padding:1.1rem;transition:transform .15s,box-shadow .15s;
-  display:flex;flex-direction:column;gap:.5rem;
+/* ── KPI cards ── */
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  transition: transform .15s, box-shadow .15s;
 }
-.kpi-card-v3:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.10);}
-.kpi-top{display:flex;align-items:center;gap:.9rem;}
-.kpi-icon-circle{
-  width:46px;height:46px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  font-size:1.15rem;
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
 }
-.kpi-num{font-size:1.9rem;font-weight:700;line-height:1;}
-.kpi-label{font-size:.8rem;color:#64748b;margin-top:.1rem;}
-.kpi-spark{margin-top:.3rem;}
+.kpi-top {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+}
+.kpi-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+.kpi-num {
+  font-size: 1.85rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.kpi-label {
+  font-size: .78rem;
+  color: var(--text-secondary);
+  margin-top: .1rem;
+}
+.progress-thin {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.progress-thin .progress-bar {
+  border-radius: 2px;
+}
 
-.op-row{
-  display:flex;align-items:center;gap:.75rem;
-  padding:.55rem 0;border-bottom:1px solid #f1f5f9;
+/* ── Section cards ── */
+.dash-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  height: 100%;
 }
-.op-row:last-child{border-bottom:none;}
-.op-icon{width:28px;height:28px;border-radius:6px;
-  display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;}
-.op-label{flex:1;font-size:.85rem;color:#334155;}
-.op-bar{width:80px;height:5px;border-radius:3px;background:#f1f5f9;overflow:hidden;flex-shrink:0;}
-.op-bar-fill{height:100%;border-radius:3px;}
-.op-val{width:28px;text-align:right;font-weight:700;font-size:.85rem;flex-shrink:0;}
+.dash-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-secondary);
+}
+.dash-card-header.hdr-water {
+  background: linear-gradient(135deg, #0f766e 0%, #0d5c56 100%);
+  color: var(--text-primary);
+}
+.dash-card-header.hdr-ops {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: var(--text-primary);
+}
+.dash-card-header.hdr-acciones {
+  background: linear-gradient(135deg, #92400e 0%, #78350f 100%);
+  color: var(--text-primary);
+}
+.dash-card-header.hdr-docs {
+  background: linear-gradient(135deg, #1e3a5f 0%, #112240 100%);
+  color: var(--text-primary);
+}
+.dash-card-header.hdr-pqrs {
+  background: linear-gradient(135deg, #3b1f1f 0%, #2a1010 100%);
+  color: var(--text-primary);
+}
 
-.section-hdr{
-  display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:.65rem;
+/* ── Op rows ── */
+.op-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .55rem .9rem;
+  border-bottom: 1px solid var(--border);
 }
-.section-hdr h6{font-size:.82rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:.06em;color:#94a3b8;margin:0;}
+.op-row:last-child { border-bottom: none; }
+.op-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .85rem;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.06);
+}
+.op-label {
+  flex: 1;
+  font-size: .84rem;
+  color: var(--text-primary);
+}
+.op-bar {
+  width: 72px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.op-bar-fill { height: 100%; border-radius: 3px; }
+.op-val {
+  width: 28px;
+  text-align: right;
+  font-weight: 700;
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+
+/* ── Table ── */
+.dash-table { margin-bottom: 0; }
+.dash-table thead th {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border-color: var(--border);
+  padding: .5rem .75rem;
+}
+.dash-table tbody tr {
+  border-color: var(--border);
+}
+.dash-table tbody td {
+  color: var(--text-primary);
+  font-size: .84rem;
+  vertical-align: middle;
+  border-color: var(--border);
+  padding: .45rem .75rem;
+}
+.dash-table tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+/* ── List group dark ── */
+.list-dark .list-group-item {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.list-dark .list-group-item:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+/* ── KPI icon tints ── */
+.kpi-tint-blue   { background: rgba(30,136,229,.15); color: var(--color-accent); }
+.kpi-tint-gold   { background: rgba(217,119, 6,.15); color: var(--color-warning); }
+.kpi-tint-green  { background: rgba(13,148,136,.15); color: var(--color-success); }
+.kpi-tint-danger { background: rgba(224, 82,82,.15); color: var(--color-danger); }
+.kpi-tint-info   { background: rgba(6,182,212,.15);  color: #06b6d4; }
+
+.kpi-color-blue   { color: var(--color-accent); }
+.kpi-color-gold   { color: var(--color-warning); }
+.kpi-color-green  { color: var(--color-success); }
+.kpi-color-danger { color: var(--color-danger); }
+.kpi-color-info   { color: #06b6d4; }
 </style>
 {% endblock %}
+
 {% block content %}
 
-<!-- Header row -->
-<div class="d-flex align-items-center justify-content-between mb-3">
+{# ══════════════════════════════════════════════════════════════
+   HEADER
+   ══════════════════════════════════════════════════════════════ #}
+<div class="d-flex align-items-start align-items-sm-center justify-content-between flex-wrap gap-2 mb-4">
   <div>
-    <h5 class="mb-0 fw-bold" style="color:#1e293b;">
-      <i class="bi bi-speedometer2 me-2 text-primary"></i>Panel de Control Institucional
+    <h5 class="mb-1 fw-bold" style="color: var(--text-primary);">
+      <i class="bi bi-speedometer2 me-2" style="color: var(--color-accent);"></i>Centro de Control Institucional
     </h5>
-    <div class="text-muted" style="font-size:.8rem;">
+    <div style="font-size: .8rem; color: var(--text-secondary);">
       <i class="bi bi-calendar3 me-1"></i>{{ hoy }}
-      {% if mes is defined %}&nbsp;·&nbsp;Período {{ mes }}/{{ anio }}{% endif %}
+      &nbsp;·&nbsp;
+      <span style="color: var(--text-secondary);">v4.0</span>
     </div>
   </div>
-  <a href="{{ url_for('documentos.nuevo') }}" class="btn btn-sm btn-primary">
+  <a href="{{ url_for('documentos.nuevo') }}" class="btn btn-sm"
+     style="background: var(--color-accent); color: #fff; border: none;">
     <i class="bi bi-plus-circle me-1"></i>Nuevo documento
   </a>
 </div>
 
-<!-- KPI CARDS -->
+{# ══════════════════════════════════════════════════════════════
+   KPI ROW
+   ══════════════════════════════════════════════════════════════ #}
 <div class="row g-3 mb-3">
 
-  <!-- Documentos -->
+  {# Documentos #}
   <div class="col-6 col-lg-3">
-    <div class="kpi-card-v3">
+    <div class="kpi-card">
       <div class="kpi-top">
-        <div class="kpi-icon-circle" style="background:#eff6ff;">
-          <i class="bi bi-file-earmark-text" style="color:#3b82f6;"></i>
+        <div class="kpi-icon-circle kpi-tint-blue">
+          <i class="bi bi-file-earmark-text"></i>
         </div>
         <div>
-          <div class="kpi-num" style="color:#3b82f6;">{{ total_docs }}</div>
+          <div class="kpi-num kpi-color-blue">{{ total_docs }}</div>
           <div class="kpi-label">Documentos</div>
         </div>
-        <div class="ms-auto kpi-spark">
-          <svg width="48" height="26" viewBox="0 0 48 26" class="kpi-sparkline">
-            <polyline points="0,22 8,18 16,20 24,12 32,15 40,8 48,10"
-              fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </div>
       </div>
-      <div class="progress progress-thin">
-        <div class="progress-bar bg-primary" style="width:{{ [total_docs*10,100]|min }}%"></div>
+      <div class="progress-thin">
+        <div class="progress-bar" style="width: {{ [total_docs * 10, 100]|min }}%; background: var(--color-accent);"></div>
       </div>
     </div>
   </div>
 
-  <!-- Pendientes -->
+  {# Pendientes #}
   <div class="col-6 col-lg-3">
-    <div class="kpi-card-v3">
+    <div class="kpi-card">
       <div class="kpi-top">
-        <div class="kpi-icon-circle" style="background:#fffbeb;">
-          <i class="bi bi-clock-history" style="color:#f59e0b;"></i>
+        <div class="kpi-icon-circle kpi-tint-gold">
+          <i class="bi bi-clock-history"></i>
         </div>
         <div>
-          <div class="kpi-num" style="color:#f59e0b;">{{ docs_pend }}</div>
+          <div class="kpi-num kpi-color-gold">{{ docs_pend }}</div>
           <div class="kpi-label">Pendientes</div>
         </div>
-        <div class="ms-auto kpi-spark">
-          <svg width="48" height="26" viewBox="0 0 48 26" class="kpi-sparkline">
-            <polyline points="0,18 8,14 16,16 24,10 32,13 40,8 48,12"
-              fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </div>
       </div>
-      <div class="progress progress-thin">
-        <div class="progress-bar bg-warning" style="width:{{ [docs_pend*15,100]|min }}%"></div>
+      <div class="progress-thin">
+        <div class="progress-bar" style="width: {{ [docs_pend * 15, 100]|min }}%; background: var(--color-warning);"></div>
       </div>
     </div>
   </div>
 
-  <!-- PQRS activas -->
+  {# PQRS activas #}
   <div class="col-6 col-lg-3">
-    <div class="kpi-card-v3">
+    <div class="kpi-card">
       <div class="kpi-top">
-        <div class="kpi-icon-circle" style="background:{% if pqrs_venc > 0 %}#fef2f2{% else %}#f0fdf4{% endif %};">
-          <i class="bi bi-chat-dots" style="color:{% if pqrs_venc > 0 %}#ef4444{% else %}#22c55e{% endif %};"></i>
+        <div class="kpi-icon-circle {% if pqrs_venc > 0 %}kpi-tint-danger{% else %}kpi-tint-green{% endif %}">
+          <i class="bi bi-chat-dots"></i>
         </div>
         <div>
-          <div class="kpi-num" style="color:{% if pqrs_venc > 0 %}#ef4444{% else %}#22c55e{% endif %};">{{ pqrs_pend }}</div>
-          <div class="kpi-label">PQRS Activas{% if pqrs_venc %} <span class="badge bg-danger" style="font-size:.65rem;">{{ pqrs_venc }} venc.</span>{% endif %}</div>
-        </div>
-        <div class="ms-auto kpi-spark">
-          <svg width="48" height="26" viewBox="0 0 48 26" class="kpi-sparkline">
-            <polyline points="0,20 8,16 16,19 24,14 32,17 40,11 48,14"
-              fill="none" stroke="{% if pqrs_venc > 0 %}#ef4444{% else %}#22c55e{% endif %}" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+          <div class="kpi-num {% if pqrs_venc > 0 %}kpi-color-danger{% else %}kpi-color-green{% endif %}">{{ pqrs_pend }}</div>
+          <div class="kpi-label">
+            PQRS Activas
+            {% if pqrs_venc %}
+            <span class="badge ms-1" style="font-size: .62rem; background: var(--color-danger);">{{ pqrs_venc }} venc.</span>
+            {% endif %}
+          </div>
         </div>
       </div>
-      <div class="progress progress-thin">
-        <div class="progress-bar {% if pqrs_venc > 0 %}bg-danger{% else %}bg-success{% endif %}"
-          style="width:{{ [pqrs_pend*20,100]|min }}%"></div>
+      <div class="progress-thin">
+        <div class="progress-bar"
+             style="width: {{ [pqrs_pend * 20, 100]|min }}%; background: {% if pqrs_venc > 0 %}var(--color-danger){% else %}var(--color-success){% endif %};"></div>
       </div>
     </div>
   </div>
 
-  <!-- Suscriptores -->
+  {# Suscriptores #}
   <div class="col-6 col-lg-3">
-    <div class="kpi-card-v3">
+    <div class="kpi-card">
       <div class="kpi-top">
-        <div class="kpi-icon-circle" style="background:#ecfeff;">
-          <i class="bi bi-people" style="color:#06b6d4;"></i>
+        <div class="kpi-icon-circle kpi-tint-info">
+          <i class="bi bi-people"></i>
         </div>
         <div>
-          <div class="kpi-num" style="color:#06b6d4;">{{ total_subs }}</div>
+          <div class="kpi-num kpi-color-info">{{ total_subs }}</div>
           <div class="kpi-label">Suscriptores activos</div>
         </div>
-        <div class="ms-auto kpi-spark">
-          <svg width="48" height="26" viewBox="0 0 48 26" class="kpi-sparkline">
-            <polyline points="0,24 8,20 16,18 24,14 32,12 40,9 48,6"
-              fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </div>
       </div>
-      <div class="progress progress-thin">
-        <div class="progress-bar bg-info" style="width:{{ [total_subs*2,100]|min }}%"></div>
+      <div class="progress-thin">
+        <div class="progress-bar" style="width: {{ [total_subs * 2, 100]|min }}%; background: #06b6d4;"></div>
       </div>
     </div>
   </div>
 
 </div>
 
-<!-- INDICADORES + ESTADO OPERATIVO + ACCIONES -->
+{# ══════════════════════════════════════════════════════════════
+   SECOND ROW — Indicadores + Operativo + Acciones
+   ══════════════════════════════════════════════════════════════ #}
 <div class="row g-3 mb-3">
 
+  {# ── Indicadores Hídricos ── #}
   {% if indicador %}
-  <!-- Indicadores hídricos -->
   <div class="col-md-4">
-    <div class="card border-0 h-100">
-      <div class="card-header" style="background:linear-gradient(135deg,#0f766e,#0d5c56);color:#fff;border-radius:10px 10px 0 0;">
-        <i class="bi bi-water me-2"></i>Indicadores Hídricos {{ mes }}/{{ anio }}
+    <div class="dash-card">
+      <div class="dash-card-header hdr-water">
+        <span><i class="bi bi-water me-2"></i>Indicadores Hídricos{% if mes is defined %} {{ mes }}/{{ anio }}{% endif %}</span>
       </div>
-      <div class="card-body py-2">
+      <div>
         <div class="op-row">
-          <div class="op-icon" style="background:#f0fdf4;"><i class="bi bi-droplet-fill" style="color:#22c55e;"></i></div>
-          <span class="op-label">Producción</span>
-          <strong>{{ "%.1f"|format(indicador.produccion_m3 or 0) }} m³</strong>
+          <div class="op-icon"><i class="bi bi-droplet-fill" style="color: var(--color-success);"></i></div>
+          <span class="op-label">Producción m³</span>
+          <strong style="font-size: .84rem;">{{ "%.1f"|format(indicador.produccion_m3 or 0) }}</strong>
         </div>
         <div class="op-row">
-          <div class="op-icon" style="background:#eff6ff;"><i class="bi bi-graph-up" style="color:#3b82f6;"></i></div>
-          <span class="op-label">Facturado</span>
-          <strong>{{ "%.1f"|format(indicador.facturado_m3 or 0) }} m³</strong>
+          <div class="op-icon"><i class="bi bi-graph-up" style="color: var(--color-accent);"></i></div>
+          <span class="op-label">Facturado m³</span>
+          <strong style="font-size: .84rem;">{{ "%.1f"|format(indicador.facturado_m3 or 0) }}</strong>
         </div>
         {% if indicador.ianc is not none %}
         <div class="op-row">
-          <div class="op-icon" style="background:#fef3c7;"><i class="bi bi-percent" style="color:#f59e0b;"></i></div>
+          <div class="op-icon"><i class="bi bi-percent" style="color: var(--color-warning);"></i></div>
           <span class="op-label fw-semibold">IANC</span>
-          <span class="badge fs-6 {% if indicador.ianc<=15 %}bg-success{% elif indicador.ianc<=25 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+          <span class="badge"
+                style="font-size: .78rem; background:
+                  {% if indicador.ianc <= 15 %}var(--color-success)
+                  {% elif indicador.ianc <= 25 %}var(--color-warning)
+                  {% else %}var(--color-danger){% endif %}; color: #fff;">
             {{ "%.1f"|format(indicador.ianc) }}%
           </span>
         </div>
@@ -193,49 +334,59 @@
   </div>
   {% endif %}
 
-  <!-- Estado Operativo -->
-  <div class="col-md-{% if indicador %}4{% else %}6{% endif %}">
-    <div class="card border-0 h-100">
-      <div class="card-header" style="background:linear-gradient(135deg,#1e293b,#0f172a);color:#fff;border-radius:10px 10px 0 0;">
-        <i class="bi bi-exclamation-triangle me-2 text-warning"></i>Estado Operativo
+  {# ── Estado Operativo ── #}
+  <div class="col-md-{% if indicador and mis_acciones %}4{% elif indicador or mis_acciones %}4{% else %}6{% endif %}">
+    <div class="dash-card">
+      <div class="dash-card-header hdr-ops">
+        <span><i class="bi bi-exclamation-triangle me-2" style="color: var(--color-warning);"></i>Estado Operativo</span>
       </div>
-      <div class="card-body py-2">
+      <div>
         <div class="op-row">
-          <div class="op-icon" style="background:#fffbeb;"><i class="bi bi-tools" style="color:#f59e0b;"></i></div>
+          <div class="op-icon"><i class="bi bi-tools" style="color: var(--color-warning);"></i></div>
           <span class="op-label">OT activas</span>
-          <div class="op-bar"><div class="op-bar-fill bg-warning" style="width:{{ [ots_activas*20,100]|min }}%;"></div></div>
-          <span class="op-val" style="color:#f59e0b;">{{ ots_activas }}</span>
+          <div class="op-bar">
+            <div class="op-bar-fill" style="width: {{ [ots_activas * 20, 100]|min }}%; background: var(--color-warning);"></div>
+          </div>
+          <span class="op-val" style="color: var(--color-warning);">{{ ots_activas }}</span>
         </div>
         <div class="op-row">
-          <div class="op-icon" style="background:#fef2f2;"><i class="bi bi-exclamation-triangle" style="color:#ef4444;"></i></div>
+          <div class="op-icon"><i class="bi bi-exclamation-triangle" style="color: var(--color-danger);"></i></div>
           <span class="op-label">Fallas GIS</span>
-          <div class="op-bar"><div class="op-bar-fill bg-danger" style="width:{{ [fallas_act*25,100]|min }}%;"></div></div>
-          <span class="op-val" style="color:#ef4444;">{{ fallas_act }}</span>
+          <div class="op-bar">
+            <div class="op-bar-fill" style="width: {{ [fallas_act * 25, 100]|min }}%; background: var(--color-danger);"></div>
+          </div>
+          <span class="op-val" style="color: var(--color-danger);">{{ fallas_act }}</span>
         </div>
         <div class="op-row">
-          <div class="op-icon" style="background:#eff6ff;"><i class="bi bi-calendar-check" style="color:#3b82f6;"></i></div>
+          <div class="op-icon"><i class="bi bi-calendar-check" style="color: var(--color-accent);"></i></div>
           <span class="op-label">Tareas hoy</span>
-          <div class="op-bar"><div class="op-bar-fill bg-primary" style="width:{{ [tareas_hoy*15,100]|min }}%;"></div></div>
-          <span class="op-val" style="color:#3b82f6;">{{ tareas_hoy }}</span>
+          <div class="op-bar">
+            <div class="op-bar-fill" style="width: {{ [tareas_hoy * 15, 100]|min }}%; background: var(--color-accent);"></div>
+          </div>
+          <span class="op-val" style="color: var(--color-accent);">{{ tareas_hoy }}</span>
         </div>
       </div>
     </div>
   </div>
 
+  {# ── Mis acciones pendientes ── #}
   {% if mis_acciones %}
-  <!-- Mis acciones pendientes -->
   <div class="col-md-4">
-    <div class="card border-0 h-100">
-      <div class="card-header" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border-radius:10px 10px 0 0;">
-        <i class="bi bi-pen me-2"></i>Mis acciones pendientes
+    <div class="dash-card">
+      <div class="dash-card-header hdr-acciones">
+        <span><i class="bi bi-pen me-2"></i>Mis acciones pendientes</span>
       </div>
-      <ul class="list-group list-group-flush">
+      <ul class="list-group list-group-flush list-dark">
         {% for acc in mis_acciones %}
-        <li class="list-group-item d-flex justify-content-between py-2 px-3" style="font-size:.83rem;">
+        <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
           <a href="{{ url_for('documentos.ver', registro_id=acc.fk_registro_id) }}"
-             class="text-decoration-none fw-semibold">{{ acc.codigo_completo }}</a>
-          <small class="text-muted">{{ acc.fecha_limite }}</small>
+             class="fw-semibold text-decoration-none"
+             style="font-size: .83rem; color: var(--color-accent);">{{ acc.codigo_completo }}</a>
+          <small style="color: var(--text-secondary);">{{ acc.fecha_limite }}</small>
         </li>
+        {% else %}
+        <li class="list-group-item text-center py-3"
+            style="font-size: .84rem; color: var(--text-secondary);">Sin acciones pendientes</li>
         {% endfor %}
       </ul>
     </div>
@@ -244,30 +395,57 @@
 
 </div>
 
-<!-- TABLAS -->
+{# ══════════════════════════════════════════════════════════════
+   THIRD ROW — Documentos + PQRS
+   ══════════════════════════════════════════════════════════════ #}
 <div class="row g-3">
-  <!-- Últimos documentos -->
+
+  {# ── Últimos documentos ── #}
   <div class="col-lg-7">
-    <div class="card border-0">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-clock-history me-2 text-primary"></i>Últimos documentos</span>
-        <a href="{{ url_for('documentos.listar') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
+    <div class="dash-card">
+      <div class="dash-card-header hdr-docs">
+        <span><i class="bi bi-clock-history me-2" style="color: var(--color-accent);"></i>Últimos documentos</span>
+        <a href="{{ url_for('documentos.listar') }}"
+           class="btn btn-sm"
+           style="font-size: .75rem; padding: .2rem .55rem; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent;">
+          Ver todos
+        </a>
       </div>
       <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0">
-          <thead><tr>
-            <th>Código</th><th>Asunto</th><th>Estado</th><th>Fecha</th>
-          </tr></thead>
+        <table class="table dash-table table-hover">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Asunto</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
           <tbody>
           {% for d in ultimos_docs %}
           <tr>
-            <td><a href="{{ url_for('documentos.ver', registro_id=loop.revindex) }}" class="fw-semibold text-primary">{{ d.codigo_completo }}</a></td>
-            <td class="text-truncate" style="max-width:180px;">{{ d.asunto_resumen }}</td>
-            <td><span class="badge {% if d.estado == 'Aprobado' %}bg-success{% elif d.estado == 'Borrador' %}bg-secondary{% elif 'revision' in d.estado|lower %}bg-warning text-dark{% else %}bg-info{% endif %}">{{ d.estado }}</span></td>
-            <td><small class="text-muted">{{ d.fecha_radicacion }}</small></td>
+            <td>
+              <a href="{{ url_for('documentos.ver', registro_id=d.fk_registro_id) }}"
+                 class="fw-semibold text-decoration-none"
+                 style="color: var(--color-accent);">{{ d.codigo_completo }}</a>
+            </td>
+            <td class="text-truncate" style="max-width: 180px;">{{ d.asunto_resumen }}</td>
+            <td>
+              <span class="badge"
+                    style="font-size: .7rem; background:
+                      {% if d.estado == 'Aprobado' %}var(--color-success)
+                      {% elif d.estado == 'Borrador' %}#475569
+                      {% elif 'revision' in d.estado|lower %}var(--color-warning)
+                      {% else %}#0891b2{% endif %}; color: #fff;">
+                {{ d.estado }}
+              </span>
+            </td>
+            <td><small style="color: var(--text-secondary);">{{ d.fecha_radicacion }}</small></td>
           </tr>
           {% else %}
-          <tr><td colspan="4" class="text-center text-muted py-3">Sin documentos</td></tr>
+          <tr>
+            <td colspan="4" class="text-center py-3" style="color: var(--text-secondary);">Sin documentos recientes</td>
+          </tr>
           {% endfor %}
           </tbody>
         </table>
@@ -275,29 +453,40 @@
     </div>
   </div>
 
-  <!-- Últimas PQRS -->
+  {# ── Últimas PQRS ── #}
   <div class="col-lg-5">
-    <div class="card border-0">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-chat-dots me-2 text-danger"></i>Últimas PQRS</span>
-        <a href="{{ url_for('pqrs.listar') }}" class="btn btn-sm btn-outline-danger">Ver todas</a>
+    <div class="dash-card">
+      <div class="dash-card-header hdr-pqrs">
+        <span><i class="bi bi-chat-dots me-2" style="color: var(--color-danger);"></i>Últimas PQRS</span>
+        <a href="{{ url_for('pqrs.listar') }}"
+           class="btn btn-sm"
+           style="font-size: .75rem; padding: .2rem .55rem; border: 1px solid var(--color-danger); color: var(--color-danger); background: transparent;">
+          Ver todas
+        </a>
       </div>
-      <ul class="list-group list-group-flush">
-      {% for p in ultimas_pqrs %}
-      <li class="list-group-item px-3 py-2">
-        <div class="d-flex justify-content-between align-items-center">
-          <small class="fw-semibold">{{ p.codigo_completo }}</small>
-          <span class="badge {% if p.estado_pqr == 'Respondida' %}bg-success{% elif p.estado_pqr == 'Recibida' %}bg-warning text-dark{% else %}bg-info{% endif %}"
-                style="font-size:.7rem;">{{ p.estado_pqr }}</span>
-        </div>
-        <div class="text-muted" style="font-size:.78rem;">{{ p.razon_social }} · {{ p.tipo_pqr }}</div>
-      </li>
-      {% else %}
-      <li class="list-group-item text-center text-muted py-3" style="font-size:.85rem;">Sin PQRS</li>
-      {% endfor %}
+      <ul class="list-group list-group-flush list-dark">
+        {% for p in ultimas_pqrs %}
+        <li class="list-group-item px-3 py-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <small class="fw-semibold" style="color: var(--text-primary);">{{ p.codigo_completo }}</small>
+            <span class="badge"
+                  style="font-size: .68rem; background:
+                    {% if p.estado_pqr == 'Respondida' %}var(--color-success)
+                    {% elif p.estado_pqr == 'Recibida' %}var(--color-warning)
+                    {% else %}#0891b2{% endif %}; color: #fff;">
+              {{ p.estado_pqr }}
+            </span>
+          </div>
+          <div style="font-size: .78rem; color: var(--text-secondary);">{{ p.tipo_pqr }}</div>
+        </li>
+        {% else %}
+        <li class="list-group-item text-center py-3"
+            style="font-size: .85rem; color: var(--text-secondary);">Sin PQRS recientes</li>
+        {% endfor %}
       </ul>
     </div>
   </div>
+
 </div>
 
 {% endblock %}

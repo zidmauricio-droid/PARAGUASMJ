@@ -195,26 +195,63 @@ async function abrirModalMuestra() {
   document.getElementById('m-fecha').value = new Date().toISOString().slice(0,10);
   // Renderizar tabla de parámetros
   document.getElementById('div-parametros').innerHTML = `
-    <table class="table table-sm table-bordered">
-      <thead class="table-light">
-        <tr><th>Parámetro</th><th>Norma</th><th class="text-center">Resultado</th><th>Valor obtenido</th><th>Observación / Acción</th></tr>
+    <table class="table table-sm table-bordered align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Parámetro</th>
+          <th>Norma</th>
+          <th class="text-center" style="min-width:160px;">Resultado</th>
+          <th colspan="4" class="text-center text-warning small">Campos visibles solo cuando No Aceptable</th>
+        </tr>
+        <tr class="small">
+          <th></th><th></th><th></th>
+          <th>Valor encontrado</th>
+          <th>Valor máx. permitido</th>
+          <th>Observación</th>
+          <th>Acción Correctiva</th>
+        </tr>
       </thead>
       <tbody>
         ${_parametros.map(p => `
         <tr id="param-row-${p.pk_param_id}">
-          <td><strong>${p.nombre}</strong><br><small class="text-muted">${p.unidad || ''} ${p.valor_min != null ? '('+p.valor_min+'–'+p.valor_max+')' : ''}</small></td>
-          <td><small>${p.norma}</small></td>
+          <td>
+            <strong>${p.nombre}</strong>
+            <br><small class="text-muted">${p.unidad || ''}</small>
+          </td>
+          <td><small>${p.norma || '—'}</small></td>
           <td class="text-center">
-            <select class="form-select form-select-sm param-res" data-id="${p.pk_param_id}" onchange="toggleNoAcept(this,${p.pk_param_id})">
+            <select class="form-select form-select-sm param-res" data-id="${p.pk_param_id}"
+                    id="resultado-${p.pk_param_id}"
+                    onchange="toggleNoAcept(this,${p.pk_param_id})">
               <option value="ACEPTABLE">✅ Aceptable</option>
               <option value="NO_ACEPTABLE">❌ No Aceptable</option>
-              <option value="NO_MEDIDO">— No medido</option>
             </select>
           </td>
-          <td><input type="number" class="form-control form-control-sm param-val" data-id="${p.pk_param_id}"
-                     style="display:none;" placeholder="Valor encontrado" step="0.01"></td>
-          <td><textarea class="form-control form-control-sm param-obs" data-id="${p.pk_param_id}"
-                        style="display:none;" rows="1" placeholder="Observación / Acción correctiva"></textarea></td>
+          <td>
+            <div class="noacept-fields" id="noacept-${p.pk_param_id}" style="display:none;">
+              <input type="number" class="form-control form-control-sm param-val" data-id="${p.pk_param_id}"
+                     placeholder="Valor encontrado" step="0.01" style="min-width:110px;">
+            </div>
+          </td>
+          <td>
+            <div class="noacept-fields" id="noacept-max-${p.pk_param_id}" style="display:none;">
+              <input type="text" class="form-control form-control-sm" readonly
+                     value="${p.valor_max != null ? p.valor_max + ' ' + (p.unidad || '') : '—'}"
+                     style="min-width:110px; background:var(--bg-card); color:var(--text-secondary);">
+            </div>
+          </td>
+          <td>
+            <div class="noacept-fields" id="noacept-obs-${p.pk_param_id}" style="display:none;">
+              <textarea class="form-control form-control-sm param-obs" data-id="${p.pk_param_id}"
+                        rows="2" placeholder="Observación…" style="min-width:140px;"></textarea>
+            </div>
+          </td>
+          <td>
+            <div class="noacept-fields" id="noacept-acc-${p.pk_param_id}" style="display:none;">
+              <textarea class="form-control form-control-sm param-acc" data-id="${p.pk_param_id}"
+                        rows="2" placeholder="Acción correctiva…" style="min-width:140px;"></textarea>
+            </div>
+          </td>
         </tr>`).join('')}
       </tbody>
     </table>`;
@@ -222,10 +259,11 @@ async function abrirModalMuestra() {
 }
 
 function toggleNoAcept(sel, pid) {
-  const row = document.getElementById(`param-row-${pid}`);
   const show = sel.value === 'NO_ACEPTABLE';
-  row.querySelector('.param-val').style.display = show ? '' : 'none';
-  row.querySelector('.param-obs').style.display = show ? '' : 'none';
+  [`noacept-${pid}`, `noacept-max-${pid}`, `noacept-obs-${pid}`, `noacept-acc-${pid}`].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  });
 }
 
 async function guardarMuestra() {
@@ -247,10 +285,10 @@ async function guardarMuestra() {
   // Guardar resultados
   const resultados = _parametros.map(p => ({
     fk_param_id: p.pk_param_id,
-    resultado: document.querySelector(`.param-res[data-id="${p.pk_param_id}"]`)?.value || 'NO_MEDIDO',
+    resultado: document.querySelector(`.param-res[data-id="${p.pk_param_id}"]`)?.value || 'ACEPTABLE',
     valor_obtenido: parseFloat(document.querySelector(`.param-val[data-id="${p.pk_param_id}"]`)?.value) || null,
     observacion: document.querySelector(`.param-obs[data-id="${p.pk_param_id}"]`)?.value || '',
-    accion_correctiva: '',
+    accion_correctiva: document.querySelector(`.param-acc[data-id="${p.pk_param_id}"]`)?.value || '',
   }));
   await api(`/calidad-agua/api/muestras/${mid}/resultados`, {
     method: 'POST',

@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Movimientos Bancarios — PARAGUASMJ{% endblock %}
+{% block title %}GF-03 Bancos — Movimientos — SIGCA{% endblock %}
 {% block content %}
 <div class="modulo-header modulo-financiero">
     <i class="bi bi-arrow-left-right"></i>
-    <span>Finanzas — Movimientos</span>
+    <span>GF-03 Bancos — Movimientos</span>
     <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="mb-0">Movimientos Bancarios</h5>
+  <h5 class="mb-0">GF-03 Bancos — Movimientos</h5>
   <a href="{{ url_for('finanzas.bancos') }}" class="btn btn-sm btn-outline-secondary">
     <i class="bi bi-bank me-1"></i>Cuentas
   </a>
@@ -115,7 +115,7 @@
 </div>
 
 <div class="card border-0 shadow-sm">
-  <div class="card-header bg-primary text-white fw-bold">
+  <div class="card-header fw-bold" style="border-left:3px solid var(--color-accent);">
     <i class="bi bi-plus-circle me-2"></i>Registrar Movimiento
   </div>
   <div class="card-body">

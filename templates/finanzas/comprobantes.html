@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Comprobantes — SIGCA{% endblock %}
+{% block title %}GF-02 Tesorería — SIGCA{% endblock %}
 {% block content %}
 <div class="modulo-header modulo-financiero">
   <i class="bi bi-receipt"></i>
-  <span>GF-02 — Comprobantes de Tesorería</span>
+  <span>GF-02 Tesorería</span>
   <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
 
 <!-- KPIs -->
 <div class="row g-3 mb-3">
-  <div class="col-md-3"><div class="card border-0 shadow-sm p-3 text-center bg-success text-white">
-    <div class="fs-4 fw-bold" id="kpi-ing">—</div><div class="small">Ingresos</div>
+  <div class="col-md-3"><div class="card p-3 text-center" style="border-left:3px solid var(--color-success);">
+    <div class="fs-4 fw-bold" style="color:var(--color-success);" id="kpi-ing">—</div><div class="small" style="color:var(--text-secondary);">Ingresos</div>
   </div></div>
-  <div class="col-md-3"><div class="card border-0 shadow-sm p-3 text-center bg-danger text-white">
-    <div class="fs-4 fw-bold" id="kpi-egr">—</div><div class="small">Egresos</div>
+  <div class="col-md-3"><div class="card p-3 text-center" style="border-left:3px solid var(--color-danger);">
+    <div class="fs-4 fw-bold" style="color:var(--color-danger);" id="kpi-egr">—</div><div class="small" style="color:var(--text-secondary);">Egresos</div>
   </div></div>
-  <div class="col-md-3"><div class="card border-0 shadow-sm p-3 text-center bg-primary text-white">
-    <div class="fs-4 fw-bold" id="kpi-net">—</div><div class="small">Neto</div>
+  <div class="col-md-3"><div class="card p-3 text-center" style="border-left:3px solid var(--color-accent);">
+    <div class="fs-4 fw-bold" style="color:var(--color-accent);" id="kpi-net">—</div><div class="small" style="color:var(--text-secondary);">Neto</div>
   </div></div>
-  <div class="col-md-3"><div class="card border-0 shadow-sm p-3 text-center">
-    <div class="fs-4 fw-bold text-muted" id="kpi-cnt">—</div><div class="small text-muted">Comprobantes</div>
+  <div class="col-md-3"><div class="card p-3 text-center" style="border-left:3px solid var(--border);">
+    <div class="fs-4 fw-bold" style="color:var(--text-secondary);" id="kpi-cnt">—</div><div class="small" style="color:var(--text-secondary);">Comprobantes</div>
   </div></div>
 </div>
 

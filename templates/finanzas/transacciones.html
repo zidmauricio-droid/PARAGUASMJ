@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Transacciones — SIGCA{% endblock %}
+{% block title %}GF-02 Tesorería — Transacciones — SIGCA{% endblock %}
 
 {% block extra_css %}
 <style>
-.kpi-fin { border-radius:12px; padding:1rem 1.2rem; border:0; }
-.kpi-ing  { background:linear-gradient(135deg,#00695c,#00897b); color:#fff; }
-.kpi-gas  { background:linear-gradient(135deg,#b71c1c,#e53935); color:#fff; }
-.kpi-net  { background:linear-gradient(135deg,#1565c0,#1976d2); color:#fff; }
-.kpi-pend { background:linear-gradient(135deg,#e65100,#fb8c00); color:#fff; }
-.kpi-num  { font-size:1.6rem; font-weight:800; letter-spacing:-1px; }
-.tr-ingreso td { border-left:4px solid #00897b; }
-.tr-gasto   td { border-left:4px solid #e53935; }
-.badge-pagado   { background:#e8f5e9; color:#2e7d32; }
-.badge-pendiente{ background:#fff3e0; color:#e65100; }
+.kpi-fin  { border-radius:var(--radius); padding:1rem 1.2rem; border:1px solid var(--border); background:var(--bg-card); }
+.kpi-ing  { border-left:4px solid var(--color-success); }
+.kpi-gas  { border-left:4px solid var(--color-danger); }
+.kpi-net  { border-left:4px solid var(--color-accent); }
+.kpi-pend { border-left:4px solid var(--color-warning); }
+.kpi-num  { font-size:1.6rem; font-weight:800; letter-spacing:-1px; color:var(--text-primary); }
+.tr-ingreso td { border-left:4px solid var(--color-success); }
+.tr-gasto   td { border-left:4px solid var(--color-danger); }
+.badge-pagado    { background:rgba(13,148,136,.18); color:var(--color-success); padding:2px 8px; border-radius:12px; }
+.badge-pendiente { background:rgba(217,119,6,.18);  color:var(--color-warning); padding:2px 8px; border-radius:12px; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="modulo-header modulo-financiero">
   <i class="bi bi-journal-text"></i>
-  <span>GF-02 — Registro de Transacciones</span>
+  <span>GF-02 Tesorería — Transacciones</span>
   <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
 

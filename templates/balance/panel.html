@@ -2,21 +2,21 @@
 {% block title %}GA-03 Balance Hídrico y Monitoreo de Fuentes — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
-.punto-card{border-radius:10px;padding:12px 14px;border:1px solid #e2e8f0;background:#fff;}
+.punto-card{border-radius:10px;padding:12px 14px;border:1px solid var(--border);background:var(--bg-card);}
 .ind-badge{padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;}
-.ind-ok{background:#d1fae5;color:#065f46;}
-.ind-alerta{background:#fef3c7;color:#92400e;}
-.ind-mal{background:#fee2e2;color:#991b1b;}
-.mes-btn{padding:4px 10px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;
-  font-size:12px;background:#f8fafc;transition:background .12s,color .12s;}
-.mes-btn.activo{background:#1E3A8A;color:#fff;border-color:#1E3A8A;}
-.alerta-rojo{background:#fef2f2;color:#991b1b;}
-.alerta-naranja{background:#fff7ed;color:#92400e;}
-.alerta-normal{background:#f0fdf4;color:#065f46;}
-.fuente-card{border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;
-  background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
-.fuente-card:hover{border-color:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,.15);}
-.fuente-card.activa{border-color:#1E3A8A;box-shadow:0 0 0 2px rgba(30,58,138,.15);}
+.ind-ok{background:var(--color-success);color:#fff;}
+.ind-alerta{background:var(--color-warning);color:#fff;}
+.ind-mal{background:var(--color-danger);color:#fff;}
+.mes-btn{padding:4px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;
+  font-size:12px;background:var(--bg-card);color:var(--text-primary);transition:background .12s,color .12s;}
+.mes-btn.activo{background:var(--color-accent);color:#fff;border-color:var(--color-accent);}
+.alerta-rojo{background:rgba(var(--color-danger-rgb,220,53,69),.15);color:var(--color-danger);}
+.alerta-naranja{background:rgba(var(--color-warning-rgb,255,193,7),.15);color:var(--color-warning);}
+.alerta-normal{background:rgba(var(--color-success-rgb,25,135,84),.15);color:var(--color-success);}
+.fuente-card{border:1px solid var(--border);border-radius:10px;padding:12px 14px;
+  background:var(--bg-card);color:var(--text-primary);cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.fuente-card:hover{border-color:var(--color-accent);box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.fuente-card.activa{border-color:var(--color-accent);box-shadow:0 0 0 2px rgba(var(--color-accent-rgb,30,58,138),.25);}
 </style>
 {% endblock %}
 {% block content %}
@@ -48,7 +48,7 @@
 <div class="d-flex gap-2 mb-3 flex-wrap">
   {% for tab, ico, lbl in [
     ('registro','pencil-square','Registro Mensual'),
-    ('fuentes','droplet-half','Fuentes Hídricas'),
+    ('fuentes','droplet-half','GA-04 Captación'),
     ('indicadores','bar-chart-fill','Indicadores'),
     ('lecturas','list-ol','Lecturas Diarias')
   ] %}
@@ -91,7 +91,7 @@
           <div class="fw-semibold text-success mb-1 small">Consumo registrado (m³)</div>
           <input type="number" id="inp-consumo_facturado_m3" class="form-control form-control-sm mb-2" step="0.01" min="0">
           <div id="preview-indicadores" class="d-flex gap-2 mb-3 flex-wrap">
-            <span class="ind-badge" style="background:#e2e8f0;color:#475569;">IANC: —</span>
+            <span class="ind-badge" style="background:var(--border);color:var(--text-secondary);">IANC: —</span>
           </div>
           <div class="fw-semibold mb-1 small">Fallas en red</div>
           <div class="row g-1 mb-2">
@@ -139,7 +139,7 @@
   </div>
 </div>
 
-<!-- ══ TAB: FUENTES HÍDRICAS ══════════════════════════════════════ -->
+<!-- ══ TAB: GA-04 CAPTACIÓN ═══════════════════════════════════════ -->
 <div id="tab-fuentes" style="display:none;" class="tab-pane">
   <div class="row g-3">
 
@@ -147,7 +147,7 @@
     <div class="col-lg-4">
       <div class="card border-0 shadow-sm mb-3">
         <div class="card-header fw-bold d-flex justify-content-between align-items-center">
-          <span><i class="bi bi-droplet-half me-1 text-primary"></i>Fuentes configuradas</span>
+          <span><i class="bi bi-droplet-half me-1 text-primary"></i>Puntos de Captación</span>
           <button class="btn btn-sm btn-outline-primary" onclick="mostrarFormFuente()">+ Nueva</button>
         </div>
         <div class="card-body p-2" id="lista-fuentes">
@@ -371,7 +371,7 @@ async function guardarMes() {
   } else { alert('Error: ' + (r.error || 'desconocido')); }
 }
 
-// ── FUENTES HÍDRICAS ──────────────────────────────────────────────
+// ── GA-04 CAPTACIÓN ───────────────────────────────────────────────
 async function cargarFuentes() {
   const d = await fetch('/balance/fuentes').then(r => r.json());
   const contenedor = document.getElementById('lista-fuentes');
@@ -567,7 +567,7 @@ function renderGraficoFuente(serie, nombre, unidad) {
       responsive: true,
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 11 } } },
-        title: { display: true, text: `${ANIO} — ${nombre}`, font: { size: 14, weight: 'bold' }, color: '#1E3A8A' }
+        title: { display: true, text: `${ANIO} — ${nombre}`, font: { size: 14, weight: 'bold' }, color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#1E3A8A' }
       },
       scales: { y: { title: { display: true, text: unidad } } }
     }

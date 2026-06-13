@@ -36,7 +36,6 @@ from routes.finanzas        import fin_bp
 from routes.reportes_normativos import rep_bp
 from routes.auditoria        import aud_bp
 from routes.proyectos_v2     import proy2_bp
-from routes.emergencias      import em_bp
 from routes.convenios        import conv_bp
 from routes.carpetas_bp      import carpetas_bp
 from routes.expedientes      import expedientes_bp
@@ -59,7 +58,6 @@ app.register_blueprint(fin_bp)
 app.register_blueprint(rep_bp)
 app.register_blueprint(aud_bp)
 app.register_blueprint(proy2_bp)
-app.register_blueprint(em_bp)
 app.register_blueprint(conv_bp)
 app.register_blueprint(carpetas_bp)
 app.register_blueprint(expedientes_bp)
