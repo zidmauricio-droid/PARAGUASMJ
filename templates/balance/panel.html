@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Balance Hídrico — SIGCA{% endblock %}
+{% block title %}GA-03 Balance Hídrico y Monitoreo de Fuentes — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
 .punto-card{border-radius:10px;padding:12px 14px;border:1px solid #e2e8f0;background:#fff;}
@@ -7,42 +7,61 @@
 .ind-ok{background:#d1fae5;color:#065f46;}
 .ind-alerta{background:#fef3c7;color:#92400e;}
 .ind-mal{background:#fee2e2;color:#991b1b;}
-.mes-btn{padding:4px 10px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:12px;background:#f8fafc;}
+.mes-btn{padding:4px 10px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;
+  font-size:12px;background:#f8fafc;transition:background .12s,color .12s;}
 .mes-btn.activo{background:#1E3A8A;color:#fff;border-color:#1E3A8A;}
+.alerta-rojo{background:#fef2f2;color:#991b1b;}
+.alerta-naranja{background:#fff7ed;color:#92400e;}
+.alerta-normal{background:#f0fdf4;color:#065f46;}
+.fuente-card{border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;
+  background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.fuente-card:hover{border-color:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,.15);}
+.fuente-card.activa{border-color:#1E3A8A;box-shadow:0 0 0 2px rgba(30,58,138,.15);}
 </style>
 {% endblock %}
 {% block content %}
 <div class="modulo-header modulo-balance">
-    <i class="bi bi-droplet-half"></i>
-    <span>Balance Hídrico — CAR / PUEAA</span>
-    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+  <i class="bi bi-water"></i>
+  <span>GA-03 — Balance Hídrico y Monitoreo de Fuentes</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
-<div class="d-flex justify-content-between align-items-center mb-4">
+
+<div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h5 class="mb-0"><i class="bi bi-droplet-half me-2 text-primary"></i>Balance Hídrico</h5>
-    <small class="text-muted">Bocatoma → Entrada PTAP → Salida PTAP → Consumo Facturado · IANC · IPUF · IMA</small>
+    <small class="text-muted">Macromedidor · IANC · IPUF · IMA · Monitoreo genérico de fuentes</small>
   </div>
   <div class="d-flex gap-2">
     <select id="sel-anio" class="form-select form-select-sm" style="width:100px;"
             onchange="location.href='/balance/?anio='+this.value">
-      {% for a in range(2024, 2028) %}
-      <option {{ 'selected' if a==anio }}>{{ a }}</option>
+      {% for a in range(2023, 2029) %}
+      <option {% if a==anio %}selected{% endif %}>{{ a }}</option>
       {% endfor %}
     </select>
-    <a href="/balance/exportar?anio={{ anio }}" class="btn btn-sm btn-success">📊 Excel</a>
+    <a href="/balance/exportar?anio={{ anio }}" class="btn btn-sm btn-success">
+      <i class="bi bi-file-earmark-excel me-1"></i>Excel
+    </a>
   </div>
 </div>
 
-<div class="d-flex gap-2 mb-4 flex-wrap">
-  {% for tab, lbl in [('registro','📝 Registro Mensual'),('quebrada','📈 Nivel Quebrada'),
-                       ('indicadores','📊 Indicadores'),('lecturas','🔢 Lecturas Diarias')] %}
+<!-- Tabs -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  {% for tab, ico, lbl in [
+    ('registro','pencil-square','Registro Mensual'),
+    ('fuentes','droplet-half','Fuentes Hídricas'),
+    ('indicadores','bar-chart-fill','Indicadores'),
+    ('lecturas','list-ol','Lecturas Diarias')
+  ] %}
   <button class="mes-btn {% if loop.first %}activo{% endif %}"
-          data-tab="{{ tab }}" onclick="activarTab('{{ tab }}',this)">{{ lbl }}</button>
+          data-tab="{{ tab }}" onclick="activarTab('{{ tab }}',this)">
+    <i class="bi bi-{{ ico }} me-1"></i>{{ lbl }}
+  </button>
   {% endfor %}
 </div>
 
+<!-- ══ TAB: REGISTRO MENSUAL ══════════════════════════════════════ -->
 <div id="tab-registro" class="tab-pane">
-  <div class="d-flex flex-wrap gap-2 mb-3" id="barra-meses">
+  <div class="d-flex flex-wrap gap-1 mb-3" id="barra-meses">
     {% for i in range(12) %}
     <button class="mes-btn {% if i==0 %}activo{% endif %}"
             onclick="seleccionarMes({{ i+1 }}, this)">{{ meses[i][:3] }}</button>
@@ -52,13 +71,15 @@
     <div class="col-lg-5">
       <div class="card border-0 shadow-sm">
         <div class="card-header fw-bold d-flex justify-content-between">
-          <span id="titulo-mes-form">📝 Enero {{ anio }}</span>
+          <span id="titulo-mes-form"><i class="bi bi-pencil me-1"></i>Enero {{ anio }}</span>
           <span class="badge bg-primary" id="badge-mes-sel">Mes 1</span>
         </div>
         <div class="card-body">
           <input type="hidden" id="mes-activo" value="1">
           <input type="hidden" id="anio-activo" value="{{ anio }}">
-          <div class="fw-semibold text-primary mb-2 small">💧 Producción — Puntos de medición (m³)</div>
+          <div class="fw-semibold text-primary mb-2 small">
+            <i class="bi bi-droplet-fill me-1"></i>Producción — Puntos de medición (m³)
+          </div>
           <div class="row g-2 mb-3">
             {% for cod, nombre in puntos %}
             <div class="col-4">
@@ -67,13 +88,13 @@
             </div>
             {% endfor %}
           </div>
-          <div class="fw-semibold text-success mb-1 small">💰 Consumo Facturado (m³)</div>
+          <div class="fw-semibold text-success mb-1 small">Consumo registrado (m³)</div>
           <input type="number" id="inp-consumo_facturado_m3" class="form-control form-control-sm mb-2" step="0.01" min="0">
           <div id="preview-indicadores" class="d-flex gap-2 mb-3 flex-wrap">
             <span class="ind-badge" style="background:#e2e8f0;color:#475569;">IANC: —</span>
           </div>
-          <div class="fw-semibold mb-1 small">🔧 Fallas en red</div>
-          <div class="row g-2 mb-2">
+          <div class="fw-semibold mb-1 small">Fallas en red</div>
+          <div class="row g-1 mb-2">
             <div class="col-3"><label class="form-label small">Fallas Aduc.</label>
               <input type="number" id="inp-fallas_aduccion" class="form-control form-control-sm" min="0"></div>
             <div class="col-3"><label class="form-label small">L.Aduc.(km)</label>
@@ -83,8 +104,8 @@
             <div class="col-3"><label class="form-label small">L.Dist.(km)</label>
               <input type="number" id="inp-longitud_distribucion_km" class="form-control form-control-sm" step="0.1"></div>
           </div>
-          <div class="fw-semibold mb-1 small">👥 Suscriptores</div>
-          <div class="row g-2 mb-2">
+          <div class="fw-semibold mb-1 small">Suscriptores</div>
+          <div class="row g-1 mb-2">
             <div class="col-3"><label class="form-label small">Suscriptores</label>
               <input type="number" id="inp-suscriptores" class="form-control form-control-sm" min="0"></div>
             <div class="col-3"><label class="form-label small">Empleados</label>
@@ -94,18 +115,21 @@
             <div class="col-3"><label class="form-label small">MM Efect.</label>
               <input type="number" id="inp-micromedidores_efectivos" class="form-control form-control-sm" min="0"></div>
           </div>
-          <textarea id="inp-observaciones" class="form-control form-control-sm mb-3" rows="2" placeholder="Observaciones..."></textarea>
-          <button class="btn btn-primary w-100 fw-bold" onclick="guardarMes()">💾 Guardar</button>
+          <textarea id="inp-observaciones" class="form-control form-control-sm mb-3" rows="2"
+                    placeholder="Observaciones del mes…"></textarea>
+          <button class="btn btn-primary w-100 fw-bold" onclick="guardarMes()">
+            <i class="bi bi-save me-1"></i>Guardar
+          </button>
         </div>
       </div>
     </div>
     <div class="col-lg-7">
       <div class="card border-0 shadow-sm">
-        <div class="card-header fw-bold">📋 Resumen {{ anio }}</div>
+        <div class="card-header fw-bold">Resumen {{ anio }}</div>
         <div class="table-responsive">
           <table class="table table-sm table-hover align-middle mb-0">
-            <thead class="table-dark">
-              <tr><th>Mes</th><th>Bocatoma m³</th><th>Salida PTAP</th><th>Facturado</th><th>IANC%</th><th>IPUF</th></tr>
+            <thead>
+              <tr><th>Mes</th><th>Bocatoma m³</th><th>Salida PTAP</th><th>Consumo</th><th>IANC%</th><th>IPUF</th></tr>
             </thead>
             <tbody id="tbody-balance"></tbody>
           </table>
@@ -115,53 +139,127 @@
   </div>
 </div>
 
-<div id="tab-quebrada" style="display:none;" class="tab-pane">
-  <div class="alert alert-info small mb-3">
-    📊 Comportamiento mensual del nivel de la quebrada Santibáñez.
-    Línea roja discontinua = <strong>Umbral Crítico (30 cm)</strong>.
-    Por debajo → riesgo de desabastecimiento.
+<!-- ══ TAB: FUENTES HÍDRICAS ══════════════════════════════════════ -->
+<div id="tab-fuentes" style="display:none;" class="tab-pane">
+  <div class="row g-3">
+
+    <!-- Columna izquierda: lista fuentes + nueva fuente -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-droplet-half me-1 text-primary"></i>Fuentes configuradas</span>
+          <button class="btn btn-sm btn-outline-primary" onclick="mostrarFormFuente()">+ Nueva</button>
+        </div>
+        <div class="card-body p-2" id="lista-fuentes">
+          <div class="text-center text-muted py-3 small">Cargando…</div>
+        </div>
+      </div>
+
+      <!-- Form nueva fuente (oculto por defecto) -->
+      <div class="card border-0 shadow-sm" id="form-fuente-wrap" style="display:none;">
+        <div class="card-header fw-bold"><i class="bi bi-plus me-1"></i>Configurar nueva fuente</div>
+        <div class="card-body">
+          <label class="form-label fw-semibold">Código *</label>
+          <input type="text" id="nf-codigo" class="form-control form-control-sm mb-2"
+                 placeholder="FH-001" maxlength="20">
+          <label class="form-label fw-semibold">Nombre *</label>
+          <input type="text" id="nf-nombre" class="form-control form-control-sm mb-2"
+                 placeholder="Ej: Quebrada La Negra">
+          <label class="form-label fw-semibold">Tipo de fuente</label>
+          <select id="nf-tipo" class="form-select form-select-sm mb-2">
+            <option>Quebrada</option><option>Río</option><option>Nacedero</option>
+            <option>Pozo profundo</option><option>Pozo somero</option>
+            <option>Embalse</option><option>Laguna</option><option>Manantial</option>
+          </select>
+          <label class="form-label fw-semibold">Unidad de medición</label>
+          <div class="d-flex gap-2 mb-2">
+            <select id="nf-unidad" class="form-select form-select-sm">
+              <option value="cm">cm</option><option value="m">m</option>
+              <option value="mm">mm</option><option value="L/s">L/s</option>
+              <option value="m³/s">m³/s</option>
+            </select>
+            <input type="text" id="nf-unidad-custom" class="form-control form-control-sm"
+                   placeholder="Otra unidad">
+          </div>
+          <label class="form-label fw-semibold">Escala de medición</label>
+          <select id="nf-escala-tipo" class="form-select form-select-sm mb-2"
+                  onchange="toggleEscalaControls()">
+            <option value="libre">Libre — el operador digita cualquier valor</option>
+            <option value="controlada">Controlada — selección de valores predefinidos</option>
+          </select>
+          <div id="nf-escala-ctrl" style="display:none;">
+            <label class="form-label fw-semibold small">Valores de escala (uno por línea)</label>
+            <textarea id="nf-escala-vals" class="form-control form-control-sm" rows="5"
+                      placeholder="0&#10;20&#10;40&#10;60&#10;80&#10;100"></textarea>
+          </div>
+          <label class="form-label fw-semibold">Descripción</label>
+          <textarea id="nf-desc" class="form-control form-control-sm mb-3" rows="2"
+                    placeholder="Ubicación, caudal típico, etc."></textarea>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary btn-sm flex-grow-1" onclick="crearFuente()">Guardar fuente</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="ocultarFormFuente()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Columna derecha: mediciones + análisis -->
+    <div class="col-lg-8" id="panel-fuente-detalle">
+      <div class="alert alert-info small">
+        <i class="bi bi-info-circle me-1"></i>
+        Seleccione una fuente de la lista para registrar mediciones y ver el análisis histórico.
+      </div>
+    </div>
+
   </div>
-  <canvas id="grafico-quebrada" height="120"></canvas>
-  <div class="row g-3 mt-2" id="stats-quebrada"></div>
 </div>
 
+<!-- ══ TAB: INDICADORES ═══════════════════════════════════════════ -->
 <div id="tab-indicadores" style="display:none;" class="tab-pane">
   <div id="panel-indicadores"></div>
 </div>
 
+<!-- ══ TAB: LECTURAS DIARIAS ═════════════════════════════════════ -->
 <div id="tab-lecturas" style="display:none;" class="tab-pane">
   <div class="row g-3">
     <div class="col-lg-4">
       <div class="card border-0 shadow-sm">
-        <div class="card-header fw-bold">🔢 Nueva Lectura Diaria</div>
+        <div class="card-header fw-bold">Nueva Lectura Diaria</div>
         <div class="card-body">
           <select id="lec-punto" class="form-select form-select-sm mb-2">
             {% for cod, nombre in puntos %}<option value="{{ cod }}">{{ nombre }}</option>{% endfor %}
           </select>
           <input type="date" id="lec-fecha" class="form-control form-control-sm mb-2">
-          <input type="number" id="lec-m3" class="form-control form-control-sm mb-2" step="0.01" placeholder="Lectura (m³)">
+          <input type="number" id="lec-m3" class="form-control form-control-sm mb-2"
+                 step="0.01" placeholder="Lectura (m³)">
           <div class="row g-1 mb-2">
-            <div class="col-4"><input type="number" id="lec-caudal" class="form-control form-control-sm" placeholder="L/s" step="0.01"></div>
-            <div class="col-4"><input type="number" id="lec-turb" class="form-control form-control-sm" placeholder="NTU" step="0.1"></div>
-            <div class="col-4"><input type="number" id="lec-cloro" class="form-control form-control-sm" placeholder="mg/L" step="0.01"></div>
+            <div class="col-4"><input type="number" id="lec-caudal" class="form-control form-control-sm"
+                 placeholder="L/s" step="0.01"></div>
+            <div class="col-4"><input type="number" id="lec-turb" class="form-control form-control-sm"
+                 placeholder="NTU" step="0.1"></div>
+            <div class="col-4"><input type="number" id="lec-cloro" class="form-control form-control-sm"
+                 placeholder="mg/L" step="0.01"></div>
           </div>
           <input type="text" id="lec-obs" class="form-control form-control-sm mb-2" placeholder="Observaciones">
-          <button class="btn btn-primary btn-sm w-100" onclick="guardarLectura()">💾 Guardar lectura</button>
+          <button class="btn btn-primary btn-sm w-100" onclick="guardarLectura()">
+            <i class="bi bi-save me-1"></i>Guardar lectura
+          </button>
         </div>
       </div>
     </div>
     <div class="col-lg-8">
       <div class="card border-0 shadow-sm">
-        <div class="card-header d-flex justify-content-between">
+        <div class="card-header d-flex justify-content-between align-items-center">
           <span class="fw-bold">Lecturas registradas</span>
-          <select id="filtro-punto-lec" class="form-select form-select-sm" style="width:180px;" onchange="cargarLecturas()">
+          <select id="filtro-punto-lec" class="form-select form-select-sm" style="width:180px;"
+                  onchange="cargarLecturas()">
             <option value="">Todos los puntos</option>
             {% for cod, nombre in puntos %}<option value="{{ cod }}">{{ nombre }}</option>{% endfor %}
           </select>
         </div>
         <div class="table-responsive">
           <table class="table table-sm mb-0">
-            <thead class="table-dark">
+            <thead>
               <tr><th>Fecha</th><th>Punto</th><th>m³</th><th>L/s</th><th>NTU</th><th>Cl mg/L</th></tr>
             </thead>
             <tbody id="tbody-lecturas"></tbody>
@@ -171,28 +269,31 @@
     </div>
   </div>
 </div>
+
 {% endblock %}
-
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
 <script>
-const ANIO  = {{ anio }};
+const ANIO    = {{ anio }};
 const MESES_ES = {{ meses | tojson }};
-let graficoQ = null;
 let datosMeses = {};
+let graficoBH = null, graficoFuente = null;
+let fuenteActiva = null;
 
+// ── Tabs ──────────────────────────────────────────────────────────
 function activarTab(tab, btn) {
-  document.querySelectorAll('.tab-pane').forEach(p => p.style.display='none');
+  document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
   document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('activo'));
-  document.getElementById('tab-'+tab).style.display = 'block';
+  document.getElementById('tab-' + tab).style.display = 'block';
   btn.classList.add('activo');
-  if(tab==='quebrada') renderGraficoQuebrada();
-  if(tab==='indicadores') renderIndicadores();
-  if(tab==='lecturas') cargarLecturas();
+  if (tab === 'fuentes')     cargarFuentes();
+  if (tab === 'indicadores') renderIndicadores();
+  if (tab === 'lecturas')    cargarLecturas();
 }
 
+// ── REGISTRO MENSUAL ──────────────────────────────────────────────
 async function cargarDatosAnio() {
-  const rows = await fetch(`/balance/api/anio/${ANIO}`).then(r=>r.json());
+  const rows = await fetch('/balance/api/anio/' + ANIO).then(r => r.json());
   datosMeses = {};
   rows.forEach(r => datosMeses[r.mes] = r);
   renderTablaResumen();
@@ -200,204 +301,425 @@ async function cargarDatosAnio() {
 
 function renderTablaResumen() {
   const tbody = document.getElementById('tbody-balance');
-  tbody.innerHTML = MESES_ES.map((m,i) => {
-    const d = datosMeses[i+1] || {};
+  tbody.innerHTML = MESES_ES.map((m, i) => {
+    const d = datosMeses[i + 1] || {};
     const ianc = d.ianc_pct;
-    const cls = ianc==null?'':ianc<25?'text-success fw-bold':ianc<35?'text-warning fw-bold':'text-danger fw-bold';
+    const cls = ianc == null ? '' : ianc < 25 ? 'text-success fw-bold' : ianc < 35 ? 'text-warning fw-bold' : 'text-danger fw-bold';
     return `<tr>
-      <td class="fw-semibold">${m.substring(0,3)}</td>
-      <td>${d.bocatoma_m3??'—'}</td>
-      <td>${d.salida_ptap_m3??'—'}</td>
-      <td>${d.consumo_facturado_m3??d.facturado_m3??'—'}</td>
-      <td class="${cls}">${ianc!=null?ianc+'%':'—'}</td>
-      <td>${d.ipuf_m3_susc_mes??'—'}</td>
+      <td class="fw-semibold">${m.substring(0, 3)}</td>
+      <td>${d.bocatoma_m3 ?? '—'}</td>
+      <td>${d.salida_ptap_m3 ?? '—'}</td>
+      <td>${d.consumo_facturado_m3 ?? d.facturado_m3 ?? '—'}</td>
+      <td class="${cls}">${ianc != null ? ianc + '%' : '—'}</td>
+      <td>${d.ipuf_m3_susc_mes ?? '—'}</td>
     </tr>`;
   }).join('');
 }
 
 function seleccionarMes(mes, btn) {
-  document.querySelectorAll('#barra-meses .mes-btn').forEach(b=>b.classList.remove('activo'));
-  if(btn) btn.classList.add('activo');
+  document.querySelectorAll('#barra-meses .mes-btn').forEach(b => b.classList.remove('activo'));
+  if (btn) btn.classList.add('activo');
   document.getElementById('mes-activo').value = mes;
-  document.getElementById('titulo-mes-form').textContent = `📝 ${MESES_ES[mes-1]} ${ANIO}`;
-  document.getElementById('badge-mes-sel').textContent = `Mes ${mes}`;
+  document.getElementById('titulo-mes-form').innerHTML = `<i class="bi bi-pencil me-1"></i>${MESES_ES[mes - 1]} ${ANIO}`;
+  document.getElementById('badge-mes-sel').textContent = 'Mes ' + mes;
   const d = datosMeses[mes] || {};
   ['bocatoma','entrada_ptap','salida_ptap','consumo_facturado_m3',
-   'fallas_aduccion','longitud_aduccion_km','fallas_distribucion','longitud_distribucion_km',
-   'suscriptores','empleados','micromedidores_instalados','micromedidores_efectivos'
-  ].forEach(c => {
-    const el = document.getElementById('inp-'+c);
-    if(el) el.value = d[c]??'';  });
-  document.getElementById('inp-observaciones').value = d.observaciones||'';
-  if(d.ianc_pct!=null) {
-    const cls = d.ianc_pct<25?'ind-ok':'ind-alerta';
+   'fallas_aduccion','longitud_aduccion_km','fallas_distribucion',
+   'longitud_distribucion_km','suscriptores','empleados',
+   'micromedidores_instalados','micromedidores_efectivos'
+  ].forEach(c => { const el = document.getElementById('inp-' + c); if (el) el.value = d[c] ?? ''; });
+  document.getElementById('inp-observaciones').value = d.observaciones || '';
+  const ianc = d.ianc_pct;
+  if (ianc != null) {
+    const cls = ianc < 25 ? 'ind-ok' : 'ind-alerta';
     document.getElementById('preview-indicadores').innerHTML =
-      `<span class="ind-badge ${cls}">IANC: ${d.ianc_pct}%</span>
-       <span class="ind-badge ind-ok">IPUF: ${d.ipuf_m3_susc_mes??'—'}</span>
-       <span class="ind-badge ind-ok">IMA: ${d.ima??'—'}</span>`;
+      `<span class="ind-badge ${cls}">IANC: ${ianc}%</span>` +
+      `<span class="ind-badge ind-ok">IPUF: ${d.ipuf_m3_susc_mes ?? '—'}</span>` +
+      `<span class="ind-badge ind-ok">IMA: ${d.ima ?? '—'}</span>`;
   }
 }
 
 async function guardarMes() {
   const mes = parseInt(document.getElementById('mes-activo').value);
-  const g = id => { const e=document.getElementById(id); return e?e.value:null; };
-  const r = await fetch('/balance/api/guardar',{
-    method:'POST', headers:{'Content-Type':'application/json'},
+  const g = id => { const e = document.getElementById(id); return e ? e.value : null; };
+  const r = await fetch('/balance/api/guardar', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       anio: ANIO, mes,
-      bocatoma_m3: parseFloat(g('inp-bocatoma'))||null,
-      entrada_ptap_m3: parseFloat(g('inp-entrada_ptap'))||null,
-      salida_ptap_m3: parseFloat(g('inp-salida_ptap'))||null,
-      consumo_facturado_m3: parseFloat(g('inp-consumo_facturado_m3'))||null,
-      fallas_aduccion: parseInt(g('inp-fallas_aduccion'))||null,
-      longitud_aduccion_km: parseFloat(g('inp-longitud_aduccion_km'))||null,
-      fallas_distribucion: parseInt(g('inp-fallas_distribucion'))||null,
-      longitud_distribucion_km: parseFloat(g('inp-longitud_distribucion_km'))||null,
-      suscriptores: parseInt(g('inp-suscriptores'))||null,
-      empleados: parseInt(g('inp-empleados'))||null,
-      micromedidores_instalados: parseInt(g('inp-micromedidores_instalados'))||null,
-      micromedidores_efectivos: parseInt(g('inp-micromedidores_efectivos'))||null,
+      bocatoma_m3: parseFloat(g('inp-bocatoma')) || null,
+      entrada_ptap_m3: parseFloat(g('inp-entrada_ptap')) || null,
+      salida_ptap_m3: parseFloat(g('inp-salida_ptap')) || null,
+      consumo_facturado_m3: parseFloat(g('inp-consumo_facturado_m3')) || null,
+      fallas_aduccion: parseInt(g('inp-fallas_aduccion')) || null,
+      longitud_aduccion_km: parseFloat(g('inp-longitud_aduccion_km')) || null,
+      fallas_distribucion: parseInt(g('inp-fallas_distribucion')) || null,
+      longitud_distribucion_km: parseFloat(g('inp-longitud_distribucion_km')) || null,
+      suscriptores: parseInt(g('inp-suscriptores')) || null,
+      empleados: parseInt(g('inp-empleados')) || null,
+      micromedidores_instalados: parseInt(g('inp-micromedidores_instalados')) || null,
+      micromedidores_efectivos: parseInt(g('inp-micromedidores_efectivos')) || null,
       observaciones: g('inp-observaciones'),
     })
-  }).then(r=>r.json());
-  if(r.ok) {
-    const cls = r.ianc!=null&&r.ianc<25?'ind-ok':'ind-alerta';
+  }).then(r => r.json());
+  if (r.ok) {
+    const cls = r.ianc != null && r.ianc < 25 ? 'ind-ok' : 'ind-alerta';
     document.getElementById('preview-indicadores').innerHTML =
-      `<span class="ind-badge ${cls}">✅ IANC: ${r.ianc??'—'}%</span>
-       <span class="ind-badge ind-ok">IPUF: ${r.ipuf??'—'}</span>
-       <span class="ind-badge ind-ok">IMA: ${r.ima??'—'}</span>`;
+      `<span class="ind-badge ${cls}">✅ IANC: ${r.ianc ?? '—'}%</span>` +
+      `<span class="ind-badge ind-ok">IPUF: ${r.ipuf ?? '—'}</span>` +
+      `<span class="ind-badge ind-ok">IMA: ${r.ima ?? '—'}</span>`;
     await cargarDatosAnio();
-  } else alert('Error: '+(r.error||'desconocido'));
+  } else { alert('Error: ' + (r.error || 'desconocido')); }
 }
 
-async function renderGraficoQuebrada() {
-  const d = await fetch(`/balance/api/quebrada?anio=${ANIO}`).then(r=>r.json());
+// ── FUENTES HÍDRICAS ──────────────────────────────────────────────
+async function cargarFuentes() {
+  const d = await fetch('/balance/fuentes').then(r => r.json());
+  const contenedor = document.getElementById('lista-fuentes');
+  if (!d.fuentes || !d.fuentes.length) {
+    contenedor.innerHTML = '<div class="text-center text-muted py-3 small">Sin fuentes configuradas.<br>Use "+ Nueva" para agregar.</div>';
+    return;
+  }
+  contenedor.innerHTML = d.fuentes.map(f => `
+    <div class="fuente-card mb-2 ${fuenteActiva && fuenteActiva.pk_fuente_id == f.pk_fuente_id ? 'activa' : ''}"
+         onclick="seleccionarFuente(${f.pk_fuente_id})"
+         data-fid="${f.pk_fuente_id}">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-droplet-fill text-primary"></i>
+        <div>
+          <div class="fw-semibold small">${f.nombre}</div>
+          <div class="text-muted" style="font-size:.75rem;">
+            ${f.tipo_fuente} · ${f.unidad_medicion} · ${f.escala_tipo}
+          </div>
+        </div>
+        <span class="badge bg-secondary ms-auto" style="font-size:.65rem;">${f.codigo}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function seleccionarFuente(fid) {
+  document.querySelectorAll('.fuente-card').forEach(c =>
+    c.classList.toggle('activa', parseInt(c.dataset.fid) === fid));
+
+  const d = await fetch(`/balance/fuentes/${fid}/analisis?anio=${ANIO}`).then(r => r.json());
+  fuenteActiva = d.fuente;
+  renderPanelFuente(fid, d);
+}
+
+function renderPanelFuente(fid, d) {
+  const f   = d.fuente || {};
+  const est = d.estadisticas || {};
   const serie = d.serie || [];
-  const niveles = serie.map(s=>s.nivel_promedio||0);
-  const umbral  = Array(12).fill(d.umbral_critico_cm||30);
-  if(graficoQ) graficoQ.destroy();
-  const ctx = document.getElementById('grafico-quebrada').getContext('2d');
-  graficoQ = new Chart(ctx,{
-    type:'line',
-    data:{
-      labels: serie.map(s=>s.mes_nombre.substring(0,3)),
-      datasets:[{
-        label:'Nivel Cuenca Santibáñez (cm)',
-        data: niveles,
-        borderColor:'#1E3A8A',
-        backgroundColor:'rgba(30,58,138,0.08)',
-        pointBackgroundColor: niveles.map(n=>n>=200?'#ef4444':n>=130?'#f97316':n>=100?'#f59e0b':'#10b981'),
-        pointRadius:7, tension:0.3, fill:true,
-      },{
-        label:`Nivel Crítico (${d.umbral_critico_cm||30} cm)`,
-        data:umbral, borderColor:'#ef4444', borderDash:[8,4],
-        borderWidth:2, pointRadius:0, fill:false,
+  const unidad = f.unidad_medicion || '';
+
+  const clsIanc = e => !e ? 'secondary' : e < 30 ? 'success' : e < 50 ? 'warning' : 'danger';
+
+  document.getElementById('panel-fuente-detalle').innerHTML = `
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-droplet-fill text-primary me-1"></i>${f.nombre || 'Fuente'}</span>
+        <div class="d-flex gap-2">
+          <span class="badge bg-secondary">${f.tipo_fuente || ''}</span>
+          <span class="badge bg-info text-dark">${unidad}</span>
+          <span class="badge bg-${f.escala_tipo === 'controlada' ? 'warning text-dark' : 'success'}">${f.escala_tipo || 'libre'}</span>
+          <a href="/balance/fuentes/${fid}/exportar?anio=${ANIO}" class="btn btn-outline-success btn-sm py-0">
+            <i class="bi bi-file-earmark-excel"></i>
+          </a>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row g-2 mb-3">
+          <div class="col-3"><div class="punto-card text-center">
+            <div class="fw-bold fs-4 text-primary">${est.promedio_anual ?? '—'}</div>
+            <div class="small text-muted">Promedio ${unidad}</div>
+          </div></div>
+          <div class="col-3"><div class="punto-card text-center">
+            <div class="fw-bold fs-4 text-success">${est.valor_maximo ?? '—'}</div>
+            <div class="small text-muted">Máximo</div>
+          </div></div>
+          <div class="col-3"><div class="punto-card text-center">
+            <div class="fw-bold fs-4 text-danger">${est.valor_minimo ?? '—'}</div>
+            <div class="small text-muted">Mínimo</div>
+          </div></div>
+          <div class="col-3"><div class="punto-card text-center">
+            <div class="fw-bold fs-4">${est.n_meses_con_datos ?? 0}</div>
+            <div class="small text-muted">Meses con datos</div>
+          </div></div>
+        </div>
+        <canvas id="grafico-fuente" height="100" class="mb-3"></canvas>
+        ${d.interpretacion ? `<div class="alert alert-light border small mb-3">${d.interpretacion}</div>` : ''}
+        ${(d.periodos_criticos && d.periodos_criticos.length)
+          ? `<div class="alert alert-warning small"><i class="bi bi-exclamation-triangle me-1"></i>
+             <strong>Períodos críticos:</strong> ${d.periodos_criticos.join(', ')}</div>` : ''}
+      </div>
+    </div>
+
+    <!-- Registrar medición -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold"><i class="bi bi-plus-circle me-1"></i>Registrar medición</div>
+      <div class="card-body">
+        <div class="row g-2">
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Fecha</label>
+            <input type="date" id="med-fecha" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Hora</label>
+            <input type="time" id="med-hora" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold">Valor (${unidad}) *</label>
+            ${f.escala_tipo === 'controlada'
+              ? `<select id="med-valor" class="form-select form-select-sm"><option value="">Cargando…</option></select>`
+              : `<input type="number" id="med-valor" class="form-control form-control-sm" step="0.01" placeholder="${unidad}">`
+            }
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Alerta</label>
+            <select id="med-alerta" class="form-select form-select-sm">
+              <option value="normal">Normal</option>
+              <option value="naranja">Naranja</option>
+              <option value="rojo">Rojo</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-semibold">Punto</label>
+            <input type="text" id="med-punto" class="form-control form-control-sm" value="Principal">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label small fw-semibold">Responsable</label>
+            <input type="text" id="med-responsable" class="form-control form-control-sm" placeholder="Nombre del operador">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label small fw-semibold">Observaciones</label>
+            <input type="text" id="med-obs" class="form-control form-control-sm" placeholder="Opcional">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary btn-sm w-100" onclick="guardarMedicion(${fid})">
+              <i class="bi bi-save"></i> Guardar
+            </button>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="fw-semibold small mb-1">Últimas mediciones</div>
+          <div id="tabla-mediciones-recientes" class="table-responsive">
+            <div class="text-muted small text-center py-2">Cargando…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Init fecha/hora
+  const now = new Date();
+  document.getElementById('med-fecha').value = now.toISOString().split('T')[0];
+  document.getElementById('med-hora').value  = now.toTimeString().substring(0,5);
+
+  // Cargar escala si controlada
+  if (f.escala_tipo === 'controlada') {
+    fetch(`/balance/fuentes/${fid}/escala`)
+      .then(r => r.json())
+      .then(ed => {
+        const sel = document.getElementById('med-valor');
+        if (sel && sel.tagName === 'SELECT') {
+          sel.innerHTML = '<option value="">Seleccione valor…</option>' +
+            (ed.escala || []).map(e => `<option value="${e.valor}">${e.valor} ${unidad}</option>`).join('');
+        }
+      });
+  }
+
+  // Renderizar gráfico
+  renderGraficoFuente(serie, f.nombre, unidad);
+
+  // Cargar mediciones recientes
+  cargarMedicionesRecientes(fid);
+}
+
+function renderGraficoFuente(serie, nombre, unidad) {
+  const ctx = document.getElementById('grafico-fuente');
+  if (!ctx) return;
+  if (graficoFuente) graficoFuente.destroy();
+  graficoFuente = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: serie.map(s => s.mes_nombre.substring(0, 3)),
+      datasets: [{
+        label: `${nombre} — Promedio mensual (${unidad})`,
+        data: serie.map(s => s.promedio || null),
+        borderColor: '#1E3A8A',
+        backgroundColor: 'rgba(30,58,138,.07)',
+        pointBackgroundColor: serie.map(s =>
+          s.dias_rojo > 0 ? '#ef4444' : s.dias_naranja > 0 ? '#f97316' : '#10b981'),
+        pointRadius: 6, tension: 0.35, fill: true, spanGaps: true,
+      }, {
+        label: `Máximo (${unidad})`,
+        data: serie.map(s => s.maximo || null),
+        borderColor: '#22c55e', borderDash: [4, 3],
+        borderWidth: 1, pointRadius: 3, fill: false, spanGaps: true,
+      }, {
+        label: `Mínimo (${unidad})`,
+        data: serie.map(s => s.minimo || null),
+        borderColor: '#ef4444', borderDash: [4, 3],
+        borderWidth: 1, pointRadius: 3, fill: false, spanGaps: true,
       }]
     },
-    options:{
-      responsive:true,
-      plugins:{
-        legend:{position:'bottom'},
-        title:{display:true, text:`${ANIO} — Nivel Cuenca Santibáñez`,
-               font:{size:16,weight:'bold'},color:'#1E3A8A'},
-        tooltip:{callbacks:{
-          afterLabel: ctx => {
-            const n=ctx.raw;
-            if(n>=200) return '🔴 ALERTA ROJA';
-            if(n>=130) return '🟠 ALERTA NARANJA';
-            if(n>=100) return '🟡 ALERTA AMARILLA';
-            return '🟢 Normal';
-          }
-        }}
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+        title: { display: true, text: `${ANIO} — ${nombre}`, font: { size: 14, weight: 'bold' }, color: '#1E3A8A' }
       },
-      scales:{y:{min:0, title:{display:true,text:'NIVEL (CM)',font:{weight:'bold'}}}}
+      scales: { y: { title: { display: true, text: unidad } } }
     }
   });
-  const maxN = Math.max(...niveles.filter(n=>n>0))||0;
-  const minN = Math.min(...niveles.filter(n=>n>0))||0;
-  const prom = (niveles.filter(n=>n>0).reduce((a,b)=>a+b,0)/(niveles.filter(n=>n>0).length||1)).toFixed(1);
-  document.getElementById('stats-quebrada').innerHTML = `
-    <div class="col-md-3"><div class="punto-card text-center">
-      <div class="fw-bold fs-4 text-primary">${maxN} cm</div><div class="small text-muted">Nivel máximo</div>
-    </div></div>
-    <div class="col-md-3"><div class="punto-card text-center">
-      <div class="fw-bold fs-4">${minN} cm</div><div class="small text-muted">Nivel mínimo</div>
-    </div></div>
-    <div class="col-md-3"><div class="punto-card text-center">
-      <div class="fw-bold fs-4">${prom} cm</div><div class="small text-muted">Promedio anual</div>
-    </div></div>
-    <div class="col-md-3"><div class="punto-card text-center">
-      <div class="fw-bold fs-4 text-danger">${serie.reduce((s,r)=>s+(r.dias_rojo||0),0)}</div>
-      <div class="small text-muted">Días alerta roja</div>
-    </div></div>`;
 }
 
+async function cargarMedicionesRecientes(fid) {
+  const d = await fetch(`/balance/fuentes/${fid}/mediciones?limit=10`).then(r => r.json());
+  const el = document.getElementById('tabla-mediciones-recientes');
+  if (!el) return;
+  const rows = d.mediciones || [];
+  el.innerHTML = rows.length
+    ? `<table class="table table-sm mb-0">
+        <thead><tr><th>Fecha</th><th>Hora</th><th>Punto</th><th>Valor</th><th>Alerta</th><th>Resp.</th></tr></thead>
+        <tbody>${rows.map(r => {
+          const cls = r.nivel_alerta === 'rojo' ? 'alerta-rojo' : r.nivel_alerta === 'naranja' ? 'alerta-naranja' : '';
+          return `<tr class="${cls}"><td>${r.fecha}</td><td>${r.hora||'—'}</td>
+            <td>${r.punto_medicion}</td>
+            <td><strong>${r.valor_observado} ${r.unidad}</strong></td>
+            <td><span class="badge bg-${r.nivel_alerta==='rojo'?'danger':r.nivel_alerta==='naranja'?'warning text-dark':'success'}">${r.nivel_alerta}</span></td>
+            <td>${r.responsable||'—'}</td></tr>`;
+        }).join('')}</tbody>
+      </table>`
+    : '<div class="text-muted small text-center py-3">Sin mediciones registradas para esta fuente.</div>';
+}
+
+async function guardarMedicion(fid) {
+  const g = id => { const e = document.getElementById(id); return e ? e.value : null; };
+  const valor = parseFloat(g('med-valor'));
+  if (isNaN(valor)) { alert('Ingrese un valor numérico válido.'); return; }
+  const r = await fetch(`/balance/fuentes/${fid}/mediciones`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fecha: g('med-fecha'),
+      hora: g('med-hora'),
+      punto_medicion: g('med-punto') || 'Principal',
+      valor_observado: valor,
+      nivel_alerta: g('med-alerta') || 'normal',
+      responsable: g('med-responsable') || '',
+      observaciones: g('med-obs') || '',
+    })
+  }).then(r => r.json());
+  if (r.ok) {
+    document.getElementById('med-valor').value = '';
+    document.getElementById('med-obs').value = '';
+    cargarMedicionesRecientes(fid);
+    seleccionarFuente(fid); // recargar análisis
+  } else { alert('Error: ' + (r.error || 'desconocido')); }
+}
+
+// ── Gestión de formulario nueva fuente ────────────────────────────
+function mostrarFormFuente() { document.getElementById('form-fuente-wrap').style.display = ''; }
+function ocultarFormFuente() { document.getElementById('form-fuente-wrap').style.display = 'none'; }
+function toggleEscalaControls() {
+  const tipo = document.getElementById('nf-escala-tipo').value;
+  document.getElementById('nf-escala-ctrl').style.display = tipo === 'controlada' ? '' : 'none';
+}
+
+async function crearFuente() {
+  const g = id => document.getElementById(id)?.value || '';
+  const customUnidad = g('nf-unidad-custom').trim();
+  const unidad = customUnidad || g('nf-unidad');
+  const r = await fetch('/balance/fuentes', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      codigo: g('nf-codigo'), nombre: g('nf-nombre'),
+      tipo_fuente: g('nf-tipo'), unidad_medicion: unidad,
+      escala_tipo: g('nf-escala-tipo'), descripcion: g('nf-desc'),
+    })
+  }).then(r => r.json());
+  if (!r.ok) { alert('Error: ' + (r.error || 'desconocido')); return; }
+  const fid = r.pk_fuente_id;
+
+  // Guardar escala si es controlada
+  if (g('nf-escala-tipo') === 'controlada') {
+    const vals = g('nf-escala-vals').split('\n').map(v => v.trim()).filter(v => v !== '');
+    await fetch(`/balance/fuentes/${fid}/escala`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valores: vals })
+    });
+  }
+  ocultarFormFuente();
+  await cargarFuentes();
+  seleccionarFuente(fid);
+}
+
+// ── INDICADORES ───────────────────────────────────────────────────
 async function renderIndicadores() {
-  const d = await fetch(`/balance/api/indicadores/${ANIO}`).then(r=>r.json());
-  const t = d.totales||{};
-  const ianc=t.ianc_anual;
-  const cls=ianc==null?'secondary':ianc<25?'success':ianc<35?'warning':'danger';
+  const d = await fetch(`/balance/api/indicadores/${ANIO}`).then(r => r.json());
+  const t = d.totales || {};
+  const ianc = t.ianc_anual;
+  const cls = ianc == null ? 'secondary' : ianc < 25 ? 'success' : ianc < 35 ? 'warning' : 'danger';
   document.getElementById('panel-indicadores').innerHTML = `
     <div class="row g-3">
       <div class="col-md-3"><div class="punto-card text-center">
-        <div class="fw-bold fs-3">${t.produccion_m3||'—'} m³</div>
+        <div class="fw-bold fs-3">${t.produccion_m3 ?? '—'} <small class="fs-6">m³</small></div>
         <div class="text-muted small">Producción total ${ANIO}</div>
       </div></div>
       <div class="col-md-3"><div class="punto-card text-center">
-        <div class="fw-bold fs-3">${t.facturado_m3||'—'} m³</div>
-        <div class="text-muted small">Consumo facturado</div>
+        <div class="fw-bold fs-3">${t.facturado_m3 ?? '—'} <small class="fs-6">m³</small></div>
+        <div class="text-muted small">Consumo registrado</div>
       </div></div>
       <div class="col-md-3"><div class="punto-card text-center">
-        <div class="fw-bold fs-3">${t.perdidas_m3||'—'} m³</div>
-        <div class="text-muted small">Pérdidas</div>
+        <div class="fw-bold fs-3">${t.perdidas_m3 ?? '—'} <small class="fs-6">m³</small></div>
+        <div class="text-muted small">Pérdidas estimadas</div>
       </div></div>
       <div class="col-md-3"><div class="punto-card text-center">
-        <div class="fw-bold fs-3 text-${cls}">${ianc!=null?ianc+'%':'—'}</div>
+        <div class="fw-bold fs-3 text-${cls}">${ianc != null ? ianc + '%' : '—'}</div>
         <div class="text-muted small">IANC Anual (meta &lt;30%)</div>
       </div></div>
     </div>`;
 }
 
+// ── LECTURAS DIARIAS ──────────────────────────────────────────────
 async function cargarLecturas() {
-  const punto=document.getElementById('filtro-punto-lec')?.value||'';
-  const rows=await fetch(`/balance/api/lecturas?punto=${punto}`).then(r=>r.json());
-  const tbody=document.getElementById('tbody-lecturas');
-  tbody.innerHTML=rows.length
-    ?rows.map(r=>`<tr>
-        <td><small>${r.fecha}</small></td>
-        <td><small>${r.punto}</small></td>
-        <td>${r.lectura_m3}</td>
-        <td>${r.caudal_lps||'—'}</td>
-        <td>${r.turbiedad_ntu||'—'}</td>
-        <td>${r.cloro_mg_l||'—'}</td>
+  const punto = document.getElementById('filtro-punto-lec')?.value || '';
+  const rows = await fetch('/balance/api/lecturas?punto=' + punto).then(r => r.json());
+  const tbody = document.getElementById('tbody-lecturas');
+  tbody.innerHTML = rows.length
+    ? rows.map(r => `<tr>
+        <td><small>${r.fecha}</small></td><td><small>${r.punto}</small></td>
+        <td>${r.lectura_m3}</td><td>${r.caudal_lps ?? '—'}</td>
+        <td>${r.turbiedad_ntu ?? '—'}</td><td>${r.cloro_mg_l ?? '—'}</td>
       </tr>`).join('')
-    :'<tr><td colspan="6" class="text-center text-muted py-3">Sin lecturas registradas.</td></tr>';
+    : '<tr><td colspan="6" class="text-center text-muted py-3">Sin lecturas registradas.</td></tr>';
 }
 
 async function guardarLectura() {
-  const g=id=>{const e=document.getElementById(id);return e?e.value:null;};
-  const r=await fetch('/balance/api/lecturas',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      fecha:g('lec-fecha'), punto:g('lec-punto'),
-      lectura_m3:parseFloat(g('lec-m3'))||0,
-      caudal_lps:parseFloat(g('lec-caudal'))||null,
-      turbiedad_ntu:parseFloat(g('lec-turb'))||null,
-      cloro_mg_l:parseFloat(g('lec-cloro'))||null,
-      observaciones:g('lec-obs'),
+  const g = id => { const e = document.getElementById(id); return e ? e.value : null; };
+  const r = await fetch('/balance/api/lecturas', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fecha: g('lec-fecha'), punto: g('lec-punto'),
+      lectura_m3: parseFloat(g('lec-m3')) || 0,
+      caudal_lps: parseFloat(g('lec-caudal')) || null,
+      turbiedad_ntu: parseFloat(g('lec-turb')) || null,
+      cloro_mg_l: parseFloat(g('lec-cloro')) || null,
+      observaciones: g('lec-obs'),
     })
-  }).then(r=>r.json());
-  if(r.ok){
-    ['lec-m3','lec-caudal','lec-turb','lec-cloro','lec-obs'].forEach(id=>{
-      const e=document.getElementById(id);if(e)e.value='';
+  }).then(r => r.json());
+  if (r.ok) {
+    ['lec-m3','lec-caudal','lec-turb','lec-cloro','lec-obs'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.value = '';
     });
     cargarLecturas();
   }
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('lec-fecha').value=new Date().toISOString().split('T')[0];
-  document.getElementById('tab-registro').style.display='block';
+// ── Init ──────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('lec-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('tab-registro').style.display = 'block';
   cargarDatosAnio();
 });
 </script>

@@ -2,36 +2,26 @@
 {% block title %}Nueva PQRS — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
-.seccion-tipo { border-left:4px solid #1E3A8A; padding:4px 10px;
-  background:#f8fafc; border-radius:0 8px 8px 0; margin-bottom:8px; }
-.badge-plazo { background:#dbeafe;color:#1e40af;padding:3px 10px;
-  border-radius:12px;font-size:11px;font-weight:700; }
-.solicitante-tipo .form-check-label { cursor:pointer; }
-.solicitante-tipo .form-check-input:checked + .form-check-label {
-  font-weight:600; color:#1e40af; }
+.nivel-label{font-size:.72rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.07em;color:#64748b;}
+.sol-card{border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;cursor:pointer;
+  transition:border-color .15s,background .15s;}
+.sol-card:hover{border-color:#0ea5e9;background:#f0f9ff;}
+.sol-card.sel{border-color:#1E3A8A;background:#eff6ff;}
+.badge-plazo{background:#dbeafe;color:#1e40af;padding:3px 10px;
+  border-radius:12px;font-size:11px;font-weight:700;}
 </style>
 {% endblock %}
 {% block content %}
 <div class="modulo-header modulo-pqrs">
-    <i class="bi bi-plus-circle-fill"></i>
-    <span>Radicar Nueva PQRS</span>
-    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+  <i class="bi bi-plus-circle-fill"></i>
+  <span>Radicar Nueva PQRS</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
 </div>
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h5 class="mb-0"><i class="bi bi-plus-circle me-2 text-primary"></i>Radicar nueva PQRS</h5>
-    <small class="text-muted">GC-PQR — Gestión Comercial · Ley 1755/2015 · Res. CRA 943/2021</small>
-  </div>
-  <a href="/pqrs/" class="btn btn-ghost btn-sm">← Volver</a>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <small class="text-muted">GC-PQR — Gestión Comercial · Ley 1755/2015 · Res. CRA 943/2021</small>
+  <a href="/pqrs/" class="btn btn-sm btn-outline-secondary">← Volver</a>
 </div>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for cat,msg in messages %}
-  <div class="alert alert-{{ cat }} alert-dismissible fade show">
-    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  </div>
-  {% endfor %}
-{% endwith %}
 
 <div class="card border-0 shadow-sm">
   <div class="card-body">
@@ -39,30 +29,29 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div class="row g-3">
-        <!-- Nivel 1: Servicio -->
-        <div class="col-md-6">
-          <label class="form-label fw-semibold">Servicio afectado * <small class="text-muted">(Nivel 1)</small></label>
-          <div class="d-flex gap-3">
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="fk_servicio_id" id="srv_acueducto" value="1" checked onchange="cargarCausalesGC(1)">
-              <label class="form-check-label" for="srv_acueducto">
-                <i class="bi bi-droplet-fill text-primary me-1"></i><strong>Acueducto</strong>
-              </label>
+
+        <!-- ── NIVEL 1: Servicio ───────────────────────────────── -->
+        <div class="col-12">
+          <div class="nivel-label mb-1">Nivel 1 — Servicio afectado *</div>
+          <div class="d-flex gap-2 flex-wrap" id="cont-servicios">
+            <div class="sol-card sel d-flex align-items-center gap-2" data-val="1" onclick="selServicio(this)">
+              <input type="radio" name="fk_servicio_id" value="1" checked class="d-none">
+              <i class="bi bi-droplet-fill text-primary fs-5"></i>
+              <div><strong>Acueducto</strong><div class="text-muted" style="font-size:.78rem;">Agua potable</div></div>
             </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="fk_servicio_id" id="srv_alcantarillado" value="2" onchange="cargarCausalesGC(2)">
-              <label class="form-check-label" for="srv_alcantarillado">
-                <i class="bi bi-water text-info me-1"></i><strong>Alcantarillado</strong>
-              </label>
+            <div class="sol-card d-flex align-items-center gap-2" data-val="2" onclick="selServicio(this)">
+              <input type="radio" name="fk_servicio_id" value="2" class="d-none">
+              <i class="bi bi-water text-info fs-5"></i>
+              <div><strong>Alcantarillado</strong><div class="text-muted" style="font-size:.78rem;">Saneamiento</div></div>
             </div>
           </div>
         </div>
 
-        <!-- Tipo PQRS -->
+        <!-- ── Tipo de solicitud ──────────────────────────────── -->
         <div class="col-md-6">
           <label class="form-label fw-semibold">Tipo de solicitud *</label>
           <select name="tipo_pqr" id="sel_tipo_pqr" class="form-select" required>
-            <option value="">Seleccione...</option>
+            <option value="">Seleccione…</option>
             {% for tipo in tipos_pqr %}
             <option value="{{ tipo }}">{{ tipo }}</option>
             {% endfor %}
@@ -70,159 +59,93 @@
           <div id="info_plazo" class="mt-1"></div>
         </div>
 
-        <!-- Canal de entrada -->
+        <!-- ── NIVEL 2: Tipo de solicitante ──────────────────── -->
         <div class="col-md-6">
-          <label class="form-label fw-semibold">Canal de entrada *</label>
-          <select name="canal" class="form-select" required>
-            <option value="01">Oficina física / Ventanilla</option>
-            <option value="02">Línea de atención telefónica</option>
-            <option value="03">Página web / Formulario en línea</option>
-            <option value="04">Correo electrónico</option>
-            <option value="08">Correspondencia física / Escrito</option>
-            <option value="09">Ventanilla única / Traslado externo</option>
-            <option value="99">Otro canal</option>
-          </select>
-        </div>
-
-        <!-- Tipo de solicitante (Ley 142/1994) -->
-        <div class="col-12">
-          <label class="form-label fw-semibold">Tipo de solicitante <span class="text-muted small">(Ley 142/1994)</span></label>
-          <div class="d-flex gap-4 solicitante-tipo">
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="tipo_solicitante"
-                     id="ts_suscriptor" value="suscriptor" checked>
-              <label class="form-check-label" for="ts_suscriptor">
-                <i class="bi bi-person-fill me-1 text-primary"></i>Suscriptor
-                <small class="text-muted d-block">Usuario con contrato de servicio</small>
-              </label>
+          <div class="nivel-label mb-1">Nivel 2 — Tipo de solicitante</div>
+          <div class="d-flex gap-2 flex-wrap" id="cont-tipo-sol">
+            {% for cod, lbl, ico, desc in [
+              ('suscriptor','Suscriptor','person-fill text-primary','Con contrato de servicio'),
+              ('usuario','Usuario','people-fill text-success','Sin contrato — uso ocasional'),
+              ('tercero','Tercero / Entidad','building text-warning','Persona o entidad externa')
+            ] %}
+            <div class="sol-card {% if loop.first %}sel{% endif %} d-flex align-items-center gap-2"
+                 data-val="{{ cod }}" onclick="selTipoSol(this)">
+              <input type="radio" name="tipo_solicitante" value="{{ cod }}"
+                     {% if loop.first %}checked{% endif %} class="d-none">
+              <i class="bi bi-{{ ico }} fs-5"></i>
+              <div><strong style="font-size:.85rem;">{{ lbl }}</strong>
+                <div class="text-muted" style="font-size:.75rem;">{{ desc }}</div></div>
             </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="tipo_solicitante"
-                     id="ts_usuario" value="usuario">
-              <label class="form-check-label" for="ts_usuario">
-                <i class="bi bi-people-fill me-1 text-success"></i>Usuario
-                <small class="text-muted d-block">Sin contrato — uso ocasional</small>
-              </label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="tipo_solicitante"
-                     id="ts_tercero" value="tercero">
-              <label class="form-check-label" for="ts_tercero">
-                <i class="bi bi-building me-1 text-warning"></i>Tercero
-                <small class="text-muted d-block">Entidad / persona externa</small>
-              </label>
-            </div>
+            {% endfor %}
           </div>
         </div>
 
-        <!-- Nombre del solicitante -->
-        <div class="col-md-6">
+        <!-- ── Datos del solicitante ──────────────────────────── -->
+        <div class="col-md-5">
           <label class="form-label fw-semibold">Nombre del solicitante *</label>
           <input type="text" name="nombre_solicitante" class="form-control" required
                  placeholder="Nombre completo">
         </div>
-
-        <!-- Documento -->
-        <div class="col-md-6">
-          <label class="form-label fw-semibold">Documento de identidad</label>
-          <input type="text" name="documento_solicitante" class="form-control"
-                 placeholder="CC / NIT">
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Documento</label>
+          <input type="text" name="documento_solicitante" class="form-control" placeholder="CC / NIT">
         </div>
-
-        <!-- Teléfono -->
-        <div class="col-md-6">
+        <div class="col-md-2">
           <label class="form-label fw-semibold">Teléfono</label>
-          <input type="text" name="telefono_solicitante" class="form-control"
-                 placeholder="Celular o fijo">
+          <input type="text" name="telefono_solicitante" class="form-control" placeholder="Celular">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Correo</label>
+          <input type="email" name="correo_solicitante" class="form-control" placeholder="email">
         </div>
 
-        <!-- Correo -->
-        <div class="col-md-6">
-          <label class="form-label fw-semibold">Correo electrónico</label>
-          <input type="email" name="correo_solicitante" class="form-control"
-                 placeholder="ejemplo@correo.com">
-        </div>
-
-        <!-- Nivel 3: Medio de recepción -->
-        <div class="col-md-6">
-          <label class="form-label fw-semibold">Medio de recepción * <small class="text-muted">(Nivel 3)</small></label>
-          <select name="fk_medio_id" id="sel_medio_recepcion" class="form-select" required>
-            <option value="1">Presencial / Ventanilla</option>
-            <option value="2">Telefónico</option>
-            <option value="3">Web / Formulario en línea</option>
-            <option value="4">Correo electrónico</option>
-            <option value="5">WhatsApp</option>
-            <option value="6">Correspondencia escrita</option>
+        <!-- ── NIVEL 3: Medio de recepción ───────────────────── -->
+        <div class="col-md-5">
+          <div class="nivel-label mb-1">Nivel 3 — Medio de recepción *</div>
+          <select name="fk_medio_id" id="sel_medio" class="form-select" required>
+            <option value="">Cargando medios…</option>
           </select>
         </div>
 
-        <!-- Nivel 4: Causal interna parametrizable -->
-        <div class="col-md-6">
-          <label class="form-label fw-semibold">Causal del servicio <small class="text-muted">(Nivel 4)</small></label>
+        <!-- ── NIVEL 4: Causal parametrizable ────────────────── -->
+        <div class="col-md-5">
+          <div class="nivel-label mb-1">Nivel 4 — Causal del servicio</div>
           <select name="fk_causal_id" id="sel_causal_gc" class="form-select">
-            <option value="">— Cargando causales… —</option>
+            <option value="">— Seleccione servicio primero —</option>
           </select>
-          <div class="form-text">Causales parametrizables por el administrador.</div>
+          <div class="form-text">Causales configurables por el administrador del sistema.</div>
         </div>
 
-        <!-- Grupo causal (Res. SSPD 54575/2015) — para reporte normativo -->
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">
-            Grupo causal <span class="text-muted small">(Res. SSPD 54575/2015)</span>
-          </label>
-          <select name="grupo_causal" id="sel_grupo_causal" class="form-select">
-            <option value="">— Sin causal —</option>
-            {% for grupo_cod, grupo_data in grupos_causal.items() %}
-            <option value="{{ grupo_cod }}">{{ grupo_cod }} — {{ grupo_data.nombre }}</option>
-            {% endfor %}
-          </select>
+        <!-- ── Código DANE ────────────────────────────────────── -->
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Cód. DANE municipio</label>
+          <input type="text" name="dane_municipio" class="form-control"
+                 maxlength="9" pattern="[0-9]{9}" value="{{ dane_default }}">
         </div>
 
-        <!-- Causal -->
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">Causal</label>
-          <select name="causal_codigo" id="sel_causal" class="form-select" disabled>
-            <option value="">— Seleccione grupo primero —</option>
-          </select>
-        </div>
-
-        <!-- Subcausal (visible solo para causal 01 - Facturación) -->
-        <div class="col-md-4" id="div_subcausal" style="display:none">
-          <label class="form-label fw-semibold">Subcausal de facturación</label>
-          <select name="subcausal_codigo" id="sel_subcausal" class="form-select">
-            <option value="">— Seleccione causal primero —</option>
-          </select>
-        </div>
-
-        <!-- DANE municipio -->
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">
-            Municipio DANE
-            <i class="bi bi-info-circle text-muted" title="Código DANE del municipio donde ocurre el hecho"></i>
-          </label>
-          <input type="text" name="dane_municipio" id="inp_dane" class="form-control"
-                 maxlength="9" pattern="[0-9]{9}"
-                 value="{{ dane_default }}"
-                 placeholder="251750000">
-          <div class="form-text">Villeta, Cundinamarca: 251750000</div>
-        </div>
-
-        <!-- Descripción -->
+        <!-- ── Descripción ────────────────────────────────────── -->
         <div class="col-12">
           <label class="form-label fw-semibold">Descripción de la solicitud *</label>
           <textarea name="descripcion" class="form-control" rows="4" required
-                    placeholder="Describa detalladamente su petición, queja, reclamo o solicitud..."></textarea>
+                    placeholder="Describa detalladamente su petición, queja, reclamo o solicitud…"></textarea>
         </div>
 
-        <!-- Dirección del predio -->
-        <div class="col-md-8">
-          <label class="form-label fw-semibold">Dirección del predio afectado</label>
+        <!-- ── Dirección / Componente / Prioridad ─────────────── -->
+        <div class="col-md-5">
+          <label class="form-label fw-semibold">Dirección o sector afectado</label>
           <input type="text" name="direccion_predio" class="form-control"
                  placeholder="Vereda / Sector / Casa">
         </div>
-
-        <!-- Prioridad -->
         <div class="col-md-4">
+          <label class="form-label fw-semibold">Componente de red afectado</label>
+          <select name="componente_afectado" class="form-select">
+            <option value="">— Sin componente específico —</option>
+            {% for comp in componentes %}
+            <option value="{{ comp }}">{{ comp }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
           <label class="form-label fw-semibold">Prioridad</label>
           <select name="prioridad" class="form-select">
             <option value="normal" selected>Normal</option>
@@ -230,7 +153,8 @@
             <option value="critica">Crítica</option>
           </select>
         </div>
-      </div>
+
+      </div><!-- /row -->
 
       <div class="mt-4 d-flex gap-2">
         <button type="submit" class="btn btn-primary fw-bold px-4">
@@ -247,7 +171,53 @@
 (function () {
   "use strict";
 
-  // Cargar causales internas según servicio (Nivel 4 jerarquía PQRS)
+  var TIPOS_PQR = {{ tipos_pqr_json | tojson }};
+
+  // ── Selección de tarjeta visual ────────────────────────────────
+  function selCard(container, el) {
+    container.querySelectorAll('.sol-card').forEach(function(c){ c.classList.remove('sel'); });
+    el.classList.add('sel');
+    el.querySelector('input[type=radio]').checked = true;
+  }
+  window.selServicio = function(el) {
+    selCard(document.getElementById('cont-servicios'), el);
+    cargarCausalesGC(el.dataset.val);
+  };
+  window.selTipoSol = function(el) {
+    selCard(document.getElementById('cont-tipo-sol'), el);
+  };
+
+  // ── Badge de plazo al cambiar tipo ────────────────────────────
+  document.getElementById("sel_tipo_pqr").addEventListener("change", function () {
+    var t = TIPOS_PQR[this.value];
+    var el = document.getElementById("info_plazo");
+    el.innerHTML = t
+      ? '<span class="badge-plazo"><i class="bi bi-clock me-1"></i>' + t.plazo + ' días hábiles</span>'
+      : "";
+  });
+
+  // ── Cargar medios de recepción desde API ──────────────────────
+  fetch('/pqrs/api/gc-medios')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var sel = document.getElementById('sel_medio');
+      var opts = '<option value="">— Seleccione medio —</option>';
+      (d.medios || []).forEach(function(m){
+        opts += '<option value="' + m.pk_medio_id + '">' + m.nombre + '</option>';
+      });
+      sel.innerHTML = opts;
+    })
+    .catch(function(){
+      document.getElementById('sel_medio').innerHTML =
+        '<option value="1">Presencial / Ventanilla</option>' +
+        '<option value="2">Telefónico</option>' +
+        '<option value="3">Web / Formulario</option>' +
+        '<option value="4">Correo electrónico</option>' +
+        '<option value="5">WhatsApp</option>' +
+        '<option value="6">Correspondencia escrita</option>';
+    });
+
+  // ── Cargar causales según servicio (Nivel 4) ──────────────────
   window.cargarCausalesGC = function(servicioId) {
     var sel = document.getElementById('sel_causal_gc');
     sel.innerHTML = '<option value="">Cargando…</option>';
@@ -256,91 +226,21 @@
       .then(function(d){
         var opts = '<option value="">— Sin causal específica —</option>';
         (d.causales || []).forEach(function(c){
-          opts += '<option value="'+c.pk_causal_id+'">'+c.codigo+' — '+c.nombre
-                + ' ('+c.sla_dias+' días)</option>';
+          opts += '<option value="' + c.pk_causal_id + '">'
+                + c.codigo + ' — ' + c.nombre
+                + (c.sla_dias ? ' (' + c.sla_dias + ' días)' : '') + '</option>';
         });
         sel.innerHTML = opts;
+        if (!(d.causales && d.causales.length)) {
+          sel.innerHTML = '<option value="">Sin causales configuradas — configure en Administración</option>';
+        }
       })
-      .catch(function(){ sel.innerHTML = '<option value="">Error de red</option>'; });
+      .catch(function(){ sel.innerHTML = '<option value="">Error de conexión</option>'; });
   };
 
   // Cargar causales de Acueducto al inicio
   cargarCausalesGC(1);
 
-  // Tipos de trámite con sus plazos (cargados desde servidor vía JSON inline)
-  var TIPOS_PQR = {{ tipos_pqr_json | tojson }};
-
-  // Actualizar badge de plazo al cambiar tipo
-  var selTipo = document.getElementById("sel_tipo_pqr");
-  var infoPlazo = document.getElementById("info_plazo");
-  selTipo.addEventListener("change", function () {
-    var t = TIPOS_PQR[this.value];
-    if (t) {
-      infoPlazo.innerHTML = '<span class="badge-plazo"><i class="bi bi-clock me-1"></i>' +
-        t.plazo + ' días hábiles — Cód. SUI ' + t.codigo_sui + '</span>';
-    } else {
-      infoPlazo.innerHTML = "";
-    }
-  });
-
-  // Carga dinámica de causales según grupo
-  var selGrupo = document.getElementById("sel_grupo_causal");
-  var selCausal = document.getElementById("sel_causal");
-  var selSubcausal = document.getElementById("sel_subcausal");
-  var divSubcausal = document.getElementById("div_subcausal");
-
-  selGrupo.addEventListener("change", function () {
-    var grupo = this.value;
-    selCausal.innerHTML = '<option value="">Cargando...</option>';
-    selCausal.disabled = true;
-    divSubcausal.style.display = "none";
-    selSubcausal.innerHTML = '<option value="">—</option>';
-
-    if (!grupo) {
-      selCausal.innerHTML = '<option value="">— Seleccione grupo primero —</option>';
-      return;
-    }
-
-    // Datos de causales están precargados en el servidor; usar endpoint local
-    fetch("/pqrs/api/causales?grupo=" + encodeURIComponent(grupo), {
-      headers: { "X-Requested-With": "XMLHttpRequest" }
-    })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (!data.ok) { selCausal.innerHTML = '<option value="">Error al cargar</option>'; return; }
-      var opts = '<option value="">— Seleccione causal —</option>';
-      data.causales.forEach(function (c) {
-        opts += '<option value="' + c.codigo + '" data-subcausal="' + (c.tiene_subcausal ? "1" : "0") + '">'
-              + c.codigo + ' — ' + c.nombre + '</option>';
-      });
-      selCausal.innerHTML = opts;
-      selCausal.disabled = false;
-    })
-    .catch(function () {
-      selCausal.innerHTML = '<option value="">Error de red</option>';
-    });
-  });
-
-  selCausal.addEventListener("change", function () {
-    var opt = this.options[this.selectedIndex];
-    var tieneSub = opt && opt.dataset.subcausal === "1";
-    divSubcausal.style.display = tieneSub ? "" : "none";
-    if (!tieneSub) { selSubcausal.innerHTML = '<option value="">—</option>'; return; }
-
-    var causal = this.value;
-    fetch("/pqrs/api/subcausales/" + encodeURIComponent(causal), {
-      headers: { "X-Requested-With": "XMLHttpRequest" }
-    })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      var opts = '<option value="">— Seleccione subcausal —</option>';
-      (data.subcausales || []).forEach(function (s) {
-        opts += '<option value="' + s.codigo + '">' + s.codigo + ' — ' + s.nombre + '</option>';
-      });
-      selSubcausal.innerHTML = opts;
-    })
-    .catch(function () {});
-  });
 }());
 </script>
 {% endblock %}

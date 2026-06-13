@@ -68,39 +68,27 @@ TIPOS_PQR = {
     "Denuncia":              {"plazo": 15, "codigo_sui": "7"},
 }
 
-# ── Causales oficiales (Res. SSPD 54575/2015 — Tabla 1) ─────────────
-CAUSALES = {
-    "01": {"texto": "Facturación",            "tiene_subcausal": True},
-    "02": {"texto": "Calidad del servicio",   "tiene_subcausal": False},
-    "03": {"texto": "Suspensión del servicio","tiene_subcausal": False},
-    "04": {"texto": "Conexión del servicio",  "tiene_subcausal": False},
-    "05": {"texto": "Reconexión del servicio","tiene_subcausal": False},
-    "06": {"texto": "Medidores",              "tiene_subcausal": False},
-    "07": {"texto": "Contrato / Condiciones", "tiene_subcausal": False},
-    "08": {"texto": "Atención al cliente",    "tiene_subcausal": False},
-    "09": {"texto": "Daños a terceros",       "tiene_subcausal": False},
-    "10": {"texto": "Cobros no reconocidos",  "tiene_subcausal": False},
-    "11": {"texto": "Terminación del contrato","tiene_subcausal": False},
-    "12": {"texto": "Cesión de inmueble",     "tiene_subcausal": False},
-    "99": {"texto": "Otras causales",         "tiene_subcausal": False},
+# ── Tablas de referencia normativa SSPD — uso EXCLUSIVO para exportación SUI ──
+# NO usar en formularios de registro; el sistema RC6 usa gc_pqrs_causales.
+_CAUSALES_SUI = {
+    "01": {"texto": "Calidad del servicio",    "tiene_subcausal": False},
+    "02": {"texto": "Suspensión del servicio", "tiene_subcausal": False},
+    "03": {"texto": "Conexión del servicio",   "tiene_subcausal": False},
+    "04": {"texto": "Reconexión del servicio", "tiene_subcausal": False},
+    "05": {"texto": "Medidores",               "tiene_subcausal": False},
+    "06": {"texto": "Contrato / Condiciones",  "tiene_subcausal": False},
+    "07": {"texto": "Atención al usuario",     "tiene_subcausal": False},
+    "08": {"texto": "Daños a terceros",        "tiene_subcausal": False},
+    "09": {"texto": "Cobros no reconocidos",   "tiene_subcausal": False},
+    "10": {"texto": "Terminación del contrato","tiene_subcausal": False},
+    "11": {"texto": "Cesión de inmueble",      "tiene_subcausal": False},
+    "99": {"texto": "Otras causales",          "tiene_subcausal": False},
 }
 
-# ── Subcausales de facturación (Res. 54575/2015 — Tabla 2) ──────────
-SUBCAUSALES_FACTURACION = {
-    "01-01": "Lectura del medidor incorrecta",
-    "01-02": "Tarifa aplicada incorrecta",
-    "01-03": "Período de facturación incorrecto",
-    "01-04": "Cálculo del consumo estimado",
-    "01-05": "Consumo facturado sin medición",
-    "01-06": "Desviación significativa de consumo",
-    "01-99": "Otras causales de facturación",
-}
-
-# ── Canales de recepción (Res. 54575/2015) ──────────────────────────
-CANALES = {
+_CANALES_SUI = {
     "01": "Oficina física / Ventanilla",
     "02": "Línea de atención telefónica",
-    "03": "Página web / Formulario en línea",
+    "03": "Web / Formulario en línea",
     "04": "Correo electrónico",
     "08": "Correspondencia física / Escrito",
     "09": "Ventanilla única / Traslado externo",
@@ -108,15 +96,7 @@ CANALES = {
     "99": "Otro canal",
 }
 
-# ── Servicios (Res. 54575/2015) ──────────────────────────────────────
-SERVICIOS = {
-    "1": "Acueducto (agua potable)",
-    "2": "Alcantarillado",
-    "99": "Otro",
-}
-
-# ── Estados PQR (Res. 54575/2015) ───────────────────────────────────
-ESTADOS_SUI = {
+_ESTADOS_SUI = {
     "1": "Recibida",
     "2": "En trámite",
     "3": "Resuelta",
@@ -124,6 +104,7 @@ ESTADOS_SUI = {
     "5": "Cerrada",
 }
 
+# Componentes de red — sin referencias a conceptos de facturación
 COMPONENTES = [
     "Bocatoma / Captación",
     "Línea de conducción / Aducción",
@@ -132,7 +113,6 @@ COMPONENTES = [
     "Red de distribución",
     "Acometida domiciliaria",
     "Medidor / Micromedición",
-    "Facturación / Cobro",
     "Calidad del agua",
     "Atención al usuario",
     "Otro",
@@ -141,15 +121,7 @@ COMPONENTES = [
 EXTS_BITACORA = {"pdf", "jpg", "jpeg", "png", "tif", "tiff"}
 UPLOAD_BITACORA = os.path.join("uploads", "bitacoras")
 
-# ── Agrupación de causales F/I/P según Res. SSPD 54575/2015 ────────
-GRUPO_CAUSALES = {
-    "F": {"nombre": "Facturación",  "causales": ["01", "06", "10"]},
-    "I": {"nombre": "Instalación",  "causales": ["04", "05"]},
-    "P": {"nombre": "Prestación",   "causales": ["02", "03", "09"]},
-    "O": {"nombre": "Otros",        "causales": ["07", "08", "11", "12", "99"]},
-}
-
-# Código DANE por defecto (Villeta, Cundinamarca)
+# Código DANE por defecto (configurable por instalación)
 DANE_DEFAULT = "251750000"
 
 
@@ -167,66 +139,6 @@ def api_tipos_tramite():
     return jsonify({"ok": True, "tipos": tipos})
 
 
-@pqrs_bp.route("/api/grupos-causal")
-@login_requerido
-def api_grupos_causal():
-    grupos = [{"codigo": g, "nombre": v["nombre"]} for g, v in GRUPO_CAUSALES.items()]
-    return jsonify({"ok": True, "grupos": grupos})
-
-
-@pqrs_bp.route("/api/causales")
-@login_requerido
-def api_causales():
-    """Causales planas o filtradas por grupo (?grupo=F/I/P/O).
-    Usa la tabla pqrs_causales_sspd si está poblada; si no, usa el dict estático."""
-    grupo = request.args.get("grupo", "").upper()
-    conn = None
-    try:
-        conn = get_db()
-        tablas = {r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()}
-        if "pqrs_causales_sspd" in tablas:
-            q = "SELECT codigo_sui as codigo, nombre, grupo_codigo as grupo FROM pqrs_causales_sspd WHERE activo=1"
-            params = []
-            if grupo:
-                q += " AND grupo_codigo=?"
-                params.append(grupo)
-            q += " ORDER BY grupo_codigo, codigo_sui"
-            rows = conn.execute(q, params).fetchall()
-            if rows:
-                result = []
-                for r in rows:
-                    result.append({
-                        "codigo": r["codigo"],
-                        "nombre": r["nombre"],
-                        "grupo": r["grupo"],
-                        "tiene_subcausal": r["codigo"] == "01",
-                    })
-                return jsonify({"ok": True, "causales": result, "fuente": "db"})
-    except Exception as e:
-        _log_pqrs.warning("api_causales DB fallback: %s", e)
-    finally:
-        if conn:
-            conn.close()
-    # Fallback al dict estático
-    result = []
-    for cod, data in CAUSALES.items():
-        g = next((k for k, v in GRUPO_CAUSALES.items() if cod in v["causales"]), "O")
-        if grupo and g != grupo:
-            continue
-        result.append({"codigo": cod, "nombre": data["texto"],
-                        "grupo": g, "tiene_subcausal": data.get("tiene_subcausal", False)})
-    return jsonify({"ok": True, "causales": result, "fuente": "static"})
-
-
-@pqrs_bp.route("/api/subcausales/<causal_cod>")
-@login_requerido
-def api_subcausales(causal_cod):
-    sub = {k: v for k, v in SUBCAUSALES_FACTURACION.items()
-           if k.startswith(causal_cod + "-")}
-    result = [{"codigo": k, "nombre": v} for k, v in sub.items()]
-    return jsonify({"ok": True, "subcausales": result})
 
 
 # ── API jerarquía PQRS — 4 niveles (RC6 approved) ─────────────────
@@ -405,25 +317,38 @@ def nueva():
                 susc_id = str(_cur.lastrowid)
             _c.close()
 
-        canal_cod     = request.form.get("canal", request.form.get("canal_codigo", "99"))
-        causal_cod    = request.form.get("causal_codigo", "99")
-        subcausal_cod = request.form.get("subcausal_codigo", "")
-        servicio_cod  = request.form.get("servicio_codigo", "1")
-        grupo_causal  = request.form.get("grupo_causal", "")
-        # Inferir grupo si no viene del form
-        if not grupo_causal:
-            grupo_causal = next(
-                (k for k, v in GRUPO_CAUSALES.items() if causal_cod in v["causales"]), "O"
-            )
-        dane_municipio  = request.form.get("dane_municipio", DANE_DEFAULT).strip()
+        # RC6: campos de jerarquía paramétrica
+        fk_servicio_id         = request.form.get("fk_servicio_id", "1") or "1"
+        fk_tipo_solicitante_id = request.form.get("fk_tipo_solicitante_id", "")
+        fk_medio_id            = request.form.get("fk_medio_id", "")
+        fk_causal_id           = request.form.get("fk_causal_id", "")
+
+        # Texto de la causal (para búsqueda y SUI legacy)
+        causal_texto = ""
+        if fk_causal_id:
+            try:
+                _cc = get_db()
+                _cr = _cc.execute(
+                    "SELECT nombre FROM gc_pqrs_causales WHERE pk_causal_id=?",
+                    (fk_causal_id,)
+                ).fetchone()
+                if _cr:
+                    causal_texto = _cr["nombre"]
+                _cc.close()
+            except Exception:
+                pass
+
+        dane_municipio   = request.form.get("dane_municipio", DANE_DEFAULT).strip()
         tipo_solicitante = request.form.get("tipo_solicitante", "suscriptor").strip()
-        # Whitelist tipo_solicitante (#48)
-        if tipo_solicitante not in ("suscriptor", "usuario", "SUS", "USR"):
+        if tipo_solicitante not in ("suscriptor", "usuario", "tercero", "SUS", "USR"):
             tipo_solicitante = "suscriptor"
-        resumen  = request.form.get("resumen", "").strip()
-        detalle  = request.form.get("descripcion_detallada", "")
+        resumen  = request.form.get("resumen", request.form.get("descripcion", "")).strip()
+        detalle  = request.form.get("descripcion_detallada", resumen)
         comp     = request.form.get("componente_afectado", "")
         req_vis  = 1 if request.form.get("requiere_visita") else 0
+        # Campos legacy para compatibilidad SUI (canal_codigo/servicio_codigo)
+        canal_cod    = "99"
+        servicio_cod = fk_servicio_id
 
         cfg_tipo = TIPOS_PQR.get(tipo_pqr, {"plazo": 15})
         plazo    = cfg_tipo["plazo"]
@@ -453,26 +378,24 @@ def nueva():
             conn.execute("""
                 INSERT INTO pqrs
                 (fk_registro_id, tipo_pqr, fk_suscriptor_id,
-                 medio_recepcion, canal_codigo,
-                 causal_codigo, causal_texto,
-                 subcausal_codigo, subcausal_texto,
-                 servicio_codigo,
+                 canal_codigo, causal_texto, servicio_codigo,
+                 fk_servicio_id, fk_tipo_solicitante_id, fk_medio_id, fk_causal_id,
                  estado_pqr, fecha_limite,
                  descripcion_detallada, radicado_visible,
                  resumen, componente_afectado,
                  requiere_visita, mes_reporte,
-                 tipo_solicitante, dane_municipio, grupo_causal)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 tipo_solicitante, dane_municipio)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (reg_id, tipo_pqr, susc_id,
-                  CANALES.get(canal_cod, canal_cod), canal_cod,
-                  causal_cod, CAUSALES.get(causal_cod, {}).get("texto",""),
-                  subcausal_cod,
-                  SUBCAUSALES_FACTURACION.get(subcausal_cod,""),
-                  servicio_cod,
+                  canal_cod, causal_texto, servicio_cod,
+                  fk_servicio_id or None,
+                  fk_tipo_solicitante_id or None,
+                  fk_medio_id or None,
+                  fk_causal_id or None,
                   "Recibida", fecha_lim,
                   detalle, codigo, resumen, comp,
                   req_vis, mes_rep,
-                  tipo_solicitante, dane_municipio, grupo_causal))
+                  tipo_solicitante, dane_municipio))
             conn.commit()
 
             log_action(accion="CREATE", modulo="pqrs",
@@ -512,12 +435,7 @@ def nueva():
                            suscriptores=suscriptores,
                            tipos_pqr=list(TIPOS_PQR.keys()),
                            tipos_pqr_json=TIPOS_PQR,
-                           causales=CAUSALES,
-                           subcausales=SUBCAUSALES_FACTURACION,
-                           canales=CANALES,
-                           servicios=SERVICIOS,
                            componentes=COMPONENTES,
-                           grupos_causal=GRUPO_CAUSALES,
                            dane_default=dane_default)
 
 
@@ -570,7 +488,6 @@ def ver(pid):
     return render_template("pqrs/ver.html",
                            pqr=pqr, ordenes=ordenes, actas=actas,
                            tecnicos=tecnicos, proyectos=proyectos,
-                           causales=CAUSALES, estados_sui=ESTADOS_SUI,
                            componentes=COMPONENTES)
 
 
@@ -707,16 +624,16 @@ def registrar_acta(ot_id):
             INSERT INTO actas_ejecucion
             (fk_ot_id, fecha_ejecucion, hora_inicio, hora_fin,
              tareas_realizadas, materiales_utilizados,
-             pruebas_presion, pruebas_cloro,
+             pruebas_cloro,
              observaciones, novedades,
              conformidad_usuario, verificado_supervisor, estado_acta)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,0,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,0,?)
         """, (ot_id,
               data.get("fecha_ejecucion", date.today().isoformat()),
               data.get("hora_inicio",""), data.get("hora_fin",""),
               data.get("tareas_realizadas",""),
               data.get("materiales_utilizados",""),
-              data.get("pruebas_presion",""), data.get("pruebas_cloro",""),
+              data.get("pruebas_cloro",""),
               data.get("observaciones",""), data.get("novedades",""),
               int(data.get("conformidad_usuario", 0)), "Registrada"))
 
@@ -995,8 +912,8 @@ def exportar_sui():
             "Tipo_PQR":        r["tipo_pqr"],
             "Usuario":         r["razon_social"],
             "Estado_Interno":  r["estado_pqr"],
-            "Causal_Texto":    CAUSALES.get(causal, {}).get("texto",""),
-            "Canal_Texto":     CANALES.get(canal,""),
+            "Causal_Texto":    r["causal_texto"] if "causal_texto" in r.keys() else _CAUSALES_SUI.get(causal, {}).get("texto",""),
+            "Canal_Texto":     _CANALES_SUI.get(canal,""),
             "Mes_Reporte":     r["mes_reporte"] or "",
             "Ya_Reportado":    "Sí" if r["reportado_sui"] else "No",
         })
@@ -1156,18 +1073,6 @@ def api_stats():
         "no_reportadas":   no_reportadas,
     })
 
-
-@pqrs_bp.route("/api/formulario-data")
-@login_requerido
-def api_formulario_data():
-    """Datos completos para formulario PQRS (causales, canales, servicios, tipos)."""
-    return jsonify({
-        "causales":    {k: v for k, v in CAUSALES.items()},
-        "subcausales": SUBCAUSALES_FACTURACION,
-        "canales":     CANALES,
-        "servicios":   SERVICIOS,
-        "tipos":       {k: v for k, v in TIPOS_PQR.items()},
-    })
 
 
 # ── Alias compatibilidad: exportar_sspd → exportar_sui ──────────────

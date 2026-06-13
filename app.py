@@ -270,6 +270,8 @@ def _run_migrations():
         "database.migrations.029_personal_gl01",
         "database.migrations.030_gobierno_ge01",
         "database.migrations.031_pqrs_jerarquia",
+        "database.migrations.032_pqrs_rc6_campos",
+        "database.migrations.033_ga03_fuentes_hidricas",
     ]
     for mod_name in migraciones:
         try:
