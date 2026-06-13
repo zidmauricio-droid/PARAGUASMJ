@@ -68,6 +68,24 @@
   </div>
 </div>
 
+<!-- Modal resultados -->
+<div class="modal fade" id="modalResultados" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-clipboard-check me-2"></i>Resultados de la Muestra</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div id="div-resultados-body" class="p-3">Cargando…</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal nueva muestra -->
 <div class="modal fade" id="modalMuestra" tabindex="-1">
   <div class="modal-dialog modal-lg">
@@ -246,16 +264,32 @@ async function guardarMuestra() {
 async function verResultados(mid) {
   const d = await api(`/calidad-agua/api/muestras/${mid}/resultados`);
   if (!d.ok) return;
-  const lines = d.resultados.map(r => {
-    const ico = r.resultado === 'ACEPTABLE' ? '✅' : r.resultado === 'NO_ACEPTABLE' ? '❌' : '—';
-    const extra = r.resultado === 'NO_ACEPTABLE' && r.observacion
-      ? `<br><small class="text-danger">${r.observacion}</small>` : '';
-    return `<li class="list-group-item py-1">${ico} <strong>${r.param_nombre}</strong>
-      ${r.valor_obtenido != null ? `= ${r.valor_obtenido} ${r.unidad||''}` : ''}${extra}</li>`;
+  const rows = d.resultados.map(r => {
+    const ico = r.resultado === 'ACEPTABLE'
+      ? '<span class="badge bg-success">✔ Aceptable</span>'
+      : r.resultado === 'NO_ACEPTABLE'
+        ? '<span class="badge bg-danger">✘ No Aceptable</span>'
+        : '<span class="badge bg-secondary">— No medido</span>';
+    const valor = r.valor_obtenido != null
+      ? `<strong class="text-danger">${r.valor_obtenido} ${r.unidad||''}</strong>` : '—';
+    const obs = r.resultado === 'NO_ACEPTABLE' && r.observacion
+      ? `<small class="text-danger d-block mt-1">${r.observacion}</small>` : '';
+    return `<tr>
+      <td><strong>${r.param_nombre}</strong></td>
+      <td class="text-center">${ico}</td>
+      <td class="text-center">${valor}</td>
+      <td><small>${r.norma||''}</small>${obs}</td>
+    </tr>`;
   }).join('');
-  alert('Resultados:\n' + d.resultados.map(r =>
-    `${r.param_nombre}: ${r.resultado}${r.valor_obtenido != null ? ' ('+r.valor_obtenido+')' : ''}`
-  ).join('\n'));
+  document.getElementById('div-resultados-body').innerHTML = `
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark">
+        <tr><th>Parámetro</th><th class="text-center">Resultado</th>
+            <th class="text-center">Valor encontrado</th><th>Norma / Observación</th></tr>
+      </thead>
+      <tbody>${rows || '<tr><td colspan="4" class="text-center text-muted py-3">Sin resultados registrados</td></tr>'}</tbody>
+    </table>`;
+  new bootstrap.Modal(document.getElementById('modalResultados')).show();
 }
 
 document.addEventListener('DOMContentLoaded', cargarResumen);

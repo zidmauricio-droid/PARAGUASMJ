@@ -269,6 +269,7 @@ def _run_migrations():
         "database.migrations.028_puntos_concertacion",
         "database.migrations.029_personal_gl01",
         "database.migrations.030_gobierno_ge01",
+        "database.migrations.031_pqrs_jerarquia",
     ]
     for mod_name in migraciones:
         try:

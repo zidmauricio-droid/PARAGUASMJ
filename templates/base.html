@@ -77,16 +77,17 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li><h6 class="dropdown-header">Gestión Ambiental y Operativa</h6></li>
+                        <li><a class="dropdown-item" href="{{ url_for('gis.mapa') }}">
+                            <i class="bi bi-map me-2 text-success"></i>GA-01 Operación Acueducto</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('calidad_agua.panel') }}">
                             <i class="bi bi-droplet-fill me-2 text-info"></i>GA-02 Calidad del Agua</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('balance_hidrico.panel') }}">
                             <i class="bi bi-water me-2 text-primary"></i>GA-03 Balance Hídrico</a></li>
                         <li><a class="dropdown-item" href="{{ url_for('ordenes_trabajo.panel') }}">
                             <i class="bi bi-tools me-2 text-warning"></i>GA-07 Órdenes de Trabajo</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('gis.mapa') }}">
-                            <i class="bi bi-map me-2 text-success"></i>GA-08 Mapa GIS</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ '/proyectos2/' }}">
-                            <i class="bi bi-kanban me-2"></i>GA-09 Proyectos</a></li>
+                            <i class="bi bi-kanban me-2 text-secondary"></i>GA-08 Proyectos</a></li>
                     </ul>
                 </li>
                 <!-- GF — Gestión Financiera -->

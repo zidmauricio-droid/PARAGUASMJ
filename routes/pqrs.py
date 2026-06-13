@@ -229,6 +229,73 @@ def api_subcausales(causal_cod):
     return jsonify({"ok": True, "subcausales": result})
 
 
+# ── API jerarquía PQRS — 4 niveles (RC6 approved) ─────────────────
+
+@pqrs_bp.route("/api/gc-servicios")
+@login_requerido
+def api_gc_servicios():
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM gc_servicios WHERE activo=1 ORDER BY pk_servicio_id"
+        ).fetchall()
+        return jsonify({"ok": True, "servicios": [dict(r) for r in rows]})
+    except Exception:
+        return jsonify({"ok": True, "servicios": [
+            {"pk_servicio_id": 1, "codigo": "ACUEDUCTO",      "nombre": "Acueducto"},
+            {"pk_servicio_id": 2, "codigo": "ALCANTARILLADO", "nombre": "Alcantarillado"},
+        ]})
+    finally:
+        conn.close()
+
+
+@pqrs_bp.route("/api/gc-causales")
+@login_requerido
+def api_gc_causales():
+    """Causales internas parametrizables (gc_pqrs_causales), filtradas por servicio."""
+    servicio_id = request.args.get("servicio_id", type=int)
+    conn = get_db()
+    try:
+        if servicio_id:
+            rows = conn.execute(
+                """SELECT * FROM gc_pqrs_causales
+                   WHERE activo=1 AND (fk_servicio_id=? OR fk_servicio_id IS NULL)
+                   ORDER BY orden, codigo""",
+                (servicio_id,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM gc_pqrs_causales WHERE activo=1 ORDER BY orden, codigo"
+            ).fetchall()
+        return jsonify({"ok": True, "causales": [dict(r) for r in rows]})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@pqrs_bp.route("/api/gc-medios")
+@login_requerido
+def api_gc_medios():
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM gc_medios_recepcion WHERE activo=1 ORDER BY pk_medio_id"
+        ).fetchall()
+        return jsonify({"ok": True, "medios": [dict(r) for r in rows]})
+    except Exception:
+        return jsonify({"ok": True, "medios": [
+            {"pk_medio_id": 1, "nombre": "Presencial / Ventanilla"},
+            {"pk_medio_id": 2, "nombre": "Telefónico"},
+            {"pk_medio_id": 3, "nombre": "Web / Formulario en línea"},
+            {"pk_medio_id": 4, "nombre": "Correo electrónico"},
+            {"pk_medio_id": 5, "nombre": "WhatsApp"},
+            {"pk_medio_id": 6, "nombre": "Correspondencia escrita"},
+        ]})
+    finally:
+        conn.close()
+
+
 # ══════════════════════════════════════════════════════════════════
 # PANEL PRINCIPAL
 # ══════════════════════════════════════════════════════════════════
