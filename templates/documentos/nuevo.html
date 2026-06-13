@@ -715,6 +715,18 @@ const PLANTILLAS_DATA = {
 // Fix: los UMD de TipTap se exponen como TiptapCore, TiptapStarterKit, etc.
 // ════════════════════════════════════════════════════════════════════
 let editor = null, docId = null, autosaveTimer = null, textoIA = "";
+
+// Inserción universal: usa TipTap si disponible, sino textarea fallback
+function insertarEnEditor(html) {
+  if (editor) {
+    editor.chain().focus().insertContent(html).run();
+  } else if (window._fallbackInsert) {
+    // Convertir HTML a texto plano básico para el textarea
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    window._fallbackInsert(tmp.innerText || tmp.textContent || html);
+  }
+}
 let _editorInitialized = false;
 
 // ── Resolver extensiones desde los globals UMD ─────────────────────
@@ -900,45 +912,92 @@ function initEditor() {
   if (HL   && HL.Highlight)    exts.push(HL.Highlight.configure({multicolor:true}));
   if (FF   && FF.FontFamily)   exts.push(FF.FontFamily);
 
-  editor = new Editor({
-    element: document.getElementById('editor-tiptap'),
-    extensions: exts,
-    content: '<p></p>',
-    editable: true,
-    onUpdate() { marcarUnsaved(); clearTimeout(autosaveTimer); autosaveTimer = setTimeout(guardarBorrador,30000); },
-    onSelectionUpdate() { actualizarToolbar(); },
-  });
+  try {
+    editor = new Editor({
+      element: document.getElementById('editor-tiptap'),
+      extensions: exts,
+      content: '<p></p>',
+      editable: true,
+      onUpdate() { marcarUnsaved(); clearTimeout(autosaveTimer); autosaveTimer = setTimeout(guardarBorrador,30000); },
+      onSelectionUpdate() { actualizarToolbar(); },
+    });
+    // Garantizar estado editable (#57/#60)
+    editor.setEditable(true);
 
-  // Garantizar estado editable (#57/#60)
-  editor.setEditable(true);
+    // Cargar contenido guardado
+    const saved = document.getElementById('contenido-guardado')?.value;
+    if (saved && saved.trim() && saved !== '<p></p>') editor.commands.setContent(saved);
 
-  // Cargar contenido guardado
-  const saved = document.getElementById('contenido-guardado')?.value;
-  if (saved && saved.trim() && saved !== '<p></p>') editor.commands.setContent(saved);
+    // Drag & drop imágenes
+    document.getElementById('editor-tiptap').addEventListener('drop', async e => {
+      const file = e.dataTransfer?.files?.[0];
+      if (file?.type.startsWith('image/')) {
+        e.preventDefault();
+        const url = await uploadImagen(file);
+        if (url) editor.chain().focus().setImage({src:url}).run();
+      }
+    });
 
-  // Drag & drop imágenes
-  document.getElementById('editor-tiptap').addEventListener('drop', async e => {
-    const file = e.dataTransfer?.files?.[0];
-    if (file?.type.startsWith('image/')) {
-      e.preventDefault();
-      const url = await uploadImagen(file);
-      if (url) editor.chain().focus().setImage({src:url}).run();
-    }
-  });
-
-  console.log('✅ Editor TipTap inicializado con', exts.length, 'extensiones');
+    console.log('✅ Editor TipTap inicializado con', exts.length, 'extensiones');
+  } catch (err) {
+    console.error('❌ TipTap init falló:', err);
+    fallbackEditor();
+  }
 }
 
 function fallbackEditor() {
-  document.getElementById('toolbar').innerHTML =
-    '<div class="alert alert-info m-2 small"><i class="bi bi-pencil me-1"></i>'
-    +'Editor de texto enriquecido no disponible. Usando modo texto simple.</div>';
-  document.getElementById('editor-tiptap').innerHTML =
-    `<textarea id="ta-fallback" name="contenido_html_ta" rows="20"
-      style="width:100%;border:none;padding:20px 24px;resize:vertical;
-             font-family:Calibri,Arial,sans-serif;font-size:11pt;outline:none;"
-      placeholder="Redacte aquí el contenido del documento..."
-      oninput="document.getElementById('contenido-hidden').value=this.value"></textarea>`;
+  // Reemplazar toolbar con aviso simple (sin eliminar macros)
+  const tb = document.getElementById('toolbar');
+  if (tb) tb.innerHTML =
+    '<div class="d-flex align-items-center gap-2 px-3 py-2 bg-warning-subtle small fw-semibold">'
+    +'<i class="bi bi-pencil-square text-warning"></i>'
+    +'Editor enriquecido no disponible — modo texto funcional activo'
+    +'<kbd class="ms-2">Ctrl+B</kbd>negrita&nbsp;<kbd>Ctrl+I</kbd>itálica&nbsp;<kbd>Ctrl+U</kbd>subrayado</div>';
+
+  // Crear textarea funcional como editor principal
+  const area = document.getElementById('editor-tiptap');
+  if (!area) return;
+  area.innerHTML =
+    `<textarea id="ta-fallback" rows="22"
+      style="width:100%;min-height:440px;border:none;padding:20px 24px;resize:vertical;
+             font-family:Calibri,Arial,sans-serif;font-size:11pt;line-height:1.6;outline:none;
+             background:#fff;"
+      placeholder="Redacte aquí el contenido del documento. Use Ctrl+B (negrita), Ctrl+I (itálica)."
+    ></textarea>`;
+
+  const ta = document.getElementById('ta-fallback');
+  if (!ta) return;
+
+  // Sincronizar con campo oculto
+  ta.addEventListener('input', () => {
+    const h = document.getElementById('contenido-hidden');
+    if (h) h.value = ta.value;
+  });
+
+  // Atajos de teclado básicos para fallback
+  ta.addEventListener('keydown', e => {
+    if (!e.ctrlKey) return;
+    const s = ta.selectionStart, en = ta.selectionEnd, sel = ta.value.substring(s, en);
+    let rep = null;
+    if (e.key === 'b') rep = `**${sel}**`;
+    if (e.key === 'i') rep = `*${sel}*`;
+    if (e.key === 'u') rep = `_${sel}_`;
+    if (rep) {
+      e.preventDefault();
+      ta.value = ta.value.substring(0, s) + rep + ta.value.substring(en);
+      ta.selectionStart = ta.selectionEnd = s + rep.length;
+      ta.dispatchEvent(new Event('input'));
+    }
+  });
+
+  // Redirigir macros al textarea
+  window._fallbackInsert = text => {
+    const pos = ta.selectionStart;
+    ta.value = ta.value.substring(0, pos) + '\n' + text + '\n' + ta.value.substring(pos);
+    ta.selectionStart = ta.selectionEnd = pos + text.length + 2;
+    ta.focus();
+    ta.dispatchEvent(new Event('input'));
+  };
 }
 
 // ── Comandos del toolbar ────────────────────────────────────────────
@@ -1210,69 +1269,49 @@ function copiarTextoIA() {
 
 // ── Macros ─────────────────────────────────────────────────────────
 function macroFecha() {
-  if (!editor) return;
   const h = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
-  editor.chain().focus().insertContent(h).run();
+  insertarEnEditor(`<p>${h}</p>`);
 }
 function macroFirma() {
-  if (!editor) return;
-  editor.chain().focus().insertContent(`
-    <p>&nbsp;</p><p>Cordialmente,</p><p>&nbsp;</p>
+  insertarEnEditor(`<p>&nbsp;</p><p>Cordialmente,</p><p>&nbsp;</p>
     <p>___________________________</p>
-    <p><strong>${d.representante_legal||'Representante Legal'}</strong></p>
-    <p>${d.cargo_representante||'Representante Legal'}</p>
-    <p>Villeta, Cundinamarca</p>
-  `).run();
+    <p><strong>Representante Legal</strong></p>`);
 }
 function macroTablaIndicadores() {
-  if (!editor) return;
-  editor.chain().focus().insertContent(`
-    <table><tr><th>Indicador</th><th>Meta</th><th>Actual</th><th>Cumplimiento</th><th>Observación</th></tr>
+  insertarEnEditor(`<table><tr><th>Indicador</th><th>Meta</th><th>Actual</th><th>Cumplimiento</th><th>Observación</th></tr>
     <tr><td>IANC (%)</td><td>&lt;30%</td><td></td><td></td><td></td></tr>
     <tr><td>Continuidad (h/día)</td><td>24 h</td><td></td><td></td><td></td></tr>
     <tr><td>IRCA (%)</td><td>&lt;5%</td><td></td><td></td><td></td></tr>
     <tr><td>Micromedición (%)</td><td>100%</td><td></td><td></td><td></td></tr>
     <tr><td>IPUF (m³/susc-mes)</td><td>&lt;6</td><td></td><td></td><td></td></tr>
-    </table>
-  `).run();
+    </table>`);
 }
 function macroTablaActividades() {
-  if (!editor) return;
-  editor.chain().focus().insertContent(`
-    <table><tr><th>Actividad</th><th>Responsable</th><th>Fecha Prog.</th><th>Fecha Real</th><th>Estado</th><th>% Avance</th></tr>
+  insertarEnEditor(`<table><tr><th>Actividad</th><th>Responsable</th><th>Fecha Prog.</th><th>Fecha Real</th><th>Estado</th><th>% Avance</th></tr>
     <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
     <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-    </table>
-  `).run();
+    </table>`);
 }
 function macroTablaMarcoJuridico() {
-  if (!editor) return;
-  editor.chain().focus().insertContent(`
-    <table><tr><th>Norma</th><th>Entidad</th><th>Aplicación</th></tr>
+  insertarEnEditor(`<table><tr><th>Norma</th><th>Entidad</th><th>Aplicación</th></tr>
     <tr><td>Ley 142/1994</td><td>Congreso</td><td>Régimen servicios públicos</td></tr>
     <tr><td>Ley 373/1997</td><td>Congreso</td><td>Uso eficiente del agua (PUEAA)</td></tr>
     <tr><td>Decreto 1076/2015</td><td>MADS</td><td>Sector ambiental</td></tr>
     <tr><td>RAS 2017</td><td>MVCT</td><td>Reglamento técnico agua</td></tr>
     <tr><td>Res. CRA 943/2021</td><td>CRA</td><td>Esquemas diferenciales rurales</td></tr>
-    <tr><td></td><td></td><td></td></tr>
-    </table>
-  `).run();
+    </table>`);
 }
 
 // ── Macro: Representante legal (desde api/representante) ───────────
 async function macroRepresentante() {
-  if (!editor) return;
   try {
     const d = await fetch('/documentos/api/representante').then(r=>r.json());
-    const html = `<p>&nbsp;</p>
-      <p>Atentamente,</p><p>&nbsp;</p>
+    insertarEnEditor(`<p>&nbsp;</p><p>Atentamente,</p><p>&nbsp;</p>
       <p>___________________________</p>
       <p><strong>${d.representante_legal || 'Representante Legal'}</strong></p>
       <p>${d.cargo_representante || 'Representante Legal'}</p>
-      <p>${d.nombre_asociacion || 'Acueducto Comunitario'}</p>
-      <p>NIT: ${d.nit || ''}</p>`;
-    editor.chain().focus().insertContent(html).run();
-  } catch { editor.chain().focus().insertContent('<p>Representante Legal</p>').run(); }
+      <p>${d.nombre_asociacion || 'Acueducto Comunitario'}</p>`);
+  } catch { insertarEnEditor('<p>Representante Legal</p>'); }
 }
 
 // ── Macro: Encabezado institucional ────────────────────────────────
@@ -1291,15 +1330,13 @@ async function macroEncabezado() {
       <p><strong>Código:</strong> ${area}-${tipo}-${new Date().getFullYear()}-###&nbsp;&nbsp;
          <strong>Fecha:</strong> ${fecha}</p>
       <p>&nbsp;</p>`;
-    editor.chain().focus().insertContent(html).run();
-  } catch { editor.chain().focus().insertContent('<p><strong>Encabezado institucional</strong></p>').run(); }
+    insertarEnEditor(html);
+  } catch { insertarEnEditor('<p><strong>Encabezado institucional</strong></p>'); }
 }
 
 // ── Macro: Tabla balance hídrico ────────────────────────────────────
 function macroBalanceHidrico() {
-  if (!editor) return;
-  editor.chain().focus().insertContent(`
-    <p><strong>Balance Hídrico del Sistema</strong></p>
+  insertarEnEditor(`<p><strong>Balance Hídrico del Sistema</strong></p>
     <table>
       <tr><th>Tramo</th><th>Caudal Entrada (L/s)</th><th>Caudal Salida (L/s)</th><th>Pérdida (L/s)</th><th>Pérdida (%)</th></tr>
       <tr><td>Bocatoma → Desarenador</td><td></td><td></td><td></td><td></td></tr>
@@ -1308,13 +1345,11 @@ function macroBalanceHidrico() {
       <tr><td>Almacenamiento → Distribución</td><td></td><td></td><td></td><td></td></tr>
       <tr><td><strong>TOTAL</strong></td><td></td><td></td><td></td><td></td></tr>
     </table>
-    <p><small>Nota: 1 L/s = 86.4 m³/día. IANC objetivo &lt; 30%</small></p>
-  `).run();
+    <p><small>Nota: 1 L/s = 86.4 m³/día. IANC objetivo &lt; 30%</small></p>`);
 }
 
 // ── Macro: Líneas de firma (firmantes seleccionados o de API) ───────
 async function macroFirmantes() {
-  if (!editor) return;
   // Usar firmantes seleccionados en el formulario
   const checks = document.querySelectorAll('input[name="firmantes_sel"]:checked');
   let filas = [];
@@ -1338,18 +1373,14 @@ async function macroFirmantes() {
                text-align:center;padding-top:8px;font-size:10px;">
       __________________________<br><strong>${f.n}</strong><br>${f.c}
     </td>`).join('<td style="width:8px;"></td>');
-  editor.chain().focus().insertContent(
-    `<p>&nbsp;</p><table style="width:100%;border-collapse:collapse;margin-top:32px;">
-       <tr>${celdas}</tr></table>`
-  ).run();
+  insertarEnEditor(`<p>&nbsp;</p><table style="width:100%;border-collapse:collapse;margin-top:32px;">
+       <tr>${celdas}</tr></table>`);
 }
 
 // ── Macro: Saludo legal (apertura formal) ───────────────────────────
 function macroSaltoLegal() {
-  if (!editor) return;
   const fecha = new Date().toLocaleDateString('es-CO',{day:'2-digit',month:'long',year:'numeric'});
-  editor.chain().focus().insertContent(`
-    <p>${window._orgMunicipio||'[Municipio]'}, ${fecha}</p>
+  insertarEnEditor(`<p>${window._orgMunicipio||'[Municipio]'}, ${fecha}</p>
     <p>&nbsp;</p>
     <p>Señores:<br><strong></strong></p>
     <p>Ciudad.</p>
@@ -1357,8 +1388,7 @@ function macroSaltoLegal() {
     <p>Referencia: </p>
     <p>&nbsp;</p>
     <p>Respetados señores:</p>
-    <p>&nbsp;</p>
-  `).run();
+    <p>&nbsp;</p>`);
 }
 
 // ── Utilidades del formulario ───────────────────────────────────────
