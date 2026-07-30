@@ -1,187 +1,492 @@
 {% extends "base.html" %}
-{% block title %}Panel Principal — PARAGUASMJ{% endblock %}
+{% block title %}Centro de Control Institucional — SIGCA{% endblock %}
+{% block extra_css %}
+<style>
+/* ── KPI cards ── */
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  transition: transform .15s, box-shadow .15s;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
+.kpi-top {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+}
+.kpi-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+.kpi-num {
+  font-size: 1.85rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.kpi-label {
+  font-size: .78rem;
+  color: var(--text-secondary);
+  margin-top: .1rem;
+}
+.progress-thin {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.progress-thin .progress-bar {
+  border-radius: 2px;
+}
+
+/* ── Section cards ── */
+.dash-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  height: 100%;
+}
+.dash-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-secondary);
+}
+.dash-card-header.hdr-water {
+  background: linear-gradient(135deg, #0f766e 0%, #0d5c56 100%);
+  color: var(--text-primary);
+}
+.dash-card-header.hdr-ops {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: var(--text-primary);
+}
+.dash-card-header.hdr-acciones {
+  background: linear-gradient(135deg, #92400e 0%, #78350f 100%);
+  color: var(--text-primary);
+}
+.dash-card-header.hdr-docs {
+  background: linear-gradient(135deg, #1e3a5f 0%, #112240 100%);
+  color: var(--text-primary);
+}
+.dash-card-header.hdr-pqrs {
+  background: linear-gradient(135deg, #3b1f1f 0%, #2a1010 100%);
+  color: var(--text-primary);
+}
+
+/* ── Op rows ── */
+.op-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .55rem .9rem;
+  border-bottom: 1px solid var(--border);
+}
+.op-row:last-child { border-bottom: none; }
+.op-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .85rem;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.06);
+}
+.op-label {
+  flex: 1;
+  font-size: .84rem;
+  color: var(--text-primary);
+}
+.op-bar {
+  width: 72px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.op-bar-fill { height: 100%; border-radius: 3px; }
+.op-val {
+  width: 28px;
+  text-align: right;
+  font-weight: 700;
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+
+/* ── Table ── */
+.dash-table { margin-bottom: 0; }
+.dash-table thead th {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border-color: var(--border);
+  padding: .5rem .75rem;
+}
+.dash-table tbody tr {
+  border-color: var(--border);
+}
+.dash-table tbody td {
+  color: var(--text-primary);
+  font-size: .84rem;
+  vertical-align: middle;
+  border-color: var(--border);
+  padding: .45rem .75rem;
+}
+.dash-table tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+/* ── List group dark ── */
+.list-dark .list-group-item {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+.list-dark .list-group-item:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+/* ── KPI icon tints ── */
+.kpi-tint-blue   { background: rgba(30,136,229,.15); color: var(--color-accent); }
+.kpi-tint-gold   { background: rgba(217,119, 6,.15); color: var(--color-warning); }
+.kpi-tint-green  { background: rgba(13,148,136,.15); color: var(--color-success); }
+.kpi-tint-danger { background: rgba(224, 82,82,.15); color: var(--color-danger); }
+.kpi-tint-info   { background: rgba(6,182,212,.15);  color: #06b6d4; }
+
+.kpi-color-blue   { color: var(--color-accent); }
+.kpi-color-gold   { color: var(--color-warning); }
+.kpi-color-green  { color: var(--color-success); }
+.kpi-color-danger { color: var(--color-danger); }
+.kpi-color-info   { color: #06b6d4; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0"><i class="bi bi-speedometer2 me-2 text-primary"></i>Panel de Control Institucional</h4>
-    <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i>{{ hoy }}</span>
+
+{# ══════════════════════════════════════════════════════════════
+   HEADER
+   ══════════════════════════════════════════════════════════════ #}
+<div class="d-flex align-items-start align-items-sm-center justify-content-between flex-wrap gap-2 mb-4">
+  <div>
+    <h5 class="mb-1 fw-bold" style="color: var(--text-primary);">
+      <i class="bi bi-speedometer2 me-2" style="color: var(--color-accent);"></i>Centro de Control Institucional
+    </h5>
+    <div style="font-size: .8rem; color: var(--text-secondary);">
+      <i class="bi bi-calendar3 me-1"></i>{{ hoy }}
+      &nbsp;·&nbsp;
+      <span style="color: var(--text-secondary);">v4.0</span>
+    </div>
+  </div>
+  <a href="{{ url_for('documentos.nuevo') }}" class="btn btn-sm"
+     style="background: var(--color-accent); color: #fff; border: none;">
+    <i class="bi bi-plus-circle me-1"></i>Nuevo documento
+  </a>
 </div>
 
-<!-- KPI CARDS -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
-        <div class="card kpi-card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="kpi-icon bg-primary-subtle text-primary rounded-circle p-3">
-                    <i class="bi bi-file-earmark-text fs-4"></i>
-                </div>
-                <div>
-                    <div class="fs-2 fw-bold text-primary">{{ total_docs }}</div>
-                    <div class="text-muted small">Documentos</div>
-                </div>
-            </div>
+{# ══════════════════════════════════════════════════════════════
+   KPI ROW
+   ══════════════════════════════════════════════════════════════ #}
+<div class="row g-3 mb-3">
+
+  {# Documentos #}
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-circle kpi-tint-blue">
+          <i class="bi bi-file-earmark-text"></i>
         </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card kpi-card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="kpi-icon bg-warning-subtle text-warning rounded-circle p-3">
-                    <i class="bi bi-clock-history fs-4"></i>
-                </div>
-                <div>
-                    <div class="fs-2 fw-bold text-warning">{{ docs_pend }}</div>
-                    <div class="text-muted small">Pendientes</div>
-                </div>
-            </div>
+        <div>
+          <div class="kpi-num kpi-color-blue">{{ total_docs }}</div>
+          <div class="kpi-label">Documentos</div>
         </div>
+      </div>
+      <div class="progress-thin">
+        <div class="progress-bar" style="width: {{ [total_docs * 10, 100]|min }}%; background: var(--color-accent);"></div>
+      </div>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="card kpi-card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="kpi-icon bg-{% if pqrs_venc > 0 %}danger{% else %}success{% endif %}-subtle text-{% if pqrs_venc > 0 %}danger{% else %}success{% endif %} rounded-circle p-3">
-                    <i class="bi bi-chat-dots fs-4"></i>
-                </div>
-                <div>
-                    <div class="fs-2 fw-bold text-{% if pqrs_venc > 0 %}danger{% else %}success{% endif %}">{{ pqrs_pend }}</div>
-                    <div class="text-muted small">PQRS activas {% if pqrs_venc %}<span class="badge bg-danger">{{ pqrs_venc }} vencidas</span>{% endif %}</div>
-                </div>
-            </div>
+  </div>
+
+  {# Pendientes #}
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-circle kpi-tint-gold">
+          <i class="bi bi-clock-history"></i>
         </div>
-    </div>
-    <div class="col-6 col-lg-3">
-        <div class="card kpi-card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-                <div class="kpi-icon bg-info-subtle text-info rounded-circle p-3">
-                    <i class="bi bi-people fs-4"></i>
-                </div>
-                <div>
-                    <div class="fs-2 fw-bold text-info">{{ total_subs }}</div>
-                    <div class="text-muted small">Suscriptores activos</div>
-                </div>
-            </div>
+        <div>
+          <div class="kpi-num kpi-color-gold">{{ docs_pend }}</div>
+          <div class="kpi-label">Pendientes</div>
         </div>
+      </div>
+      <div class="progress-thin">
+        <div class="progress-bar" style="width: {{ [docs_pend * 15, 100]|min }}%; background: var(--color-warning);"></div>
+      </div>
     </div>
+  </div>
+
+  {# PQRS activas #}
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-circle {% if pqrs_venc > 0 %}kpi-tint-danger{% else %}kpi-tint-green{% endif %}">
+          <i class="bi bi-chat-dots"></i>
+        </div>
+        <div>
+          <div class="kpi-num {% if pqrs_venc > 0 %}kpi-color-danger{% else %}kpi-color-green{% endif %}">{{ pqrs_pend }}</div>
+          <div class="kpi-label">
+            PQRS Activas
+            {% if pqrs_venc %}
+            <span class="badge ms-1" style="font-size: .62rem; background: var(--color-danger);">{{ pqrs_venc }} venc.</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="progress-thin">
+        <div class="progress-bar"
+             style="width: {{ [pqrs_pend * 20, 100]|min }}%; background: {% if pqrs_venc > 0 %}var(--color-danger){% else %}var(--color-success){% endif %};"></div>
+      </div>
+    </div>
+  </div>
+
+  {# Suscriptores #}
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card">
+      <div class="kpi-top">
+        <div class="kpi-icon-circle kpi-tint-info">
+          <i class="bi bi-people"></i>
+        </div>
+        <div>
+          <div class="kpi-num kpi-color-info">{{ total_subs }}</div>
+          <div class="kpi-label">Suscriptores activos</div>
+        </div>
+      </div>
+      <div class="progress-thin">
+        <div class="progress-bar" style="width: {{ [total_subs * 2, 100]|min }}%; background: #06b6d4;"></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<!-- INDICADORES + ACCIONES -->
-<div class="row g-3 mb-4">
-    {% if indicador %}
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-verde-agua text-white">
-                <i class="bi bi-water me-2"></i>Indicadores Mes {{ mes }}/{{ anio }}
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
-                    <span class="text-muted">Produccion</span>
-                    <strong>{{ "%.1f"|format(indicador.produccion_m3 or 0) }} m³</strong>
-                </div>
-                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
-                    <span class="text-muted">Facturado</span>
-                    <strong>{{ "%.1f"|format(indicador.facturado_m3 or 0) }} m³</strong>
-                </div>
-                {% if indicador.ianc is not none %}
-                <div class="d-flex justify-content-between">
-                    <span class="text-muted fw-semibold">IANC</span>
-                    <span class="badge fs-6 {% if indicador.ianc <= 15 %}bg-success{% elif indicador.ianc <= 25 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
-                        {{ "%.1f"|format(indicador.ianc) }}%
-                    </span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
+{# ══════════════════════════════════════════════════════════════
+   SECOND ROW — Indicadores + Operativo + Acciones
+   ══════════════════════════════════════════════════════════════ #}
+<div class="row g-3 mb-3">
 
-    <div class="col-md-{% if indicador %}4{% else %}6{% endif %}">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-primary text-white">
-                <i class="bi bi-exclamation-triangle me-2"></i>Estado Operativo
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
-                    <span><i class="bi bi-tools text-warning me-1"></i>OT activas</span>
-                    <strong>{{ ots_activas }}</strong>
-                </div>
-                <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
-                    <span><i class="bi bi-exclamation-triangle text-danger me-1"></i>Fallas GIS</span>
-                    <strong class="text-danger">{{ fallas_act }}</strong>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span><i class="bi bi-calendar-check text-primary me-1"></i>Tareas hoy</span>
-                    <strong>{{ tareas_hoy }}</strong>
-                </div>
-            </div>
+  {# ── Indicadores Hídricos ── #}
+  {% if indicador %}
+  <div class="col-md-4">
+    <div class="dash-card">
+      <div class="dash-card-header hdr-water">
+        <span><i class="bi bi-water me-2"></i>Indicadores Hídricos{% if mes is defined %} {{ mes }}/{{ anio }}{% endif %}</span>
+      </div>
+      <div>
+        <div class="op-row">
+          <div class="op-icon"><i class="bi bi-droplet-fill" style="color: var(--color-success);"></i></div>
+          <span class="op-label">Producción m³</span>
+          <strong style="font-size: .84rem;">{{ "%.1f"|format(indicador.produccion_m3 or 0) }}</strong>
         </div>
+        <div class="op-row">
+          <div class="op-icon"><i class="bi bi-graph-up" style="color: var(--color-accent);"></i></div>
+          <span class="op-label">Facturado m³</span>
+          <strong style="font-size: .84rem;">{{ "%.1f"|format(indicador.facturado_m3 or 0) }}</strong>
+        </div>
+        {% if indicador.ianc is not none %}
+        <div class="op-row">
+          <div class="op-icon"><i class="bi bi-percent" style="color: var(--color-warning);"></i></div>
+          <span class="op-label fw-semibold">IANC</span>
+          <span class="badge"
+                style="font-size: .78rem; background:
+                  {% if indicador.ianc <= 15 %}var(--color-success)
+                  {% elif indicador.ianc <= 25 %}var(--color-warning)
+                  {% else %}var(--color-danger){% endif %}; color: #fff;">
+            {{ "%.1f"|format(indicador.ianc) }}%
+          </span>
+        </div>
+        {% endif %}
+      </div>
     </div>
+  </div>
+  {% endif %}
 
-    {% if mis_acciones %}
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm h-100 border-warning">
-            <div class="card-header bg-warning text-dark">
-                <i class="bi bi-pen me-2"></i>Mis acciones pendientes
-            </div>
-            <ul class="list-group list-group-flush">
-                {% for acc in mis_acciones %}
-                <li class="list-group-item d-flex justify-content-between">
-                    <span><a href="{{ url_for('documentos.ver', registro_id=acc.fk_registro_id) }}" class="text-decoration-none">{{ acc.codigo_completo }}</a></span>
-                    <small class="text-muted">{{ acc.fecha_limite }}</small>
-                </li>
-                {% endfor %}
-            </ul>
+  {# ── Estado Operativo ── #}
+  <div class="col-md-{% if indicador and mis_acciones %}4{% elif indicador or mis_acciones %}4{% else %}6{% endif %}">
+    <div class="dash-card">
+      <div class="dash-card-header hdr-ops">
+        <span><i class="bi bi-exclamation-triangle me-2" style="color: var(--color-warning);"></i>Estado Operativo</span>
+      </div>
+      <div>
+        <div class="op-row">
+          <div class="op-icon"><i class="bi bi-tools" style="color: var(--color-warning);"></i></div>
+          <span class="op-label">OT activas</span>
+          <div class="op-bar">
+            <div class="op-bar-fill" style="width: {{ [ots_activas * 20, 100]|min }}%; background: var(--color-warning);"></div>
+          </div>
+          <span class="op-val" style="color: var(--color-warning);">{{ ots_activas }}</span>
         </div>
+        <div class="op-row">
+          <div class="op-icon"><i class="bi bi-exclamation-triangle" style="color: var(--color-danger);"></i></div>
+          <span class="op-label">Fallas GIS</span>
+          <div class="op-bar">
+            <div class="op-bar-fill" style="width: {{ [fallas_act * 25, 100]|min }}%; background: var(--color-danger);"></div>
+          </div>
+          <span class="op-val" style="color: var(--color-danger);">{{ fallas_act }}</span>
+        </div>
+        <div class="op-row">
+          <div class="op-icon"><i class="bi bi-calendar-check" style="color: var(--color-accent);"></i></div>
+          <span class="op-label">Tareas hoy</span>
+          <div class="op-bar">
+            <div class="op-bar-fill" style="width: {{ [tareas_hoy * 15, 100]|min }}%; background: var(--color-accent);"></div>
+          </div>
+          <span class="op-val" style="color: var(--color-accent);">{{ tareas_hoy }}</span>
+        </div>
+      </div>
     </div>
-    {% endif %}
+  </div>
+
+  {# ── Mis acciones pendientes ── #}
+  {% if mis_acciones %}
+  <div class="col-md-4">
+    <div class="dash-card">
+      <div class="dash-card-header hdr-acciones">
+        <span><i class="bi bi-pen me-2"></i>Mis acciones pendientes</span>
+      </div>
+      <ul class="list-group list-group-flush list-dark">
+        {% for acc in mis_acciones %}
+        <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+          <a href="{{ url_for('documentos.ver', registro_id=acc.fk_registro_id) }}"
+             class="fw-semibold text-decoration-none"
+             style="font-size: .83rem; color: var(--color-accent);">{{ acc.codigo_completo }}</a>
+          <small style="color: var(--text-secondary);">{{ acc.fecha_limite }}</small>
+        </li>
+        {% else %}
+        <li class="list-group-item text-center py-3"
+            style="font-size: .84rem; color: var(--text-secondary);">Sin acciones pendientes</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
 
-<!-- TABLAS ULTIMOS REGISTROS -->
+{# ══════════════════════════════════════════════════════════════
+   THIRD ROW — Documentos + PQRS
+   ══════════════════════════════════════════════════════════════ #}
 <div class="row g-3">
-    <div class="col-lg-7">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header d-flex justify-content-between">
-                <span><i class="bi bi-clock-history me-2"></i>Ultimos documentos</span>
-                <a href="{{ url_for('documentos.listar') }}" class="btn btn-sm btn-outline-primary">Ver todos</a>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-hover table-sm mb-0">
-                    <thead class="table-light"><tr>
-                        <th>Codigo</th><th>Asunto</th><th>Estado</th><th>Fecha</th>
-                    </tr></thead>
-                    <tbody>
-                    {% for d in ultimos_docs %}
-                    <tr>
-                        <td><a href="{{ url_for('documentos.ver', registro_id=loop.revindex) }}" class="fw-semibold">{{ d.codigo_completo }}</a></td>
-                        <td class="text-truncate" style="max-width:180px;">{{ d.asunto_resumen }}</td>
-                        <td><span class="badge estado-{{ d.estado|replace(' ','_')|lower }}">{{ d.estado }}</span></td>
-                        <td><small>{{ d.fecha_radicacion }}</small></td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="4" class="text-center text-muted py-3">Sin documentos</td></tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+
+  {# ── Últimos documentos ── #}
+  <div class="col-lg-7">
+    <div class="dash-card">
+      <div class="dash-card-header hdr-docs">
+        <span><i class="bi bi-clock-history me-2" style="color: var(--color-accent);"></i>Últimos documentos</span>
+        <a href="{{ url_for('documentos.listar') }}"
+           class="btn btn-sm"
+           style="font-size: .75rem; padding: .2rem .55rem; border: 1px solid var(--color-accent); color: var(--color-accent); background: transparent;">
+          Ver todos
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table dash-table table-hover">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Asunto</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for d in ultimos_docs %}
+          <tr>
+            <td>
+              <a href="{{ url_for('documentos.ver', registro_id=d.fk_registro_id) }}"
+                 class="fw-semibold text-decoration-none"
+                 style="color: var(--color-accent);">{{ d.codigo_completo }}</a>
+            </td>
+            <td class="text-truncate" style="max-width: 180px;">{{ d.asunto_resumen }}</td>
+            <td>
+              <span class="badge"
+                    style="font-size: .7rem; background:
+                      {% if d.estado == 'Aprobado' %}var(--color-success)
+                      {% elif d.estado == 'Borrador' %}#475569
+                      {% elif 'revision' in d.estado|lower %}var(--color-warning)
+                      {% else %}#0891b2{% endif %}; color: #fff;">
+                {{ d.estado }}
+              </span>
+            </td>
+            <td><small style="color: var(--text-secondary);">{{ d.fecha_radicacion }}</small></td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-center py-3" style="color: var(--text-secondary);">Sin documentos recientes</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div class="col-lg-5">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header d-flex justify-content-between">
-                <span><i class="bi bi-chat-dots me-2"></i>Ultimas PQRS</span>
-                <a href="{{ url_for('pqrs.listar') }}" class="btn btn-sm btn-outline-danger">Ver todas</a>
-            </div>
-            <ul class="list-group list-group-flush">
-            {% for p in ultimas_pqrs %}
-            <li class="list-group-item">
-                <div class="d-flex justify-content-between">
-                    <small class="fw-semibold">{{ p.codigo_completo }}</small>
-                    <span class="badge {% if p.estado_pqr == 'Respondida' %}bg-success{% elif p.estado_pqr == 'Recibida' %}bg-warning text-dark{% else %}bg-info{% endif %} small">{{ p.estado_pqr }}</span>
-                </div>
-                <div class="text-muted small">{{ p.razon_social }} &middot; {{ p.tipo_pqr }}</div>
-            </li>
-            {% else %}
-            <li class="list-group-item text-center text-muted py-3">Sin PQRS</li>
-            {% endfor %}
-            </ul>
-        </div>
+  </div>
+
+  {# ── Últimas PQRS ── #}
+  <div class="col-lg-5">
+    <div class="dash-card">
+      <div class="dash-card-header hdr-pqrs">
+        <span><i class="bi bi-chat-dots me-2" style="color: var(--color-danger);"></i>Últimas PQRS</span>
+        <a href="{{ url_for('pqrs.listar') }}"
+           class="btn btn-sm"
+           style="font-size: .75rem; padding: .2rem .55rem; border: 1px solid var(--color-danger); color: var(--color-danger); background: transparent;">
+          Ver todas
+        </a>
+      </div>
+      <ul class="list-group list-group-flush list-dark">
+        {% for p in ultimas_pqrs %}
+        <li class="list-group-item px-3 py-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <small class="fw-semibold" style="color: var(--text-primary);">{{ p.codigo_completo }}</small>
+            <span class="badge"
+                  style="font-size: .68rem; background:
+                    {% if p.estado_pqr == 'Respondida' %}var(--color-success)
+                    {% elif p.estado_pqr == 'Recibida' %}var(--color-warning)
+                    {% else %}#0891b2{% endif %}; color: #fff;">
+              {{ p.estado_pqr }}
+            </span>
+          </div>
+          <div style="font-size: .78rem; color: var(--text-secondary);">{{ p.tipo_pqr }}</div>
+        </li>
+        {% else %}
+        <li class="list-group-item text-center py-3"
+            style="font-size: .85rem; color: var(--text-secondary);">Sin PQRS recientes</li>
+        {% endfor %}
+      </ul>
     </div>
+  </div>
+
 </div>
+
 {% endblock %}

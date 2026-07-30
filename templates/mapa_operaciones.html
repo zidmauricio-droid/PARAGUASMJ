@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Mapa GIS — ASUACAP{% endblock %}
+{% block title %}Mapa GIS — SIGCA{% endblock %}
 
 {% block extra_css %}
 {# Leaflet: usa copia local si existe, sino CDN #}
 <link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}"
       onerror="this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'">
 <style>
-  #mapa_asuacap { width: 100%; height: calc(100vh - 200px); min-height: 480px; border-radius: 10px; }
+  #mapa-gis { width: 100%; height: calc(100vh - 200px); min-height: 480px; border-radius: 10px; }
 
   /* Panel lateral */
   .map-panel {
@@ -67,10 +67,15 @@
 {% endblock %}
 
 {% block content %}
+<div class="modulo-header modulo-mapas">
+    <i class="bi bi-geo-alt-fill"></i>
+    <span>Mapa de Operaciones GIS — SIGCA</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h5 class="mb-0">
     <i class="bi bi-map me-2 text-primary"></i>
-    Sistema de Información Geográfica — ASUACAP
+    Sistema de Información Geográfica — SIGCA
   </h5>
   <div class="d-flex gap-2">
     <button class="btn btn-sm btn-outline-primary" id="btn-mi-ubicacion">
@@ -78,6 +83,10 @@
     </button>
     <button class="btn btn-sm btn-outline-danger" id="btn-modo-falla" title="Activar para reportar falla con clic">
       <i class="bi bi-exclamation-triangle me-1"></i>Reportar falla
+    </button>
+    <button class="btn btn-sm btn-success" id="btn-nuevo-punto" title="Añadir punto de infraestructura"
+            onclick="abrirModalNuevoPunto()">
+      <i class="bi bi-plus-circle me-1"></i>Nueva Infraestructura
     </button>
     <a href="{{ url_for('gis.mapa') }}" class="btn btn-sm btn-ghost" title="Recargar mapa">
       <i class="bi bi-arrow-clockwise"></i>
@@ -89,7 +98,7 @@
   <!-- Mapa principal -->
   <div class="col-lg-9">
     <div style="position:relative;">
-      <div id="mapa_asuacap"></div>
+      <div id="mapa-gis"></div>
       <div class="geo-alert" id="geo-alert">📍 Obteniendo ubicación del dispositivo…</div>
     </div>
   </div>
@@ -205,52 +214,37 @@
 </script>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
-// PARAGUASMJ — Mapa GIS Mejorado
-// - Mapa siempre visible (tile OSM + fallback color)
-// - Geolocalización como punto de pérdida de agua
-// - Marcador de oficina desde configuración BD
-// - Capas dinámicas con contadores
-// - Modo reportar falla con clic
-// ═══════════════════════════════════════════════════════════════
-
-// Espera a que Leaflet cargue
 function esperarLeaflet(cb, n) {
   n = n || 0;
   if (typeof L !== 'undefined') { cb(); }
   else if (n < 50) { setTimeout(function(){ esperarLeaflet(cb, n+1); }, 100); }
-  else { document.getElementById('mapa_asuacap').innerHTML =
+  else { document.getElementById('mapa-gis').innerHTML =
     '<div class="alert alert-warning m-3">⚠️ Leaflet no pudo cargarse. Verifique conexión a internet o copie Leaflet en /static/leaflet/</div>'; }
 }
 
 esperarLeaflet(function() {
 
-// ── Variables globales ──────────────────────────────────────────
 var modoFalla    = false;
 var fallaLat     = 0, fallaLon = 0;
 var marcadorGeo  = null;
 var circleGeo    = null;
 var marcadorOfic = null;
-var datosSubs    = [];   // cache para buscador
+var datosSubs    = [];
 var configMapa   = { lat: 5.0135, lon: -74.4700, zoom: 15,
-                     nombre: "ASUACAP", direccion: "", telefono: "" };
+                     nombre: "Acueducto", direccion: "", telefono: "" };
 
-// ── Crear mapa ──────────────────────────────────────────────────
-var map = L.map('mapa_asuacap', { zoomControl: true });
+var map = L.map('mapa-gis', { zoomControl: true });
 
-// Tile principal: OpenStreetMap
 var tileOSM = L.tileLayer(
   'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   { maxZoom: 19, attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>' }
 );
 
-// Tile satelite (ESRI)
 var tileSat = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   { maxZoom: 19, attribution: '© Esri' }
 );
 
-// Tile local (si existe) — sin error 404 visible
 var tileLocal = L.tileLayer(
   "{{ url_for('static', filename='map-tiles/{z}/{x}/{y}.png') }}",
   { maxZoom: 18, errorTileUrl: '' }
@@ -258,13 +252,11 @@ var tileLocal = L.tileLayer(
 
 tileOSM.addTo(map);
 
-// Control de capas base
 var baseMaps = {
   "🗺️ Mapa estándar": tileOSM,
   "🛰️ Satélite": tileSat
 };
 
-// ── Capas de datos ──────────────────────────────────────────────
 var capaInfra       = L.layerGroup().addTo(map);
 var capaSuscriptores= L.layerGroup().addTo(map);
 var capaFallas      = L.layerGroup().addTo(map);
@@ -275,13 +267,12 @@ var overlayMaps = {
   "🏭 Infraestructura": capaInfra,
   "👥 Suscriptores":    capaSuscriptores,
   "⚠️ Fallas":          capaFallas,
-  "🏢 Oficina ASUACAP": capaOficina,
+  "🏢 Oficina": capaOficina,
   "📍 Mi ubicación":    capaGeo
 };
 
 L.control.layers(baseMaps, overlayMaps, { collapsed: false, position: 'topright' }).addTo(map);
 
-// ── Leyenda ─────────────────────────────────────────────────────
 var leyenda = L.control({ position: 'bottomleft' });
 leyenda.onAdd = function() {
   var d = L.DomUtil.create('div','legend');
@@ -292,14 +283,13 @@ leyenda.onAdd = function() {
     <div class="legend-row"><div class="legend-dot" style="background:#10b981;"></div>Suscriptor activo</div>
     <div class="legend-row"><div class="legend-dot" style="background:#f59e0b;"></div>Suscriptor suspendido</div>
     <div class="legend-row"><div class="legend-dot" style="background:#c084fc;"></div>Daño reportado</div>
-    <div class="legend-row"><div class="legend-dot" style="background:#1E3A8A;border:2px solid #0ea5e9;"></div>Oficina ASUACAP</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#1E3A8A;border:2px solid #0ea5e9;"></div>Oficina</div>
     <div class="legend-row"><div class="legend-dot" style="background:#f59e0b;border:2px solid #92400e;"></div>Tu ubicación (pérdida)</div>
   `;
   return d;
 };
 leyenda.addTo(map);
 
-// ── Íconos personalizados ────────────────────────────────────────
 function colorCircle(color, size, borderColor) {
   return L.divIcon({
     html: `<div style="width:${size}px;height:${size}px;border-radius:50%;
@@ -339,14 +329,11 @@ function iconoGeo() {
   });
 }
 
-// ── 1. Cargar configuración del mapa (lat/lon oficina) ──────────
 fetch('/gis/api/config')
 .then(r => r.json())
 .then(function(cfg) {
   configMapa = cfg;
   map.setView([cfg.lat, cfg.lon], cfg.zoom);
-
-  // Marcador de la oficina ASUACAP
   marcadorOfic = L.marker([cfg.lat, cfg.lon], { icon: iconoOficina(), zIndexOffset: 1000 });
   marcadorOfic.bindPopup(`
     <div class="popup-title">🏢 ${cfg.nombre}</div>
@@ -360,44 +347,110 @@ fetch('/gis/api/config')
     </div>
   `);
   marcadorOfic.addTo(capaOficina);
-
-  // Cargar zonas en el panel lateral
   cargarZonas();
 })
 .catch(function() {
-  // Si falla la config, centrar en coordenadas por defecto de El Puente
   map.setView([5.0135, -74.4700], 15);
   cargarZonas();
 });
 
-// ── 2. Cargar infraestructura ────────────────────────────────────
-fetch('/gis/api/infraestructura')
-.then(r => r.json())
-.then(function(data) {
-  document.getElementById('cnt-infra').textContent = data.features.length;
-  L.geoJSON(data, {
-    pointToLayer: function(f, ll) {
-      var color = f.properties.estado === 'Falla Critica' ? '#ef4444' : '#3b82f6';
-      return L.circleMarker(ll, {
-        radius: 10, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.88
-      });
-    },
-    onEachFeature: function(f, layer) {
+// ── Iconos diferenciados por tipo de infraestructura ──────────────
+var tipoIconos = {
+  'Bocatoma':    { emoji:'💧', color:'#0ea5e9' },
+  'Desarenador': { emoji:'🪨', color:'#78716c' },
+  'PTAP':        { emoji:'🏭', color:'#8b5cf6' },
+  'Tanque':      { emoji:'🛢️', color:'#f59e0b' },
+  'Valvula':     { emoji:'🔧', color:'#10b981' },
+  'Oficina':     { emoji:'🏢', color:'#1E3A8A' },
+  'otro':        { emoji:'📍', color:'#64748b' }
+};
+
+function iconoInfra(tipo, enFalla) {
+  var conf = tipoIconos[tipo] || tipoIconos['otro'];
+  var color = enFalla ? '#ef4444' : conf.color;
+  return L.divIcon({
+    html: `<div style="width:34px;height:34px;border-radius:50%;background:${color};
+                border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);
+                display:flex;align-items:center;justify-content:center;
+                font-size:15px;cursor:grab;" title="${tipo}">${conf.emoji}</div>`,
+    className: '', iconSize:[34,34], iconAnchor:[17,17], popupAnchor:[0,-20]
+  });
+}
+
+var _infraMarkers = {};
+
+function cargarInfraestructura() {
+  capaInfra.clearLayers();
+  _infraMarkers = {};
+  fetch('/gis/api/infraestructura')
+  .then(r => r.json())
+  .then(function(data) {
+    document.getElementById('cnt-infra').textContent = data.features.length;
+    data.features.forEach(function(f) {
       var p = f.properties;
-      var badgeColor = p.estado === 'Falla Critica' ? 'background:#fee2e2;color:#991b1b' : 'background:#dbeafe;color:#1e40af';
-      layer.bindPopup(`
+      var ll = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
+      var enFalla = p.estado === 'Falla Critica';
+      var mkr = L.marker(ll, {
+        draggable: true,
+        icon: iconoInfra(p.tipo || 'otro', enFalla),
+        title: p.nombre
+      });
+
+      mkr._infraId   = p.id;
+      mkr._infraData = Object.assign({}, p, {coordenada_lat: ll[0], coordenada_lon: ll[1]});
+
+      var badgeColor = enFalla ? 'background:#fee2e2;color:#991b1b' : 'background:#dbeafe;color:#1e40af';
+      mkr.bindPopup(`
         <div class="popup-title">${p.nombre}</div>
         <div class="popup-row"><span class="popup-label">Tipo:</span><span class="popup-val">${p.tipo}</span></div>
         <div class="popup-row"><span class="popup-label">Estado:</span>
           <span class="popup-badge" style="${badgeColor}">${p.estado}</span></div>
         ${p.observaciones ? '<div class="popup-row"><span class="popup-label">Nota:</span><span class="popup-val">' + p.observaciones + '</span></div>' : ''}
+        <div style="margin-top:8px;display:flex;gap:6px;">
+          <button class="btn btn-sm btn-primary" style="font-size:11px;padding:3px 8px;"
+                  onclick="abrirModalEditarPunto(${p.id})">
+            <i class="bi bi-pencil me-1"></i>Editar
+          </button>
+          <button class="btn btn-sm btn-outline-danger" style="font-size:11px;padding:3px 8px;"
+                  onclick="eliminarPunto(${p.id})">
+            <i class="bi bi-trash me-1"></i>Eliminar
+          </button>
+        </div>
       `);
-      layer.on('click', function() { mostrarPanelInfo('🏭 ' + p.nombre, p); });
-    }
-  }).addTo(capaInfra);
-}).catch(function(e){ console.warn('Infra:', e); });
 
-// ── 3. Cargar suscriptores ───────────────────────────────────────
+      mkr.on('click', function() { mostrarPanelInfo('🏭 ' + p.nombre, p); });
+
+      mkr.on('dragend', function(e) {
+        var pos = e.target.getLatLng();
+        fetch('/gis/api/infraestructura/' + mkr._infraId, {
+          method: 'PUT',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            nombre: mkr._infraData.nombre,
+            tipo: mkr._infraData.tipo,
+            estado: mkr._infraData.estado,
+            lat: pos.lat, lon: pos.lng,
+            observaciones: mkr._infraData.observaciones || ''
+          })
+        }).then(r=>r.json()).then(function(d) {
+          if (d.ok) {
+            mkr._infraData.coordenada_lat = pos.lat;
+            mkr._infraData.coordenada_lon = pos.lng;
+            mostrarToast('Posición guardada ✔', 'success');
+          } else {
+            mostrarToast('Error al guardar: ' + d.error, 'danger');
+          }
+        }).catch(function(){ mostrarToast('Error de conexión', 'danger'); });
+      });
+
+      mkr.addTo(capaInfra);
+      _infraMarkers[p.id] = mkr;
+    });
+  }).catch(function(e){ console.warn('Infra:', e); });
+}
+
+cargarInfraestructura();
+
 fetch('/gis/api/suscriptores')
 .then(r => r.json())
 .then(function(data) {
@@ -424,7 +477,6 @@ fetch('/gis/api/suscriptores')
   }).addTo(capaSuscriptores);
 }).catch(function(e){ console.warn('Suscriptores:', e); });
 
-// ── 4. Cargar fallas ─────────────────────────────────────────────
 fetch('/gis/api/fallas')
 .then(r => r.json())
 .then(function(data) {
@@ -451,7 +503,6 @@ fetch('/gis/api/fallas')
   }).addTo(capaFallas);
 }).catch(function(e){ console.warn('Fallas:', e); });
 
-// ── 5. Geolocalización del dispositivo ──────────────────────────
 document.getElementById('btn-mi-ubicacion').addEventListener('click', function() {
   var alerta = document.getElementById('geo-alert');
   alerta.style.display = 'block';
@@ -466,11 +517,7 @@ document.getElementById('btn-mi-ubicacion').addEventListener('click', function()
       var lat = pos.coords.latitude;
       var lon = pos.coords.longitude;
       var acc = Math.round(pos.coords.accuracy);
-
-      // Eliminar marcador anterior si existe
       capaGeo.clearLayers();
-
-      // Marcador de posición (punto de pérdida de agua)
       var mkr = L.marker([lat, lon], { icon: iconoGeo(), zIndexOffset: 2000 });
       mkr.bindPopup(`
         <div class="popup-title" style="color:#92400e;">📍 Tu ubicación actual</div>
@@ -487,14 +534,10 @@ document.getElementById('btn-mi-ubicacion').addEventListener('click', function()
         </button>
       `);
       mkr.addTo(capaGeo);
-
-      // Círculo de precisión
       L.circle([lat, lon], {
         radius: acc, color: '#f59e0b', fillColor: '#fef3c7',
         fillOpacity: 0.15, weight: 1.5
       }).addTo(capaGeo);
-
-      // Centrar mapa en la ubicación
       map.flyTo([lat, lon], Math.max(map.getZoom(), 16), { duration: 1.2 });
       document.getElementById('cnt-geo').textContent = '±' + acc + 'm';
       mkr.openPopup();
@@ -512,7 +555,6 @@ document.getElementById('btn-mi-ubicacion').addEventListener('click', function()
   );
 });
 
-// Abrir modal de falla desde popup de geolocalización
 window.abrirFallaDesdeGeo = function(lat, lon) {
   fallaLat = lat;
   fallaLon = lon;
@@ -521,7 +563,6 @@ window.abrirFallaDesdeGeo = function(lat, lon) {
   new bootstrap.Modal(document.getElementById('modalFalla')).show();
 };
 
-// ── 6. Modo reportar falla ───────────────────────────────────────
 var btnFalla = document.getElementById('btn-modo-falla');
 btnFalla.addEventListener('click', function() {
   modoFalla = !modoFalla;
@@ -536,7 +577,6 @@ btnFalla.addEventListener('click', function() {
   }
 });
 
-// Clic en el mapa para reportar falla (modo activado o clic derecho)
 map.on('click', function(e) {
   if (!modoFalla) return;
   fallaLat = e.latlng.lat;
@@ -554,13 +594,11 @@ map.on('contextmenu', function(e) {
   new bootstrap.Modal(document.getElementById('modalFalla')).show();
 });
 
-// Confirmar reporte de falla
 document.getElementById('btn-confirmar-falla').addEventListener('click', function() {
   var desc = document.getElementById('falla-desc').value.trim();
   var sev  = document.getElementById('falla-sev').value;
   var zona = document.getElementById('falla-zona').value || null;
   if (!desc) { alert('Ingrese una descripción de la falla.'); return; }
-
   fetch('/gis/api/fallas/nueva', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -571,7 +609,6 @@ document.getElementById('btn-confirmar-falla').addEventListener('click', functio
     if (d.ok) {
       bootstrap.Modal.getInstance(document.getElementById('modalFalla')).hide();
       document.getElementById('falla-desc').value = '';
-      // Agregar marcador inmediatamente sin recargar
       var color = sev === 'Alta_Corte_Servicio' ? '#ef4444' : '#c084fc';
       var mkr = L.circleMarker([fallaLat, fallaLon], {
         radius: 8, fillColor: color, color: '#8b5cf6', weight: 2, fillOpacity: 0.9
@@ -582,7 +619,6 @@ document.getElementById('btn-confirmar-falla').addEventListener('click', functio
       mkr.addTo(capaFallas);
       var cnt = parseInt(document.getElementById('cnt-fallas').textContent||0) + 1;
       document.getElementById('cnt-fallas').textContent = cnt;
-      // Desactivar modo falla
       modoFalla = false;
       btnFalla.classList.replace('btn-danger','btn-outline-danger');
       btnFalla.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Reportar falla';
@@ -594,19 +630,16 @@ document.getElementById('btn-confirmar-falla').addEventListener('click', functio
   .catch(function(e){ alert('Error de conexión: ' + e); });
 });
 
-// ── 7. Cargar zonas en panel lateral ────────────────────────────
 function cargarZonas() {
   fetch('/gis/api/zonas')
   .then(r => r.json())
   .then(function(zonas) {
-    // Rellenar selector del modal
     var sel = document.getElementById('falla-zona');
     zonas.forEach(function(z) {
       var opt = document.createElement('option');
       opt.value = z.pk_zona_id; opt.textContent = z.nombre_zona;
       sel.appendChild(opt);
     });
-    // Panel lateral
     var lista = document.getElementById('lista-zonas');
     lista.innerHTML = zonas.map(function(z) {
       return `<div style="padding:8px 14px;border-bottom:1px solid #f1f5f9;display:flex;gap:8px;align-items:center;">
@@ -621,7 +654,6 @@ function cargarZonas() {
   .catch(function(){ document.getElementById('lista-zonas').innerHTML='<div class="p-3 text-muted" style="font-size:12px;">No disponible</div>'; });
 }
 
-// ── 8. Buscador de suscriptor ────────────────────────────────────
 document.getElementById('buscador-suscriptor').addEventListener('input', function() {
   var q = this.value.toLowerCase().trim();
   var res = document.getElementById('resultado-busqueda');
@@ -634,7 +666,7 @@ document.getElementById('buscador-suscriptor').addEventListener('input', functio
   res.innerHTML = matches.map(function(f) {
     var p = f.properties;
     var color = p.estado === 'Activo' ? '#10b981' : '#f59e0b';
-    return `<div onclick="irASuscriptor(${f.geometry.coordinates[1]},${f.geometry.coordinates[0]},'${p.nombre.replace(/'/g,"\\'")}',${f.properties.id})"
+    return `<div onclick="irASuscriptor(${f.geometry.coordinates[1]},${f.geometry.coordinates[0]},'${p.nombre.replace(/'/g,"\\'")}',${ f.properties.id})"
                  style="padding:6px 8px;border-radius:6px;cursor:pointer;background:#f8fafc;margin-bottom:3px;border:1px solid #e2e8f0;">
                <div style="font-weight:600;">${p.nombre}</div>
                <div style="color:#64748b;font-size:11px;">
@@ -651,7 +683,6 @@ window.irASuscriptor = function(lat, lon, nombre, id) {
   document.getElementById('resultado-busqueda').innerHTML = '';
 };
 
-// ── 9. Panel info lateral ────────────────────────────────────────
 function mostrarPanelInfo(titulo, datos) {
   document.getElementById('panel-info').style.display = '';
   document.getElementById('panel-info-title').textContent = titulo;
@@ -665,5 +696,153 @@ function mostrarPanelInfo(titulo, datos) {
 }
 
 }); // fin esperarLeaflet
+
+// ── Modal editar punto ──────────────────────────────────────────────
+function abrirModalEditarPunto(id) {
+  var mkr = _infraMarkers[id];
+  if (!mkr) return;
+  var p = mkr._infraData;
+  document.getElementById('ep-id').value = id;
+  document.getElementById('ep-nombre').value = p.nombre || '';
+  document.getElementById('ep-tipo').value   = p.tipo   || 'otro';
+  document.getElementById('ep-estado').value = p.estado || 'Operativo';
+  document.getElementById('ep-lat').value    = p.coordenada_lat != null ? p.coordenada_lat : (mkr.getLatLng ? mkr.getLatLng().lat : '');
+  document.getElementById('ep-lon').value    = p.coordenada_lon != null ? p.coordenada_lon : (mkr.getLatLng ? mkr.getLatLng().lng : '');
+  document.getElementById('ep-obs').value    = p.observaciones || '';
+  var modal = new bootstrap.Modal(document.getElementById('modalEditarPunto'));
+  modal.show();
+}
+
+function abrirModalNuevoPunto() {
+  document.getElementById('ep-id').value = '';
+  document.getElementById('ep-nombre').value = '';
+  document.getElementById('ep-tipo').value   = 'otro';
+  document.getElementById('ep-estado').value = 'Operativo';
+  var centro = typeof map !== 'undefined' ? map.getCenter() : {lat:5.0135,lng:-74.4700};
+  document.getElementById('ep-lat').value = centro.lat.toFixed(6);
+  document.getElementById('ep-lon').value = centro.lng.toFixed(6);
+  document.getElementById('ep-obs').value = '';
+  var modal = new bootstrap.Modal(document.getElementById('modalEditarPunto'));
+  modal.show();
+}
+
+async function guardarPunto() {
+  var id   = document.getElementById('ep-id').value;
+  var data = {
+    nombre: document.getElementById('ep-nombre').value.trim(),
+    tipo:   document.getElementById('ep-tipo').value,
+    estado: document.getElementById('ep-estado').value,
+    lat:    parseFloat(document.getElementById('ep-lat').value),
+    lon:    parseFloat(document.getElementById('ep-lon').value),
+    observaciones: document.getElementById('ep-obs').value.trim()
+  };
+  if (!data.nombre || isNaN(data.lat) || isNaN(data.lon)) {
+    alert('Nombre y coordenadas son obligatorios'); return;
+  }
+  var url    = id ? '/gis/api/infraestructura/' + id : '/gis/api/infraestructura';
+  var method = id ? 'PUT' : 'POST';
+  try {
+    var r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)}).then(r=>r.json());
+    if (r.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('modalEditarPunto')).hide();
+      cargarInfraestructura();
+      mostrarToast(id ? 'Punto actualizado ✔' : 'Punto creado ✔', 'success');
+    } else {
+      alert('Error: ' + (r.error||'Desconocido'));
+    }
+  } catch(e) { alert('Error de conexión'); }
+}
+
+async function eliminarPunto(id) {
+  if (!confirm('¿Eliminar este punto de infraestructura?')) return;
+  var r = await fetch('/gis/api/infraestructura/' + id, {method:'DELETE'}).then(r=>r.json());
+  if (r.ok) { cargarInfraestructura(); mostrarToast('Punto eliminado', 'warning'); }
+  else alert('Error: ' + (r.error||'Desconocido'));
+}
+
+function mostrarToast(msg, tipo) {
+  var t = document.getElementById('toast-gis');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast-gis';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;min-width:220px;';
+    document.body.appendChild(t);
+  }
+  t.innerHTML = `<div class="alert alert-${tipo} shadow" style="margin:0;font-size:13px;">${msg}</div>`;
+  t.style.display = '';
+  setTimeout(function(){ t.style.display='none'; }, 3000);
+}
 </script>
+
+<!-- ═══ MODAL EDITAR/CREAR PUNTO DE INFRAESTRUCTURA ═════════════════ -->
+<div class="modal fade" id="modalEditarPunto" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-geo-alt-fill me-2"></i>Punto de Infraestructura
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ep-id">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nombre del punto <span class="text-danger">*</span></label>
+            <input type="text" id="ep-nombre" class="form-control"
+                   placeholder="Ej: Bocatoma Principal, PTAP El Puente...">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Tipo de infraestructura</label>
+            <select id="ep-tipo" class="form-select">
+              <option value="Bocatoma">💧 Bocatoma</option>
+              <option value="Desarenador">🪨 Desarenador</option>
+              <option value="PTAP">🏭 PTAP</option>
+              <option value="Tanque">🛢️ Tanque</option>
+              <option value="Valvula">🔧 Válvula</option>
+              <option value="Oficina">🏢 Oficina</option>
+              <option value="otro">📍 Otro</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Estado</label>
+            <select id="ep-estado" class="form-select">
+              <option value="Operativo">✅ Operativo</option>
+              <option value="Mantenimiento">🔧 En mantenimiento</option>
+              <option value="Falla Critica">🔴 Falla Crítica</option>
+              <option value="Fuera de servicio">⛔ Fuera de servicio</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Latitud (Y) <span class="text-danger">*</span></label>
+            <input type="number" id="ep-lat" class="form-control" step="0.000001"
+                   placeholder="Ej: 5.013500">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Longitud (X) <span class="text-danger">*</span></label>
+            <input type="number" id="ep-lon" class="form-control" step="0.000001"
+                   placeholder="Ej: -74.470000">
+          </div>
+          <div class="col-12">
+            <div class="alert alert-info py-2 px-3 mb-0" style="font-size:12px;">
+              <i class="bi bi-info-circle me-1"></i>
+              También puede <strong>arrastrar el marcador</strong> directamente en el mapa para cambiar su posición. Las coordenadas se guardan automáticamente al soltar.
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Descripción / Observaciones</label>
+            <textarea id="ep-obs" class="form-control" rows="2"
+                      placeholder="Capacidad, materiales, año de construcción..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary fw-bold" onclick="guardarPunto()">
+          <i class="bi bi-floppy me-1"></i>Guardar Punto
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

@@ -1,8 +1,10 @@
 """routes/comunicaciones.py — Comunicaciones recibidas."""
+import logging as _logging
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from core.database_manager import get_db
 from core.seguridad import login_requerido
 from datetime import date, timedelta
+_log_com = _logging.getLogger("sigca.comunicaciones")
 
 com_bp = Blueprint("comunicaciones", __name__, url_prefix="/comunicaciones")
 
@@ -46,7 +48,8 @@ def nueva():
             return redirect(url_for("comunicaciones.listar"))
         except Exception as e:
             conn.rollback()
-            flash(f"Error: {e}", "danger")
+            _log_com.error("nueva comunicacion: %s", e, exc_info=True)
+            flash("Error al registrar la comunicación. Contacte al administrador.", "danger")
         finally:
             conn.close()
     return render_template("comunicaciones/nueva.html", hoy=date.today().isoformat())

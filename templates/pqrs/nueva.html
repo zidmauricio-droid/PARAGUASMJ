@@ -1,263 +1,246 @@
 {% extends "base.html" %}
-{% block title %}Nueva PQRS — ASUACAP{% endblock %}
+{% block title %}Nueva PQRS — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
-.seccion-tipo { border-left:4px solid #1E3A8A; padding:4px 10px;
-  background:#f8fafc; border-radius:0 8px 8px 0; margin-bottom:8px; }
-.badge-plazo { background:#dbeafe;color:#1e40af;padding:3px 10px;
-  border-radius:12px;font-size:11px;font-weight:700; }
+.nivel-label{font-size:.72rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.07em;color:#64748b;}
+.sol-card{border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;cursor:pointer;
+  transition:border-color .15s,background .15s;}
+.sol-card:hover{border-color:#0ea5e9;background:#f0f9ff;}
+.sol-card.sel{border-color:#1E3A8A;background:#eff6ff;}
+.badge-plazo{background:#dbeafe;color:#1e40af;padding:3px 10px;
+  border-radius:12px;font-size:11px;font-weight:700;}
 </style>
 {% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h5 class="mb-0"><i class="bi bi-plus-circle me-2 text-primary"></i>Radicar nueva PQRS</h5>
-    <small class="text-muted">GC-PQR — Gestión Comercial · Ley 1755/2015 · Res. CRA 943/2021</small>
-  </div>
-  <a href="/pqrs/" class="btn btn-ghost btn-sm">← Volver</a>
+<div class="modulo-header modulo-pqrs">
+  <i class="bi bi-plus-circle-fill"></i>
+  <span>Radicar Nueva PQRS</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <small class="text-muted">GC-PQR — Gestión Comercial · Ley 1755/2015 · Res. CRA 943/2021</small>
+  <a href="/pqrs/" class="btn btn-sm btn-outline-secondary">← Volver</a>
 </div>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for cat,msg in messages %}
-  <div class="alert alert-{{ cat }} alert-dismissible fade show">
-    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  </div>
-  {% endfor %}
-{% endwith %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <form method="POST" action="/pqrs/nueva" id="formNuevaPqrs">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-<div class="alert alert-info small mb-4">
-  <strong>⚖️ Base legal:</strong> Ley 142/1994 Art.9 — Ley 1755/2015 —
-  <strong>Petición/Queja/Reclamo:</strong> 15 días hábiles —
-  <strong>Consulta/Sugerencia:</strong> 30 días hábiles
-</div>
+      <div class="row g-3">
 
-<form method="POST">
-<div class="row g-3">
+        <!-- ── NIVEL 1: Servicio ───────────────────────────────── -->
+        <div class="col-12">
+          <div class="nivel-label mb-1">Nivel 1 — Servicio afectado *</div>
+          <div class="d-flex gap-2 flex-wrap" id="cont-servicios">
+            <div class="sol-card sel d-flex align-items-center gap-2" data-val="1" onclick="selServicio(this)">
+              <input type="radio" name="fk_servicio_id" value="1" checked class="d-none">
+              <i class="bi bi-droplet-fill text-primary fs-5"></i>
+              <div><strong>Acueducto</strong><div class="text-muted" style="font-size:.78rem;">Agua potable</div></div>
+            </div>
+            <div class="sol-card d-flex align-items-center gap-2" data-val="2" onclick="selServicio(this)">
+              <input type="radio" name="fk_servicio_id" value="2" class="d-none">
+              <i class="bi bi-water text-info fs-5"></i>
+              <div><strong>Alcantarillado</strong><div class="text-muted" style="font-size:.78rem;">Saneamiento</div></div>
+            </div>
+          </div>
+        </div>
 
-  <!-- ── Tipo de PQRS ── -->
-  <div class="col-md-4">
-    <label class="form-label fw-semibold">Tipo de PQRS *</label>
-    <select name="tipo_pqr" id="tipo_pqr" class="form-select" required
-            onchange="actualizarPlazo(this.value)">
-      {% for tipo, cfg in tipos.items() %}
-      <option value="{{ tipo }}">{{ tipo }} ({{ cfg.plazo }} días hábiles)</option>
-      {% endfor %}
-    </select>
-    <div class="mt-1">
-      Plazo: <span id="lbl-plazo" class="badge-plazo">15 días hábiles</span>
-      &nbsp; Vence: <strong id="fecha-limite-preview" class="text-danger">—</strong>
-    </div>
-  </div>
+        <!-- ── Tipo de solicitud ──────────────────────────────── -->
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Tipo de solicitud *</label>
+          <select name="tipo_pqr" id="sel_tipo_pqr" class="form-select" required>
+            <option value="">Seleccione…</option>
+            {% for tipo in tipos_pqr %}
+            <option value="{{ tipo }}">{{ tipo }}</option>
+            {% endfor %}
+          </select>
+          <div id="info_plazo" class="mt-1"></div>
+        </div>
 
-  <!-- ── Canal de recepción (código numérico SSPD) ── -->
-  <div class="col-md-4">
-    <label class="form-label fw-semibold">Canal de recepción * <small class="text-muted">(Res.54575/2015)</small></label>
-    <select name="canal_codigo" id="canal_codigo" class="form-select" required>
-      {% for cod, texto in canales.items() %}
-      <option value="{{ cod }}">{{ cod }} — {{ texto }}</option>
-      {% endfor %}
-    </select>
-  </div>
+        <!-- ── NIVEL 2: Tipo de solicitante ──────────────────── -->
+        <div class="col-md-6">
+          <div class="nivel-label mb-1">Nivel 2 — Tipo de solicitante</div>
+          <div class="d-flex gap-2 flex-wrap" id="cont-tipo-sol">
+            {% for cod, lbl, ico, desc in [
+              ('suscriptor','Suscriptor','person-fill text-primary','Con contrato de servicio'),
+              ('usuario','Usuario','people-fill text-success','Sin contrato — uso ocasional'),
+              ('tercero','Tercero / Entidad','building text-warning','Persona o entidad externa')
+            ] %}
+            <div class="sol-card {% if loop.first %}sel{% endif %} d-flex align-items-center gap-2"
+                 data-val="{{ cod }}" onclick="selTipoSol(this)">
+              <input type="radio" name="tipo_solicitante" value="{{ cod }}"
+                     {% if loop.first %}checked{% endif %} class="d-none">
+              <i class="bi bi-{{ ico }} fs-5"></i>
+              <div><strong style="font-size:.85rem;">{{ lbl }}</strong>
+                <div class="text-muted" style="font-size:.75rem;">{{ desc }}</div></div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
 
-  <!-- ── Servicio ── -->
-  <div class="col-md-4">
-    <label class="form-label fw-semibold">Servicio afectado</label>
-    <select name="servicio_codigo" class="form-select">
-      {% for cod, texto in servicios.items() %}
-      <option value="{{ cod }}" {% if cod=='1' %}selected{% endif %}>{{ texto }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <!-- ── SUSCRIPTOR O USUARIO (nuevo: dos opciones) ── -->
-  <div class="col-12">
-    <label class="form-label fw-semibold">Tipo de solicitante *</label>
-    <div class="d-flex gap-3 mb-2">
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="tipo_solicitante"
-               id="ts-suscriptor" value="suscriptor" checked
-               onchange="cambiarTipoSolicitante('suscriptor')">
-        <label class="form-check-label fw-semibold" for="ts-suscriptor">
-          🏠 Suscriptor registrado
-          <small class="text-muted d-block fw-normal">Titular del servicio — está en la lista de asociados</small>
-        </label>
-      </div>
-      <div class="form-check ms-4">
-        <input class="form-check-input" type="radio" name="tipo_solicitante"
-               id="ts-usuario" value="usuario"
-               onchange="cambiarTipoSolicitante('usuario')">
-        <label class="form-check-label fw-semibold" for="ts-usuario">
-          👤 Usuario libre
-          <small class="text-muted d-block fw-normal">Cualquier persona que usa el servicio</small>
-        </label>
-      </div>
-    </div>
-
-    <!-- Suscriptor registrado -->
-    <div id="bloque-suscriptor">
-      <label class="form-label fw-semibold small">Seleccionar suscriptor *</label>
-      <select name="fk_suscriptor_id" id="sel-suscriptor" class="form-select">
-        <option value="">— Seleccione el suscriptor —</option>
-        {% for s in suscriptores %}
-        <option value="{{ s.pk_contacto_id }}">
-          {{ s.codigo_interno or '—' }} · {{ s.razon_social }}
-          {% if s.telefono %} | {{ s.telefono }}{% endif %}
-          {% if s.direccion_predio %} — {{ s.direccion_predio[:30] }}{% endif %}
-        </option>
-        {% endfor %}
-      </select>
-      {% if not suscriptores %}
-      <div class="alert alert-warning mt-2 small">
-        <strong>⚠️ Sin suscriptores registrados.</strong>
-        <a href="/gestion_usuarios">Vaya a Gestión de Usuarios</a> para agregar suscriptores,
-        o use la opción "Usuario libre" para radicar de todas formas.
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Usuario libre -->
-    <div id="bloque-usuario" style="display:none;">
-      <input type="hidden" name="fk_suscriptor_id" id="hidden-suscriptor" value="0">
-      <div class="row g-2">
-        <div class="col-md-4">
-          <label class="form-label fw-semibold small">Nombre completo *</label>
-          <input type="text" name="usuario_nombre" id="usuario-nombre"
-                 class="form-control" placeholder="Nombre de quien radica">
+        <!-- ── Datos del solicitante ──────────────────────────── -->
+        <div class="col-md-5">
+          <label class="form-label fw-semibold">Nombre del solicitante *</label>
+          <input type="text" name="nombre_solicitante" class="form-control" required
+                 placeholder="Nombre completo">
         </div>
         <div class="col-md-3">
-          <label class="form-label fw-semibold small">Cédula / ID</label>
-          <input type="text" name="usuario_cedula" class="form-control" placeholder="Número de documento">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label fw-semibold small">Teléfono</label>
-          <input type="text" name="usuario_telefono" class="form-control" placeholder="Celular o fijo">
+          <label class="form-label fw-semibold">Documento</label>
+          <input type="text" name="documento_solicitante" class="form-control" placeholder="CC / NIT">
         </div>
         <div class="col-md-2">
-          <label class="form-label fw-semibold small">Dirección</label>
-          <input type="text" name="usuario_direccion" class="form-control" placeholder="Predio o vereda">
+          <label class="form-label fw-semibold">Teléfono</label>
+          <input type="text" name="telefono_solicitante" class="form-control" placeholder="Celular">
         </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Correo</label>
+          <input type="email" name="correo_solicitante" class="form-control" placeholder="email">
+        </div>
+
+        <!-- ── NIVEL 3: Medio de recepción ───────────────────── -->
+        <div class="col-md-5">
+          <div class="nivel-label mb-1">Nivel 3 — Medio de recepción *</div>
+          <select name="fk_medio_id" id="sel_medio" class="form-select" required>
+            <option value="">Cargando medios…</option>
+          </select>
+        </div>
+
+        <!-- ── NIVEL 4: Causal parametrizable ────────────────── -->
+        <div class="col-md-5">
+          <div class="nivel-label mb-1">Nivel 4 — Causal del servicio</div>
+          <select name="fk_causal_id" id="sel_causal_gc" class="form-select">
+            <option value="">— Seleccione servicio primero —</option>
+          </select>
+          <div class="form-text">Causales configurables por el administrador del sistema.</div>
+        </div>
+
+        <!-- ── Código DANE ────────────────────────────────────── -->
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Cód. DANE municipio</label>
+          <input type="text" name="dane_municipio" class="form-control"
+                 maxlength="9" pattern="[0-9]{9}" value="{{ dane_default }}">
+        </div>
+
+        <!-- ── Descripción ────────────────────────────────────── -->
+        <div class="col-12">
+          <label class="form-label fw-semibold">Descripción de la solicitud *</label>
+          <textarea name="descripcion" class="form-control" rows="4" required
+                    placeholder="Describa detalladamente su petición, queja, reclamo o solicitud…"></textarea>
+        </div>
+
+        <!-- ── Dirección / Componente / Prioridad ─────────────── -->
+        <div class="col-md-5">
+          <label class="form-label fw-semibold">Dirección o sector afectado</label>
+          <input type="text" name="direccion_predio" class="form-control"
+                 placeholder="Vereda / Sector / Casa">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Componente de red afectado</label>
+          <select name="componente_afectado" class="form-select">
+            <option value="">— Sin componente específico —</option>
+            {% for comp in componentes %}
+            <option value="{{ comp }}">{{ comp }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Prioridad</label>
+          <select name="prioridad" class="form-select">
+            <option value="normal" selected>Normal</option>
+            <option value="urgente">Urgente</option>
+            <option value="critica">Crítica</option>
+          </select>
+        </div>
+
+      </div><!-- /row -->
+
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-primary fw-bold px-4">
+          <i class="bi bi-send me-1"></i>Radicar PQRS
+        </button>
+        <a href="/pqrs/" class="btn btn-outline-secondary">Cancelar</a>
       </div>
-    </div>
+    </form>
   </div>
-
-  <!-- ── Destinatario libre (para el oficio de respuesta) ── -->
-  <div class="col-md-6">
-    <label class="form-label fw-semibold">Destinatario del oficio de respuesta</label>
-    <input type="text" name="destinatario" class="form-control"
-           placeholder="Ej: Doctor Juan Pérez, Alcaldía de Villeta, Secretaría de Salud...">
-    <small class="text-muted">Edite libremente — nombre, cargo u organismo a quien va dirigida la respuesta</small>
-  </div>
-
-  <!-- ── Componente afectado ── -->
-  <div class="col-md-6">
-    <label class="form-label fw-semibold">Componente afectado</label>
-    <select name="componente_afectado" class="form-select">
-      <option value="">— Seleccione —</option>
-      {% for comp in componentes %}
-      <option>{{ comp }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <!-- ── Causal (código SSPD) ── -->
-  <div class="col-md-4">
-    <label class="form-label fw-semibold">Causal * <small class="text-muted">(Res.54575/2015)</small></label>
-    <select name="causal_codigo" id="causal_codigo" class="form-select" required
-            onchange="actualizarSubcausal(this.value)">
-      {% for cod, info in causales.items() %}
-      <option value="{{ cod }}">{{ cod }} — {{ info.texto }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <!-- ── Subcausal (solo facturación) ── -->
-  <div class="col-md-4" id="bloque-subcausal" style="display:none;">
-    <label class="form-label fw-semibold">Subcausal de facturación</label>
-    <select name="subcausal_codigo" id="subcausal_codigo" class="form-select">
-      <option value="">— Seleccione —</option>
-      {% for cod, texto in subcausales.items() %}
-      <option value="{{ cod }}">{{ cod }} — {{ texto }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <!-- ── ¿Requiere visita? ── -->
-  <div class="col-md-4 d-flex align-items-end">
-    <div class="form-check form-switch mb-2">
-      <input type="checkbox" name="requiere_visita" class="form-check-input"
-             style="width:44px;height:22px;" id="sw-visita">
-      <label class="form-check-label fw-semibold ms-2" for="sw-visita">
-        🔧 Requiere visita técnica
-        <small class="d-block text-muted fw-normal">Se generará Orden de Trabajo GA-OT</small>
-      </label>
-    </div>
-  </div>
-
-  <!-- ── Resumen ── -->
-  <div class="col-12">
-    <label class="form-label fw-semibold">Resumen / Asunto *</label>
-    <input type="text" name="resumen" class="form-control" required maxlength="120"
-           placeholder="Descripción breve en una línea">
-  </div>
-
-  <!-- ── Descripción detallada ── -->
-  <div class="col-12">
-    <label class="form-label fw-semibold">Descripción detallada *</label>
-    <textarea name="descripcion_detallada" class="form-control" rows="5" required
-              placeholder="Describa con detalle: ¿Qué ocurrió? ¿Cuándo? ¿Con qué frecuencia? ¿Qué impacto tiene? ¿Qué solicita?"></textarea>
-  </div>
-
-  <div class="col-12 d-flex gap-2">
-    <button type="submit" class="btn btn-primary fw-bold px-4">
-      <i class="bi bi-check-circle me-1"></i>Radicar PQRS
-    </button>
-    <a href="/pqrs/" class="btn btn-ghost">Cancelar</a>
-  </div>
-
 </div>
-</form>
 {% endblock %}
 {% block extra_js %}
 <script>
-const TIPOS = {{ tipos | tojson }};
+(function () {
+  "use strict";
 
-function actualizarPlazo(tipo) {
-  const cfg = TIPOS[tipo] || { plazo: 15 };
-  document.getElementById('lbl-plazo').textContent = cfg.plazo + ' días hábiles';
-  // Calcular fecha límite aproximada (días calendario + 20%)
-  const d = new Date();
-  d.setDate(d.getDate() + Math.ceil(cfg.plazo * 1.4));
-  document.getElementById('fecha-limite-preview').textContent =
-    d.toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric' });
-}
+  var TIPOS_PQR = {{ tipos_pqr_json | tojson }};
 
-function actualizarSubcausal(causal) {
-  const bloque = document.getElementById('bloque-subcausal');
-  bloque.style.display = causal === '01' ? 'block' : 'none';
-}
-
-function cambiarTipoSolicitante(tipo) {
-  const bSusc = document.getElementById('bloque-suscriptor');
-  const bUser = document.getElementById('bloque-usuario');
-  const selSusc = document.getElementById('sel-suscriptor');
-  const hidSusc = document.getElementById('hidden-suscriptor');
-
-  if (tipo === 'suscriptor') {
-    bSusc.style.display = 'block';
-    bUser.style.display = 'none';
-    selSusc.required = true;
-    hidSusc.disabled = true;
-  } else {
-    bSusc.style.display = 'none';
-    bUser.style.display = 'block';
-    selSusc.required = false;
-    selSusc.value = '';
-    hidSusc.disabled = false;
+  // ── Selección de tarjeta visual ────────────────────────────────
+  function selCard(container, el) {
+    container.querySelectorAll('.sol-card').forEach(function(c){ c.classList.remove('sel'); });
+    el.classList.add('sel');
+    el.querySelector('input[type=radio]').checked = true;
   }
-}
+  window.selServicio = function(el) {
+    selCard(document.getElementById('cont-servicios'), el);
+    cargarCausalesGC(el.dataset.val);
+  };
+  window.selTipoSol = function(el) {
+    selCard(document.getElementById('cont-tipo-sol'), el);
+  };
 
-document.addEventListener('DOMContentLoaded', () => {
-  actualizarPlazo('Peticion');
-});
+  // ── Badge de plazo al cambiar tipo ────────────────────────────
+  document.getElementById("sel_tipo_pqr").addEventListener("change", function () {
+    var t = TIPOS_PQR[this.value];
+    var el = document.getElementById("info_plazo");
+    el.innerHTML = t
+      ? '<span class="badge-plazo"><i class="bi bi-clock me-1"></i>' + t.plazo + ' días hábiles</span>'
+      : "";
+  });
+
+  // ── Cargar medios de recepción desde API ──────────────────────
+  fetch('/pqrs/api/gc-medios')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var sel = document.getElementById('sel_medio');
+      var opts = '<option value="">— Seleccione medio —</option>';
+      (d.medios || []).forEach(function(m){
+        opts += '<option value="' + m.pk_medio_id + '">' + m.nombre + '</option>';
+      });
+      sel.innerHTML = opts;
+    })
+    .catch(function(){
+      document.getElementById('sel_medio').innerHTML =
+        '<option value="1">Presencial / Ventanilla</option>' +
+        '<option value="2">Telefónico</option>' +
+        '<option value="3">Web / Formulario</option>' +
+        '<option value="4">Correo electrónico</option>' +
+        '<option value="5">WhatsApp</option>' +
+        '<option value="6">Correspondencia escrita</option>';
+    });
+
+  // ── Cargar causales según servicio (Nivel 4) ──────────────────
+  window.cargarCausalesGC = function(servicioId) {
+    var sel = document.getElementById('sel_causal_gc');
+    sel.innerHTML = '<option value="">Cargando…</option>';
+    fetch('/pqrs/api/gc-causales?servicio_id=' + servicioId)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var opts = '<option value="">— Sin causal específica —</option>';
+        (d.causales || []).forEach(function(c){
+          opts += '<option value="' + c.pk_causal_id + '">'
+                + c.codigo + ' — ' + c.nombre
+                + (c.sla_dias ? ' (' + c.sla_dias + ' días)' : '') + '</option>';
+        });
+        sel.innerHTML = opts;
+        if (!(d.causales && d.causales.length)) {
+          sel.innerHTML = '<option value="">Sin causales configuradas — configure en Administración</option>';
+        }
+      })
+      .catch(function(){ sel.innerHTML = '<option value="">Error de conexión</option>'; });
+  };
+
+  // Cargar causales de Acueducto al inicio
+  cargarCausalesGC(1);
+
+}());
 </script>
 {% endblock %}

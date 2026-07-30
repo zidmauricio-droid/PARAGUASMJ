@@ -1,0 +1,5 @@
+{
+  "active_profile": "standard",
+  "enabled_future_capabilities": [],
+  "_comment": "Los perfiles operativos y capacidades core están definidos en core/capability_registry.py. Este archivo sólo contiene la selección activa para evitar duplicar la fuente de verdad."
+}

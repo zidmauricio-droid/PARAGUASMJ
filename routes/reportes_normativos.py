@@ -3,6 +3,8 @@ routes/reportes_normativos.py
 Panel de reportes oficiales: FC15 IUS, Balance CAR, PUEAA, Actas.
 Fuente: PROGRAMA_1.doc - todos los entregables normativos.
 """
+import logging as _logging
+_log_rep = _logging.getLogger("sigca.reportes")
 from flask import Blueprint, render_template, request, send_file, redirect, url_for, flash, session
 from core.reportes_sspd import ReportesSSPD
 from core.indicadores_ius import calcular_ius_anual
@@ -45,10 +47,11 @@ def descargar_fc15():
         wb  = _mgr.generar_fc15_ius(anio)
         buf = BytesIO(); wb.save(buf); buf.seek(0)
         return send_file(buf, as_attachment=True,
-                         download_name=f"FC15_IUS_ASUACAP_{anio}.xlsx",
+                         download_name=f"FC15_IUS_SIGCA_{anio}.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
-        flash(f"Error generando FC15: {e}", "danger")
+        _log_rep.error("FC15 anio=%s: %s", anio, e, exc_info=True)
+        flash("Error generando FC15. Contacte al administrador.", "danger")
         return redirect(url_for("reportes_normativos.panel"))
 
 
@@ -61,10 +64,11 @@ def descargar_hoja_ius():
         wb  = _mgr.generar_hoja_ius_excel(anio)
         buf = BytesIO(); wb.save(buf); buf.seek(0)
         return send_file(buf, as_attachment=True,
-                         download_name=f"INFORMACION_IUS_ASUACAP_{anio}.xlsx",
+                         download_name=f"INFORMACION_IUS_SIGCA_{anio}.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
-        flash(f"Error: {e}", "danger")
+        _log_rep.error("hoja_ius anio=%s: %s", anio, e, exc_info=True)
+        flash("Error al generar la hoja IUS. Contacte al administrador.", "danger")
         return redirect(url_for("reportes_normativos.panel"))
 
 
@@ -81,7 +85,8 @@ def descargar_balance_car():
                          download_name=f"BalanceHidrico_CAR_T{trim}_{anio}.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
-        flash(f"Error: {e}", "danger")
+        _log_rep.error("balance_car anio=%s T%s: %s", anio, trim, e, exc_info=True)
+        flash("Error al generar el balance CAR. Contacte al administrador.", "danger")
         return redirect(url_for("reportes_normativos.panel"))
 
 
@@ -97,10 +102,11 @@ def descargar_trimestral():
         wb  = mgr.generar_reporte_trimestral(anio, trim)
         buf = BytesIO(); wb.save(buf); buf.seek(0)
         return send_file(buf, as_attachment=True,
-                         download_name=f"ASUACAP_Reporte_T{trim}_{anio}.xlsx",
+                         download_name=f"SIGCA_Reporte_T{trim}_{anio}.xlsx",
                          mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     except Exception as e:
-        flash(f"Error: {e}", "danger")
+        _log_rep.error("trimestral anio=%s T%s: %s", anio, trim, e, exc_info=True)
+        flash("Error al generar el reporte trimestral. Contacte al administrador.", "danger")
         return redirect(url_for("reportes_normativos.panel"))
 
 

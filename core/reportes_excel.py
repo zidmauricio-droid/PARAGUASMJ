@@ -17,7 +17,7 @@ from config import Config
 class ReporteExcelManager:
     def __init__(self, db_path: str = None):
         self.db_path = db_path or Config.DB_PATH
-        # Estilos corporativos ASUACAP (azul institucional)
+        # Estilos corporativos (azul institucional)
         self.fill_h = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
         self.font_h = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
         self.font_t = Font(name="Calibri", size=14, bold=True, color="1E3A8A")
@@ -44,7 +44,10 @@ class ReporteExcelManager:
 
         # PESTANA 1: Balance Hidrico
         ws1 = wb.create_sheet("1. Balance Hidrico CAR")
-        ws1["A1"] = "ASOCIACION DE SUSCRIPTORES DEL ACUEDUCTO COMUNITARIO EL PUENTE - ASUACAP"
+        conn2 = sqlite3.connect(self.db_path)
+        _cfg = {r[0]: r[1] for r in conn2.execute("SELECT clave,valor FROM configuracion WHERE clave IN ('nombre_completo','nombre_asociacion')").fetchall()}
+        conn2.close()
+        ws1["A1"] = _cfg.get("nombre_completo", _cfg.get("nombre_asociacion","SIGCA")).upper()
         ws1["A1"].font = self.font_t
         ws1["A2"] = f"REPORTE TECNICO DE CONTROL OPERACIONAL - TRIMESTRE {trimestre} - ANO {anio}"
         ws1["A2"].font = self.font_s
@@ -88,7 +91,7 @@ class ReporteExcelManager:
 
         # PESTANA 2: Fallas en Red
         ws2 = wb.create_sheet("2. Fallas en Red")
-        ws2["A1"] = "ASUACAP - INFORME GEORREFERENCIADO DE ALERTAS EN RED"
+        ws2["A1"] = f"{_cfg.get('nombre_asociacion','SIGCA')} - INFORME GEORREFERENCIADO DE ALERTAS EN RED"
         ws2["A1"].font = self.font_t
         ws2["A2"] = "Historial tecnico de averias y reparaciones operacionales"
         ws2["A2"].font = self.font_s
@@ -114,7 +117,7 @@ class ReporteExcelManager:
 
         # PESTANA 3: PQRS
         ws3 = wb.create_sheet("3. PQRS")
-        ws3["A1"] = "ASUACAP - GESTION DE PETICIONES, QUEJAS, RECLAMOS Y SUGERENCIAS"
+        ws3["A1"] = f"{_cfg.get('nombre_asociacion','SIGCA')} - GESTION DE PETICIONES, QUEJAS, RECLAMOS Y SUGERENCIAS"
         ws3["A1"].font = self.font_t
         df_pq = pd.read_sql_query("""
             SELECT r.codigo_completo AS 'Codigo',p.tipo_pqr AS 'Tipo',

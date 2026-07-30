@@ -89,7 +89,7 @@ def exportar_logs():
         df.to_excel(wr, sheet_name="AuditLog", index=False)
     buf.seek(0)
     return send_file(buf, as_attachment=True,
-                     download_name=f"AuditLog_ASUACAP_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                     download_name=f"AuditLog_SIGCA_{datetime.now().strftime('%Y%m%d')}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
@@ -172,7 +172,7 @@ def api_crear_usuario():
             os.makedirs(FOTO_DIR, exist_ok=True)
             fn = secure_filename(f"usr_{usuario}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}")
             foto.save(os.path.join(FOTO_DIR, fn))
-            foto_path = f"/static/uploads/usuarios/{fn}"
+            foto_path = f"/auditoria/foto/{fn}"
 
     conn = get_db()
     try:
@@ -215,7 +215,7 @@ def api_editar_usuario(uid):
                 os.makedirs(FOTO_DIR, exist_ok=True)
                 fn = secure_filename(f"usr_{uid}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{ext}")
                 foto.save(os.path.join(FOTO_DIR, fn))
-                foto_path = f"/static/uploads/usuarios/{fn}"
+                foto_path = f"/auditoria/foto/{fn}"
 
         updates = ["nombre_completo=?","correo=?","telefono=?","activo=?","rol=?"]
         params  = [nombre, correo, telefono, int(activo), rol]
@@ -248,6 +248,22 @@ def api_desbloquear(uid):
     return jsonify({"ok": True})
 
 
+@aud_bp.route("/foto/<path:filename>")
+@login_requerido
+def servir_foto_usuario(filename):
+    """Sirve fotos de perfil solo a usuarios autenticados. Usa safe_join para evitar bypass."""
+    from flask import send_from_directory, abort
+    from werkzeug.utils import safe_join
+    import re
+    if not re.fullmatch(r"[\w\-]+\.(png|jpg|jpeg|webp|gif)", filename, re.IGNORECASE):
+        abort(404)
+    directorio = os.path.abspath(FOTO_DIR)
+    ruta_segura = safe_join(directorio, filename)
+    if ruta_segura is None or not os.path.isfile(ruta_segura):
+        abort(404)
+    return send_from_directory(directorio, filename)
+
+
 @aud_bp.route("/api/usuarios/<int:uid>", methods=["DELETE"])
 @login_requerido
 @rol_requerido("admin")
@@ -266,3 +282,23 @@ def api_eliminar_usuario(uid):
     log_action(accion="DELETE_USER", modulo="usuarios", descripcion=f"Usuario {uid} desactivado")
     conn.close()
     return jsonify({"ok": True})
+
+# ── Panel de diagnóstico sistémico (RC5.5.3) ─────────────────────────────────
+
+@aud_bp.route("/diagnosticos")
+@login_requerido
+@rol_requerido("admin")
+def diagnosticos():
+    return render_template("auditoria/diagnosticos.html")
+
+
+@aud_bp.route("/api/diagnosticos")
+@login_requerido
+@rol_requerido("admin")
+def api_diagnosticos():
+    """Devuelve observabilidad completa del sistema en JSON."""
+    from core.system_diagnostics import obtener_diagnostico_completo
+    from core.metrics import obtener_stats_cache_clasificador
+    diag = obtener_diagnostico_completo()
+    diag["cache_clasificador"] = obtener_stats_cache_clasificador()
+    return jsonify(diag)

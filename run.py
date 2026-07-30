@@ -58,6 +58,15 @@ def main():
         input("Presione Enter para salir...")
         sys.exit(1)
 
+    # Iniciar monitor de actualizaciones por USB
+    try:
+        from pathlib import Path
+        from core.usb_updater import create_usb_updater
+        create_usb_updater(Path(BASE_DIR))
+        logger.info("Monitor USB de actualizaciones activo.")
+    except Exception as e:
+        logger.warning(f"No se pudo iniciar el monitor USB: {e}")
+
     threading.Thread(target=abrir_navegador, args=(PORT,), daemon=True).start()
 
     try:

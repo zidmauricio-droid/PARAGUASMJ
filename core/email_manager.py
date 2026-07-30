@@ -13,8 +13,9 @@ from datetime import datetime
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.database_manager import get_db, registrar_log
+from core.crypto_simple import descifrar
 
-logger = logging.getLogger("asuacap.email")
+logger = logging.getLogger("sigca.email")
 
 
 def _obtener_config_smtp() -> dict:
@@ -43,11 +44,11 @@ def enviar_correo(destinatario: str, asunto: str, cuerpo_html: str,
     """
     cfg = _obtener_config_smtp()
     usuario = cfg.get("email_usuario", "")
-    password = cfg.get("email_password", "")
+    password = descifrar(cfg.get("email_password", ""))
     host = cfg.get("email_smtp_host", "smtp.gmail.com")
     port = int(cfg.get("email_smtp_port", 587))
     correo_from = cfg.get("correo_oficial", usuario)
-    nombre_asoc = cfg.get("nombre_asociacion", "ASUACAP")
+    nombre_asoc = cfg.get("nombre_asociacion", "SIGCA")
 
     estado = "enviado"
     error_msg = ""
@@ -107,7 +108,7 @@ def enviar_pueaa_car(pdf_path: str, correo_car: str = "sau@car.gov.co") -> bool:
     Fuente: PROGRAMA_1.doc - seccion 6, correo a CAR.
     """
     cfg = _obtener_config_smtp()
-    nombre = cfg.get("nombre_asociacion", "ASUACAP")
+    nombre = cfg.get("nombre_asociacion", "SIGCA")
     anio   = datetime.now().year
     cuerpo = f"""
     <html><body style="font-family:Arial,sans-serif;font-size:10pt;">
@@ -128,7 +129,7 @@ def enviar_pueaa_car(pdf_path: str, correo_car: str = "sau@car.gov.co") -> bool:
     <p>Quedamos atentos a cualquier observación o requerimiento adicional.</p>
 
     <p>Cordialmente,<br>
-    <strong>Junta Directiva ASUACAP</strong><br>
+    <strong>Junta Directiva</strong><br>
     aacueductoelpuente@yahoo.com<br>
     Villeta, Cundinamarca</p>
     </body></html>
@@ -159,6 +160,7 @@ def notificar_pqrs_estado(pqr_id: int) -> bool:
         if not pqr or not pqr["correo"]:
             return False
 
+        cfg = _obtener_config_smtp()
         estados_msg = {
             "Recibida":   "ha sido recibida y registrada en nuestro sistema",
             "En_tramite": "está siendo estudiada por nuestro equipo",
@@ -173,13 +175,13 @@ def notificar_pqrs_estado(pqr_id: int) -> bool:
         <p>Le informamos que su {pqr['tipo_pqr']} radicada con el número
         <strong>{pqr['codigo_completo']}</strong> {msg_estado}.</p>
         {'<p><strong>Respuesta:</strong> ' + pqr['respuesta_definitiva'] + '</p>' if pqr.get('respuesta_definitiva') else ''}
-        <p>Gracias por comunicarse con ASUACAP.</p>
-        <p><em>ASUACAP — Caserío El Puente, Villeta, Cundinamarca</em></p>
+        <p>Gracias por comunicarse con nosotros.</p>
+        <p><em>{cfg.get("nombre_asociacion","SIGCA")} — Caserío El Puente, Villeta, Cundinamarca</em></p>
         </body></html>
         """
         return enviar_correo(
             destinatario=pqr["correo"],
-            asunto=f"Actualización PQRS {pqr['codigo_completo']} — ASUACAP",
+            asunto=f"Actualización PQRS {pqr['codigo_completo']} — {cfg.get('nombre_asociacion','SIGCA')}",
             cuerpo_html=cuerpo
         )
     except Exception as e:

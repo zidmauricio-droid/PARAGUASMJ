@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Auditoría del Sistema — ASUACAP{% endblock %}
+{% block title %}Auditoría del Sistema — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
 .log-badge { padding:2px 8px; border-radius:12px; font-size:10px; font-weight:700; }
@@ -18,6 +18,11 @@
 </style>
 {% endblock %}
 {% block content %}
+<div class="modulo-header modulo-auditoria">
+    <i class="bi bi-shield-check"></i>
+    <span>Auditoría del Sistema</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h5 class="mb-0"><i class="bi bi-shield-check me-2 text-primary"></i>Registro de Auditoría del Sistema</h5>
   <a href="/auditoria/api/logs/exportar" class="btn btn-sm btn-success">
@@ -143,7 +148,6 @@ async function cargarLogs(resetOffset=true) {
   const d = await r.json();
   totalLog = d.total;
 
-  // Rellenar selectores la primera vez
   if (!document.getElementById('filtro-modulo').options.length > 1) {
     const selM = document.getElementById('filtro-modulo');
     d.modulos.forEach(m => {
@@ -188,7 +192,6 @@ function paginar(dir) {
   cargarLogs(false);
 }
 
-// Auto-refresh cada 30 seg
 document.addEventListener('DOMContentLoaded', () => {
   cargarStats();
   cargarLogs();

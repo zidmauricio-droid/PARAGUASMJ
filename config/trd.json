@@ -1,0 +1,52 @@
+{
+  "version": "1.0",
+  "entidad": "Acueducto Comunitario — SIGCA",
+  "vigencia": "2026",
+  "series": [
+    {
+      "codigo": "SUB",
+      "nombre": "SUSCRIPTORES",
+      "descripcion": "Gestión de suscriptores del acueducto",
+      "retencion_gestion": 2,
+      "retencion_central": 3,
+      "disposicion_final": "conservacion_total",
+      "soporte": ["fisico", "electronico"]
+    },
+    {
+      "codigo": "FIN",
+      "nombre": "FINANZAS",
+      "descripcion": "Documentos financieros y contables",
+      "retencion_gestion": 3,
+      "retencion_central": 7,
+      "disposicion_final": "conservacion_total",
+      "soporte": ["fisico", "electronico"]
+    },
+    {
+      "codigo": "LEG",
+      "nombre": "LEGAL",
+      "descripcion": "Documentos legales, contratos, resoluciones",
+      "retencion_gestion": 5,
+      "retencion_central": 15,
+      "disposicion_final": "conservacion_total",
+      "soporte": ["fisico", "electronico"]
+    },
+    {
+      "codigo": "PQRS",
+      "nombre": "PQRS",
+      "descripcion": "Peticiones, Quejas, Reclamos y Sugerencias",
+      "retencion_gestion": 1,
+      "retencion_central": 2,
+      "disposicion_final": "eliminacion",
+      "soporte": ["electronico"]
+    },
+    {
+      "codigo": "PRY",
+      "nombre": "PROYECTOS",
+      "descripcion": "Proyectos de infraestructura e inversión",
+      "retencion_gestion": 3,
+      "retencion_central": 7,
+      "disposicion_final": "conservacion_total",
+      "soporte": ["fisico", "electronico"]
+    }
+  ]
+}

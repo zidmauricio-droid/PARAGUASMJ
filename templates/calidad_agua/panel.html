@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% block title %}GA-02 Calidad del Agua — SIGCA{% endblock %}
+{% block extra_css %}
+<style>
+.modal-content{background:var(--bg-card);color:var(--text-primary);border-color:var(--border);}
+.modal-header.bg-primary{background:var(--color-accent)!important;}
+.modal-header{border-bottom-color:var(--border);}
+.modal-footer{border-top-color:var(--border);}
+</style>
+{% endblock %}
+{% block content %}
+<div class="modulo-header modulo-operativo">
+  <i class="bi bi-droplet-fill"></i>
+  <span>GA-02 — Calidad del Agua</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+
+<!-- Filtro año/mes -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex gap-3 align-items-end flex-wrap">
+      <div>
+        <label class="form-label mb-0 small">Año</label>
+        <select id="sel-anio" class="form-select form-select-sm" onchange="cargarResumen()">
+          {% for y in range(2026, 2021, -1) %}
+          <option value="{{ y }}" {% if y == 2026 %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="abrirModalMuestra()">
+        <i class="bi bi-plus-circle me-1"></i>Nueva Muestra
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-4">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="fs-3 fw-bold text-primary" id="kpi-muestras">—</div>
+      <div class="text-muted small">Muestras del año</div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="fs-3 fw-bold text-warning" id="kpi-alertas">—</div>
+      <div class="text-muted small">Con alertas</div>
+    </div>
+  </div>
+  <div class="col-4">
+    <div class="card border-0 shadow-sm text-center p-3">
+      <div class="fs-3 fw-bold text-danger" id="kpi-noacept">—</div>
+      <div class="text-muted small">Parámetros NO aceptables</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla de muestras -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header fw-semibold">
+    <i class="bi bi-clipboard-data me-2"></i>Muestras registradas
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>Código</th><th>Fecha</th><th>Punto</th><th>Laboratorio</th>
+          <th class="text-center">Estado</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-muestras">
+        <tr><td colspan="6" class="text-center text-muted py-3">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal resultados -->
+<div class="modal fade" id="modalResultados" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-clipboard-check me-2"></i>Resultados de la Muestra</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div id="div-resultados-body" class="p-3">Cargando…</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nueva muestra -->
+<div class="modal fade" id="modalMuestra" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-droplet me-2"></i>Nueva Muestra de Agua</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Fecha de muestra</label>
+            <input type="date" id="m-fecha" class="form-control" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Punto de muestreo</label>
+            <select id="m-punto" class="form-select">
+              <option value="">Sin punto específico</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Laboratorio</label>
+            <input type="text" id="m-laboratorio" class="form-control" placeholder="Nombre del laboratorio">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Responsable</label>
+            <input type="text" id="m-responsable" class="form-control">
+          </div>
+        </div>
+        <!-- Parámetros -->
+        <hr>
+        <h6 class="fw-bold mb-3"><i class="bi bi-list-check me-2"></i>Resultados por Parámetro</h6>
+        <div id="div-parametros">
+          <div class="text-center text-muted py-3">Cargando parámetros…</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarMuestra()">
+          <i class="bi bi-floppy me-1"></i>Guardar Muestra
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let _parametros = [];
+let _muestra_id = null;
+
+async function api(url, opts={}) {
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+async function cargarResumen() {
+  const anio = document.getElementById('sel-anio').value;
+  const d = await api(`/calidad-agua/api/resumen/${anio}`);
+  if (d.ok) {
+    document.getElementById('kpi-muestras').textContent = d.muestras;
+    document.getElementById('kpi-alertas').textContent  = d.alertas;
+    document.getElementById('kpi-noacept').textContent  = d.no_aceptables;
+  }
+  cargarMuestras();
+}
+
+async function cargarMuestras() {
+  const anio = document.getElementById('sel-anio').value;
+  const d = await api(`/calidad-agua/api/muestras?anio=${anio}`);
+  const tbody = document.getElementById('tbody-muestras');
+  if (!d.ok || !d.muestras.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Sin muestras registradas</td></tr>';
+    return;
+  }
+  const badge = e => ({
+    registrada:   '<span class="badge bg-secondary">Registrada</span>',
+    completa:     '<span class="badge bg-success">Completa</span>',
+    con_alerta:   '<span class="badge bg-danger">Con Alerta</span>',
+  }[e] || `<span class="badge bg-light text-dark">${e}</span>`);
+  tbody.innerHTML = d.muestras.map(m => `<tr>
+    <td><code>${m.codigo_muestra}</code></td>
+    <td>${m.fecha_muestra}</td>
+    <td>${m.punto_nombre || '—'}</td>
+    <td>${m.laboratorio || '—'}</td>
+    <td class="text-center">${badge(m.estado)}</td>
+    <td><button class="btn btn-xs btn-outline-primary" onclick="verResultados(${m.pk_muestra_id})">
+      <i class="bi bi-eye"></i></button></td>
+  </tr>`).join('');
+}
+
+async function abrirModalMuestra() {
+  // Cargar puntos y parámetros
+  const [puntos, params] = await Promise.all([
+    api('/calidad-agua/api/puntos'),
+    api('/calidad-agua/api/parametros'),
+  ]);
+  _parametros = params.parametros || [];
+  const sel = document.getElementById('m-punto');
+  if (puntos.puntos) {
+    puntos.puntos.forEach(p => {
+      sel.innerHTML += `<option value="${p.pk_punto_id}">${p.nombre}</option>`;
+    });
+  }
+  // Fecha hoy
+  document.getElementById('m-fecha').value = new Date().toISOString().slice(0,10);
+  // Renderizar lista de parámetros con show/hide por resultado
+  document.getElementById('div-parametros').innerHTML = `
+    <div class="d-flex flex-column gap-2">
+      ${_parametros.map(p => `
+      <div class="border rounded p-2" id="param-row-${p.pk_param_id}" style="background:var(--bg-card);border-color:var(--border)!important;">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <div style="min-width:180px;">
+            <strong class="text-primary small">${p.nombre}</strong>
+            <span class="text-muted small ms-1">${p.unidad || ''}</span>
+            <div class="text-secondary" style="font-size:.75rem;">Norma: ${p.norma || '—'}</div>
+          </div>
+          <div>
+            <label class="form-label mb-1 small fw-semibold">Resultado</label>
+            <select class="form-select form-select-sm param-res" data-id="${p.pk_param_id}"
+                    id="resultado-${p.pk_param_id}" style="min-width:160px;">
+              <option value="ACEPTABLE">✅ Aceptable</option>
+              <option value="NO_ACEPTABLE">❌ No Aceptable</option>
+            </select>
+          </div>
+        </div>
+        <div class="noacept-fields mt-2 p-2 rounded" id="noacept-panel-${p.pk_param_id}"
+             style="display:none;background:color-mix(in srgb,var(--color-danger) 8%,var(--bg-card));border:1px solid var(--color-danger);border-radius:6px;">
+          <div class="row g-2">
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Valor encontrado</label>
+              <input type="number" class="form-control form-control-sm param-val" data-id="${p.pk_param_id}"
+                     placeholder="Ej: 1.8" step="0.01">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Valor máx. permitido</label>
+              <input type="text" class="form-control form-control-sm" readonly
+                     value="${p.valor_max != null ? p.valor_max + ' ' + (p.unidad || '') : '—'}"
+                     style="background:var(--bg-card);color:var(--text-secondary);">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Observación</label>
+              <textarea class="form-control form-control-sm param-obs" data-id="${p.pk_param_id}"
+                        rows="2" placeholder="Describa la anomalía…"></textarea>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Acción Correctiva</label>
+              <textarea class="form-control form-control-sm param-acc" data-id="${p.pk_param_id}"
+                        rows="2" placeholder="Acción tomada o planificada…"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+
+  // Registrar listeners via addEventListener (no inline onchange)
+  _parametros.forEach(p => {
+    const sel = document.getElementById(`resultado-${p.pk_param_id}`);
+    if (sel) {
+      sel.addEventListener('change', function() {
+        const panel = document.getElementById(`noacept-panel-${p.pk_param_id}`);
+        if (panel) panel.style.display = this.value === 'NO_ACEPTABLE' ? '' : 'none';
+      });
+    }
+  });
+
+  new bootstrap.Modal(document.getElementById('modalMuestra')).show();
+}
+
+async function guardarMuestra() {
+  const fecha = document.getElementById('m-fecha').value;
+  if (!fecha) { alert('Ingrese la fecha de la muestra'); return; }
+  // Crear muestra
+  const resp = await api('/calidad-agua/api/muestras', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      fecha_muestra: fecha,
+      fk_punto_id: document.getElementById('m-punto').value || null,
+      laboratorio: document.getElementById('m-laboratorio').value,
+      responsable: document.getElementById('m-responsable').value,
+    })
+  });
+  if (!resp.ok) { alert('Error: ' + resp.error); return; }
+  const mid = resp.pk_muestra_id;
+  // Guardar resultados
+  const resultados = _parametros.map(p => ({
+    fk_param_id: p.pk_param_id,
+    resultado: document.querySelector(`.param-res[data-id="${p.pk_param_id}"]`)?.value || 'ACEPTABLE',
+    valor_obtenido: parseFloat(document.querySelector(`.param-val[data-id="${p.pk_param_id}"]`)?.value) || null,
+    observacion: document.querySelector(`.param-obs[data-id="${p.pk_param_id}"]`)?.value || '',
+    accion_correctiva: document.querySelector(`.param-acc[data-id="${p.pk_param_id}"]`)?.value || '',
+  }));
+  await api(`/calidad-agua/api/muestras/${mid}/resultados`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ resultados })
+  });
+  bootstrap.Modal.getInstance(document.getElementById('modalMuestra'))?.hide();
+  cargarResumen();
+}
+
+async function verResultados(mid) {
+  const d = await api(`/calidad-agua/api/muestras/${mid}/resultados`);
+  if (!d.ok) return;
+  const rows = d.resultados.map(r => {
+    const ico = r.resultado === 'ACEPTABLE'
+      ? '<span class="badge bg-success">✔ Aceptable</span>'
+      : r.resultado === 'NO_ACEPTABLE'
+        ? '<span class="badge bg-danger">✘ No Aceptable</span>'
+        : '<span class="badge bg-secondary">— No medido</span>';
+    const valor = r.valor_obtenido != null
+      ? `<strong class="text-danger">${r.valor_obtenido} ${r.unidad||''}</strong>` : '—';
+    const obs = r.resultado === 'NO_ACEPTABLE' && r.observacion
+      ? `<small class="text-danger d-block mt-1">${r.observacion}</small>` : '';
+    return `<tr>
+      <td><strong>${r.param_nombre}</strong></td>
+      <td class="text-center">${ico}</td>
+      <td class="text-center">${valor}</td>
+      <td><small>${r.norma||''}</small>${obs}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('div-resultados-body').innerHTML = `
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark">
+        <tr><th>Parámetro</th><th class="text-center">Resultado</th>
+            <th class="text-center">Valor encontrado</th><th>Norma / Observación</th></tr>
+      </thead>
+      <tbody>${rows || '<tr><td colspan="4" class="text-center text-muted py-3">Sin resultados registrados</td></tr>'}</tbody>
+    </table>`;
+  new bootstrap.Modal(document.getElementById('modalResultados')).show();
+}
+
+document.addEventListener('DOMContentLoaded', cargarResumen);
+</script>
+{% endblock %}

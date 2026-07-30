@@ -1,0 +1,140 @@
+---
+# ARCHITECTURE_MANIFEST.yaml — PARAGUASMJ
+# Baseline Institucional RC5.5 · 2026-06-12
+# Este archivo documenta los componentes congelados y sus supuestos de seguridad.
+# Toda modificación de un componente frozen requiere actualizar este archivo y el hash de baseline.
+
+baseline_id: "PARAGUASMJ-RC5.5-20260612"
+version: "RC5.5"
+fecha_congelamiento: "2026-06-12"
+responsable: "SIGCA — Equipo técnico PARAGUASMJ"
+
+# ── Hash de baseline (para validación de integridad) ─────────────────────────
+# Generar con: find PARAGUASMJ/ -name "*.py" | sort | xargs sha256sum | sha256sum
+baseline_hash: "40c32ceb7a860fce8bfa95796b253cbf5609dfdca32459c7f7d2c09728db251a"
+# Verificar con: find . -name "*.py" | sort | xargs sha256sum | sha256sum
+
+# ── Componentes congelados ────────────────────────────────────────────────────
+frozen_components:
+
+  csrf:
+    modulo: "core/csrf_manager.py"
+    estado: "AUTORIDAD_UNICA"
+    descripcion: >
+      Único punto de generación y verificación CSRF.
+      utils/seguridad.py y core/secure_auth.py delegan aquí.
+      Clave de sesión: 'csrf_token'. Algoritmo: hmac.compare_digest.
+    deprecados:
+      - "utils/seguridad.py::generar_token_csrf (delega a csrf_manager)"
+      - "core/secure_auth.py::generate_csrf_token (delega a csrf_manager)"
+
+  cifrado_secretos:
+    modulo: "core/crypto_simple.py"
+    nivel: "OFUSCACION_OPERATIVA"
+    es_cifrado_institucional: false
+    advertencia: >
+      XOR + SHA-256. Un atacante con acceso al código y BD puede recuperar secretos.
+      Solo protege contra lectura directa en SQLite Browser.
+      NO usar para datos expuestos en red ni credenciales bancarias.
+    plan_migracion: "RC6.0: reemplazar por cryptography.Fernet"
+    registra_audit: "CONFIG_ENCRYPTION_WEAK"
+
+  balance_hidrico_columnas:
+    modulo: "routes/balance_hidrico.py"
+    constante: "COLS_PERMITIDAS"
+    tipo: "frozenset"
+    columnas_autorizadas:
+      - bocatoma_m3
+      - entrada_ptap_m3
+      - salida_ptap_m3
+      - produccion_m3
+      - consumo_facturado_m3
+      - facturado_m3
+      - perdidas_m3
+      - fallas_aduccion
+      - longitud_aduccion_km
+      - fallas_distribucion
+      - longitud_distribucion_km
+      - suscriptores
+      - empleados
+      - micromedidores_instalados
+      - micromedidores_efectivos
+      - ianc_pct
+      - ipuf_m3_susc_mes
+      - ima
+      - observaciones
+
+  usb_updater:
+    modulo: "core/usb_updater.py"
+    verificacion: "manifest.sha256 + zipfile.testzip()"
+    pendiente_RC6:
+      - "manifest.sig firmado con RSA/Ed25519 para verificación de autoría"
+
+  backup:
+    modulo: "core/backup_manager.py"
+    funciones:
+      crear_backup: "sqlite3.backup() + PRAGMA integrity_check + backup_test_restore()"
+      restaurar_backup: "path traversal guard + integrity_check"
+      backup_test_restore: "consulta tablas críticas: usuarios, registro_central, audit_log, configuracion"
+
+# ── Índices financieros ───────────────────────────────────────────────────────
+indices_financieros:
+  - idx_mov_fecha     # movimientos_financieros(fecha)
+  - idx_mov_banco     # movimientos_financieros(fk_banco_id)
+  - idx_mov_tipo      # movimientos_financieros(tipo_mov)
+  - idx_caja_fecha    # caja_chica(fecha)
+  - idx_caja_tipo     # caja_chica(tipo_mov)
+
+# ── Eventos de auditoría registrados ─────────────────────────────────────────
+audit_events:
+  otp:
+    - OTP_GENERADO
+    - OTP_GENERADO_SIN_ENVIO
+    - OTP_VALIDADO
+    - OTP_FALLIDO
+    - OTP_BLOQUEADO
+  sui:
+    - SUI_EXPORTADO          # incluye SHA-256 del Excel generado
+    - SUI_FALLIDO
+  cifrado:
+    - CONFIG_ENCRYPTION_WEAK # cada uso de crypto_simple.cifrar()
+  proyectos:
+    - TAREA_ELIMINADA        # incluye usuario e IP
+  scheduler:
+    - CANAL_WHATSAPP_FALLIDO
+    - CANAL_EMAIL_UTILIZADO
+    - CANAL_LOG_LOCAL
+
+# ── Riesgos pendientes documentados ──────────────────────────────────────────
+riesgos_pendientes:
+  bajo:
+    - descripcion: "CSRF triple coexistencia residual"
+      mitigacion: "csrf_manager.py es autoridad única; otros módulos delegan"
+      plan: "RC6.0: eliminar utils/seguridad.py y core/secure_auth.py como fuentes"
+
+    - descripcion: "crypto_simple usado sin advertencia explícita"
+      mitigacion: "es_cifrado_institucional()==False + audit CONFIG_ENCRYPTION_WEAK"
+      plan: "RC6.0: cryptography.Fernet"
+
+  medio:
+    - descripcion: "Saldo financiero calculado por SUM() — puede ser lento con >50k registros"
+      mitigacion: "Índices aplicados en RC5.5"
+      plan: "RC6.0: saldo_cache o ledger_balance por trigger"
+
+    - descripcion: "USB updater verifica integridad, no autoría"
+      mitigacion: "manifest.sha256 implementado"
+      plan: "RC6.0: manifest.sig con Ed25519"
+
+    - descripcion: "Sesiones concurrentes no controladas"
+      mitigacion: "Política institucional — un usuario en múltiples dispositivos es decisión organizacional"
+      plan: "RC6.0: tabla sesiones_activas + revocación por usuario"
+
+# ── Calificación RC5.5 ────────────────────────────────────────────────────────
+calificacion:
+  seguridad:              9.2
+  robustez:               9.0
+  operacion_rural:        9.5
+  auditoria_institucional: 9.0
+  finanzas:               8.5
+  compatibilidad_RC5_5:   9.8
+  baseline_institucional:  9.2

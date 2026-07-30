@@ -1,10 +1,10 @@
-"""core/logger.py — Logger institucional ASUACAP."""
+"""core/logger.py — Logger institucional SIGCA."""
 import logging, os, sys
 from logging.handlers import RotatingFileHandler
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 
-def configurar_logger(nombre: str = "asuacap") -> logging.Logger:
+def configurar_logger(nombre: str = "sigca") -> logging.Logger:
     logger = logging.getLogger(nombre)
     if logger.handlers:
         return logger

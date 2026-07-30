@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ pqr.radicado_visible or pqr.codigo_completo }} — ASUACAP{% endblock %}
+{% block title %}{{ pqr.radicado_visible or pqr.codigo_completo }} — SIGCA{% endblock %}
 {% block extra_css %}
 <style>
 .timeline { position:relative; padding-left:30px; }
@@ -12,7 +12,11 @@
 </style>
 {% endblock %}
 {% block content %}
-
+<div class="modulo-header modulo-pqrs">
+    <i class="bi bi-chat-left-text-fill"></i>
+    <span>Detalle PQRS</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
     <h5 class="mb-0 fw-bold">{{ pqr.radicado_visible or pqr.codigo_completo }}</h5>
@@ -24,437 +28,108 @@
     <span class="badge fs-6 bg-{{ 'success' if pqr.estado_pqr in ['Cerrada','Respondida'] else 'warning text-dark' if pqr.estado_pqr=='En proceso' else 'primary' }} rounded-pill px-3 py-2">
       {{ pqr.estado_pqr }}
     </span>
-    <a href="/pqrs/" class="btn btn-ghost btn-sm">← Volver</a>
+    <a href="/pqrs/" class="btn btn-sm btn-outline-secondary">← Lista</a>
   </div>
 </div>
 
 <div class="row g-3">
-
-  <!-- ── Columna principal ──────────────────────────────── -->
+  <!-- Datos principales -->
   <div class="col-lg-8">
-
-    <!-- Datos de la PQRS -->
     <div class="seccion">
-      <h6 class="fw-bold mb-3">
-        📋 {{ pqr.tipo_pqr }} — <code>{{ pqr.radicado_visible or pqr.codigo_completo }}</code>
-        <small class="text-muted fw-normal ms-2">(GC — Gestión Comercial)</small>
-      </h6>
-      <div class="row g-2 small">
-        <div class="col-6"><strong>Usuario:</strong> {{ pqr.usuario_nombre }}</div>
-        <div class="col-6"><strong>Teléfono:</strong> {{ pqr.telefono or '—' }}</div>
-        <div class="col-6"><strong>Dirección / Predio:</strong> {{ pqr.direccion or '—' }}</div>
-        <div class="col-6"><strong>Medio de recepción:</strong> {{ pqr.medio_recepcion }}</div>
-        <div class="col-6"><strong>Componente afectado:</strong> {{ pqr.componente_afectado or '—' }}</div>
-        <div class="col-6">
-          <strong>Vence:</strong>
-          <span class="{{ 'text-danger fw-bold' if pqr.estado_pqr not in ['Respondida','Cerrada'] }}">
-            {{ pqr.fecha_limite }}
-          </span>
-        </div>
-        <div class="col-12 mt-2">
-          <strong>Descripción:</strong>
-          <p class="mt-1 mb-0 text-muted">{{ pqr.descripcion_detallada or '—' }}</p>
-        </div>
-        {% if pqr.respuesta_definitiva %}
-        <div class="col-12 mt-2 p-2 bg-light rounded">
-          <strong>✅ Respuesta oficial:</strong>
-          <p class="mb-0 mt-1">{{ pqr.respuesta_definitiva }}</p>
-        </div>
-        {% endif %}
-      </div>
-    </div>
-
-    <!-- Órdenes de Trabajo (GA) -->
-    <div class="seccion">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <h6 class="fw-bold mb-0">🔧 Órdenes de Trabajo</h6>
-          <small class="text-muted">Código GA-OT (Gestión Ambiental) · Soporte PSMV · PUEAA · SSPD</small>
-        </div>
-        {% if pqr.estado_pqr not in ['Respondida','Cerrada','Archivada'] %}
-        <button class="btn btn-sm btn-primary" onclick="toggleFormOT()">
-          <i class="bi bi-plus-circle me-1"></i>Emitir Orden
-        </button>
-        {% endif %}
-      </div>
-
-      <!-- Formulario nueva OT -->
-      <div id="form-ot" class="bg-light p-3 rounded mb-3" style="display:none;">
-        <div class="row g-2">
-          <div class="col-md-4">
-            <label class="form-label fw-semibold small">Tipo de servicio</label>
-            <select id="ot-tipo" class="form-select form-select-sm">
-              <option>Correctivo</option>
-              <option>Preventivo</option>
-              <option>Inspección</option>
-              <option>Instalación</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold small">Prioridad</label>
-            <select id="ot-prioridad" class="form-select form-select-sm">
-              <option value="normal">Normal</option>
-              <option value="urgente">🔶 Urgente</option>
-              <option value="emergencia">🔴 Emergencia</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold small">Técnico asignado *</label>
-            <select id="ot-tecnico" class="form-select form-select-sm">
-              <option value="">— Seleccione —</option>
-              {% for t in tecnicos %}
-              <option value="{{ t.nombre_completo }}">{{ t.nombre_completo }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-12">
-            <label class="form-label fw-semibold small">Descripción del trabajo a realizar *</label>
-            <textarea id="ot-desc" class="form-control form-control-sm" rows="3"
-                      placeholder="Describa exactamente qué debe hacer el técnico, materiales estimados y herramientas necesarias..."></textarea>
-          </div>
-          <div class="col-md-5">
-            <label class="form-label fw-semibold small">Materiales / Herramientas</label>
-            <input type="text" id="ot-materiales" class="form-control form-control-sm"
-                   placeholder="Ej: 2m tubo 2'', 2 uniones, pegante">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold small">Fecha estimada ejecución</label>
-            <input type="date" id="ot-fecha" class="form-control form-control-sm">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label fw-semibold small">Vincular a proyecto</label>
-            <select id="ot-proyecto" class="form-select form-select-sm">
-              <option value="">— Ninguno —</option>
-              {% for p in proyectos %}
-              <option value="{{ p.id }}">{{ p.codigo }} — {{ p.nombre[:30] }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-12 d-flex gap-2 mt-1">
-            <button class="btn btn-success btn-sm fw-bold" onclick="emitirOT()">
-              Emitir Orden GA-OT
-            </button>
-            <button class="btn btn-ghost btn-sm" onclick="toggleFormOT()">Cancelar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lista de OTs -->
-      {% for ot in ordenes %}
-      <div class="border rounded p-3 mb-2">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-          <div>
-            <code class="fw-bold text-success">{{ ot.codigo_ot }}</code>
-            <span class="badge bg-{{ 'success' if ot.estado_ot=='Ejecutada' else 'primary' if ot.estado_ot=='Aceptada' else 'secondary' }} ms-2">
-              {{ ot.estado_ot }}
-            </span>
-            <span class="badge bg-{{ 'danger' if ot.prioridad=='emergencia' else 'warning text-dark' if ot.prioridad=='urgente' else 'light text-dark border' }} ms-1">
-              {{ ot.prioridad or 'normal' }}
-            </span>
-          </div>
-          {% if ot.estado_ot != 'Ejecutada' %}
-          <button class="btn btn-sm btn-outline-success"
-                  onclick="mostrarFormActa({{ ot.pk_ot_id }}, '{{ ot.codigo_ot }}')">
-            📝 Registrar Acta
-          </button>
-          {% endif %}
-        </div>
-        <div class="small text-muted mt-1">
-          👤 {{ ot.tecnico_asignado or '—' }} ·
-          📅 Estimada: {{ ot.fecha_estimada or '—' }} ·
-          Ejecutada: {{ ot.fecha_ejecucion or 'Pendiente' }}
-        </div>
-        <div class="small mt-1">{{ ot.descripcion_tareas or '—' }}</div>
-        {% if ot.materiales %}
-        <div class="small text-muted">🔩 {{ ot.materiales }}</div>
-        {% endif %}
-        {% if ot.n_actas %}
-        <div class="small text-success mt-1">✅ {{ ot.n_actas }} acta(s) registrada(s)</div>
-        {% endif %}
-      </div>
-      {% else %}
-      <div class="text-center text-muted py-3 small">
-        No hay órdenes de trabajo. Emita una para asignar al técnico.
-      </div>
-      {% endfor %}
-    </div>
-
-    <!-- Formulario Acta de Ejecución -->
-    <div id="form-acta" class="seccion" style="display:none;">
-      <h6 class="fw-bold mb-3">
-        📝 Acta de Ejecución — <span id="acta-ot-num" class="text-success"></span>
-        <small class="text-muted fw-normal">(GA-ACT — Gestión Ambiental)</small>
-      </h6>
-      <input type="hidden" id="acta-ot-id">
+      <h6 class="fw-bold mb-3"><i class="bi bi-person me-2"></i>Datos del solicitante</h6>
       <div class="row g-2">
-        <div class="col-md-4">
-          <label class="form-label fw-semibold small">Fecha ejecución</label>
-          <input type="date" id="acta-fecha" class="form-control form-control-sm">
+        <div class="col-sm-6">
+          <small class="text-muted">Nombre</small>
+          <div class="fw-semibold">{{ pqr.nombre_solicitante or '—' }}</div>
         </div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold small">Hora inicio</label>
-          <input type="time" id="acta-hi" class="form-control form-control-sm">
+        <div class="col-sm-6">
+          <small class="text-muted">Documento</small>
+          <div>{{ pqr.documento_solicitante or '—' }}</div>
         </div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold small">Hora fin</label>
-          <input type="time" id="acta-hf" class="form-control form-control-sm">
+        <div class="col-sm-6">
+          <small class="text-muted">Teléfono</small>
+          <div>{{ pqr.telefono_solicitante or '—' }}</div>
         </div>
-        <div class="col-12">
-          <label class="form-label fw-semibold small">Trabajos realizados *</label>
-          <textarea id="acta-tareas" class="form-control form-control-sm" rows="3"
-                    placeholder="Describa exactamente los trabajos, materiales usados y cantidad..."></textarea>
-        </div>
-        <div class="col-md-6">
-          <label class="form-label fw-semibold small">
-            🔬 Prueba de presión
-          </label>
-          <input type="text" id="acta-presion" class="form-control form-control-sm"
-                 placeholder="Ej: 25 PSI — sin fugas, normal">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label fw-semibold small">
-            💧 Cloro residual
-          </label>
-          <input type="text" id="acta-cloro" class="form-control form-control-sm"
-                 placeholder="Ej: 0.5 mg/L — dentro del rango permitido">
+        <div class="col-sm-6">
+          <small class="text-muted">Correo</small>
+          <div>{{ pqr.correo_solicitante or '—' }}</div>
         </div>
         <div class="col-12">
-          <label class="form-label fw-semibold small">Observaciones / Novedades</label>
-          <textarea id="acta-obs" class="form-control form-control-sm" rows="2"></textarea>
-        </div>
-        <div class="col-12">
-          <div class="form-check p-3 bg-light rounded border">
-            <input type="checkbox" id="acta-conformidad" class="form-check-input"
-                   style="width:20px;height:20px;cursor:pointer;">
-            <label class="form-check-label fw-semibold ms-2 pt-1" for="acta-conformidad">
-              ✅ El usuario da su conformidad con el trabajo realizado
-              <small class="d-block text-muted fw-normal">
-                Al marcar esto, la PQRS pasa a estado "Respondida"
-              </small>
-            </label>
-          </div>
-        </div>
-        <div class="col-12 d-flex gap-2">
-          <button class="btn btn-success fw-bold" onclick="registrarActa()">
-            Guardar Acta GA-ACT
-          </button>
-          <button class="btn btn-ghost"
-                  onclick="document.getElementById('form-acta').style.display='none'">
-            Cancelar
-          </button>
+          <small class="text-muted">Dirección del predio</small>
+          <div>{{ pqr.direccion_predio or '—' }}</div>
         </div>
       </div>
     </div>
 
-    <!-- Actas registradas -->
-    {% if actas %}
     <div class="seccion">
-      <h6 class="fw-bold mb-3">📁 Actas de Ejecución Registradas</h6>
-      {% for a in actas %}
-      <div class="border rounded p-3 mb-2 {{ 'bg-light' if a.estado_acta=='Verificada' }}">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <code class="fw-bold text-success">{{ a.codigo_ot }}</code>
-            <span class="badge bg-{{ 'success' if a.estado_acta=='Verificada' else 'secondary' }} ms-2">
-              {{ a.estado_acta }}
-            </span>
-          </div>
-          {% if not a.verificado_supervisor %}
-          <button class="btn btn-sm btn-outline-primary"
-                  onclick="verificarActa({{ a.pk_ae_id }})">
-            ✔ Verificar (Supervisor)
-          </button>
-          {% else %}
-          <span class="badge bg-primary">✔ Verificado supervisor</span>
-          {% endif %}
-        </div>
-        <div class="small text-muted mt-1">
-          📅 {{ a.fecha_ejecucion }} {{ a.hora_inicio or '' }}–{{ a.hora_fin or '' }}
-        </div>
-        <div class="small mt-1">{{ a.tareas_realizadas or '—' }}</div>
-        {% if a.pruebas_presion or a.pruebas_cloro %}
-        <div class="small text-muted mt-1">
-          🔬 Presión: {{ a.pruebas_presion or '—' }} &nbsp;|&nbsp;
-          💧 Cloro: {{ a.pruebas_cloro or '—' }}
-        </div>
-        {% endif %}
-        <div class="mt-1">
-          {% if a.conformidad_usuario %}
-          <span class="badge bg-success">✅ Conformidad del usuario</span>
-          {% else %}
-          <span class="badge bg-secondary">Sin firma de conformidad aún</span>
-          {% endif %}
-        </div>
+      <h6 class="fw-bold mb-2"><i class="bi bi-chat-text me-2"></i>Descripción</h6>
+      <p class="mb-0">{{ pqr.descripcion }}</p>
+    </div>
+
+    {% if pqr.respuesta_texto %}
+    <div class="seccion" style="border-color:#10b981;">
+      <h6 class="fw-bold mb-2 text-success"><i class="bi bi-check-circle me-2"></i>Respuesta institucional</h6>
+      <p class="mb-1">{{ pqr.respuesta_texto }}</p>
+      <small class="text-muted">Respondida: {{ pqr.fecha_respuesta[:10] if pqr.fecha_respuesta }}</small>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Panel lateral -->
+  <div class="col-lg-4">
+    <!-- Cambiar estado -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Actualizar estado</div>
+      <div class="card-body">
+        <form method="POST" action="/pqrs/{{ pqr.pk_pqr_id }}/estado">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <select name="nuevo_estado" class="form-select form-select-sm mb-2">
+            {% for e in ['Abierta','En proceso','Respondida','Cerrada','Anulada'] %}
+            <option value="{{ e }}" {% if e==pqr.estado_pqr %}selected{% endif %}>{{ e }}</option>
+            {% endfor %}
+          </select>
+          <textarea name="observacion" class="form-control form-control-sm mb-2" rows="2"
+                    placeholder="Observación (opcional)..."></textarea>
+          <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold">Actualizar</button>
+        </form>
       </div>
-      {% endfor %}
+    </div>
+
+    <!-- Responder -->
+    {% if pqr.estado_pqr not in ['Respondida','Cerrada','Anulada'] %}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header"><i class="bi bi-reply me-2"></i>Responder PQRS</div>
+      <div class="card-body">
+        <form method="POST" action="/pqrs/{{ pqr.pk_pqr_id }}/responder">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <textarea name="respuesta" class="form-control form-control-sm mb-2" rows="4"
+                    placeholder="Escriba la respuesta institucional..." required></textarea>
+          <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">
+            <i class="bi bi-send me-1"></i>Enviar respuesta
+          </button>
+        </form>
+      </div>
     </div>
     {% endif %}
 
-  </div>
-
-  <!-- ── Columna lateral: Timeline + Info ────────────── -->
-  <div class="col-lg-4">
-
-    <!-- Timeline del caso -->
-    <div class="seccion">
-      <h6 class="fw-bold mb-3">📍 Línea de tiempo del caso</h6>
-      <div class="timeline small">
-        <div class="tl-item">
-          <div class="tl-dot dot-v"></div>
-          <strong>Radicación</strong>
-          <div class="text-muted">
-            {{ pqr.fecha_radicacion[:16] if pqr.fecha_radicacion else '—' }}
+    <!-- Bitácora -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header"><i class="bi bi-journal me-2"></i>Bitácora</div>
+      <div class="card-body p-0" style="max-height:300px;overflow-y:auto;">
+        <div class="timeline p-3">
+          {% for b in bitacora %}
+          <div class="tl-item">
+            <div class="tl-dot dot-{{ 'v' if b.accion=='Cierre' else 'a' if b.accion=='Respuesta' else 'n' }}"></div>
+            <div class="fw-semibold" style="font-size:12px;">{{ b.accion }}</div>
+            <div class="text-muted" style="font-size:11px;">{{ b.fecha[:16] if b.fecha }} · {{ b.usuario or '—' }}</div>
+            {% if b.detalle %}<div style="font-size:12px;">{{ b.detalle }}</div>{% endif %}
           </div>
-          <div>{{ pqr.medio_recepcion }} · {{ pqr.tipo_pqr }}</div>
+          {% else %}
+          <div class="text-muted small">Sin registros en bitácora.</div>
+          {% endfor %}
         </div>
-        {% if ordenes %}
-        <div class="tl-item">
-          <div class="tl-dot dot-a"></div>
-          <strong>{{ ordenes|length }} Orden(es) de Trabajo (GA-OT)</strong>
-          <div class="text-muted">
-            {{ ordenes[0].codigo_ot if ordenes }}
-            {% if ordenes|length > 1 %}+ {{ ordenes|length - 1 }} más{% endif %}
-          </div>
-        </div>
-        {% endif %}
-        {% if actas %}
-        <div class="tl-item">
-          <div class="tl-dot dot-n"></div>
-          <strong>{{ actas|length }} Acta(s) de Ejecución (GA-ACT)</strong>
-          <div class="text-muted">{{ actas[0].fecha_ejecucion if actas }}</div>
-        </div>
-        {% endif %}
-        {% if pqr.estado_pqr in ['Respondida','Cerrada'] %}
-        <div class="tl-item">
-          <div class="tl-dot dot-v"></div>
-          <strong class="text-success">✅ Caso Cerrado</strong>
-          {% if pqr.conformidad_usuario %}
-          <div class="text-success" style="font-size:11px;">
-            Con conformidad del usuario
-          </div>
-          {% endif %}
-        </div>
-        {% endif %}
       </div>
     </div>
-
-    <!-- Codificación de referencia -->
-    <div class="seccion mt-0" style="font-size:11px;">
-      <strong>🏷️ Codificación del proceso:</strong>
-      <table class="table table-sm mt-2 mb-0" style="font-size:11px;">
-        <tbody>
-          <tr>
-            <td><code class="bg-light">GC-PQR</code></td>
-            <td>Esta PQRS</td>
-          </tr>
-          <tr>
-            <td><code class="bg-light">GA-OT</code></td>
-            <td>Orden de Trabajo<br>
-              <span class="text-muted">Soporte PSMV · PUEAA · SSPD</span>
-            </td>
-          </tr>
-          <tr>
-            <td><code class="bg-light">GA-ACT</code></td>
-            <td>Acta de Ejecución</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="mt-2 text-muted">
-        ⚖️ Ley 142/1994 Art.9 · Ley 1755/2015 · Res. CRA 943/2021
-      </div>
-    </div>
-
   </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-const PID = {{ pqr.pk_pqr_id }};
-
-function toggleFormOT() {
-  const f = document.getElementById('form-ot');
-  f.style.display = f.style.display === 'none' ? 'block' : 'none';
-}
-
-async function emitirOT() {
-  const tecnico = document.getElementById('ot-tecnico').value;
-  const desc    = document.getElementById('ot-desc').value.trim();
-  if (!tecnico) { alert('Seleccione el técnico asignado'); return; }
-  if (!desc)    { alert('Describa el trabajo a realizar'); return; }
-
-  const r = await fetch(`/pqrs/${PID}/orden`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tipo_servicio:       document.getElementById('ot-tipo').value,
-      prioridad:           document.getElementById('ot-prioridad').value,
-      tecnico_asignado:    tecnico,
-      descripcion_trabajo: desc,
-      materiales:          document.getElementById('ot-materiales').value,
-      fecha_estimada:      document.getElementById('ot-fecha').value || null,
-      proyecto_id:         document.getElementById('ot-proyecto').value || null,
-    })
-  }).then(r => r.json());
-
-  if (r.ok) {
-    alert(`✅ Orden ${r.codigo_ot} emitida correctamente.\n` +
-          `Quedará registrada como soporte en GA (Gestión Ambiental).`);
-    location.reload();
-  } else {
-    alert('Error: ' + (r.error || 'Desconocido'));
-  }
-}
-
-function mostrarFormActa(ot_id, ot_num) {
-  document.getElementById('acta-ot-id').value = ot_id;
-  document.getElementById('acta-ot-num').textContent = ot_num;
-  document.getElementById('acta-fecha').value = new Date().toISOString().split('T')[0];
-  document.getElementById('form-acta').style.display = 'block';
-  document.getElementById('form-acta').scrollIntoView({ behavior: 'smooth' });
-}
-
-async function registrarActa() {
-  const ot_id  = document.getElementById('acta-ot-id').value;
-  const tareas = document.getElementById('acta-tareas').value.trim();
-  if (!tareas) { alert('Describa los trabajos realizados'); return; }
-
-  const r = await fetch(`/pqrs/ot/${ot_id}/acta`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      fecha_ejecucion:     document.getElementById('acta-fecha').value,
-      hora_inicio:         document.getElementById('acta-hi').value,
-      hora_fin:            document.getElementById('acta-hf').value,
-      tareas_realizadas:   tareas,
-      pruebas_presion:     document.getElementById('acta-presion').value,
-      pruebas_cloro:       document.getElementById('acta-cloro').value,
-      observaciones:       document.getElementById('acta-obs').value,
-      conformidad_usuario: document.getElementById('acta-conformidad').checked ? 1 : 0,
-    })
-  }).then(r => r.json());
-
-  if (r.ok) {
-    alert(`✅ Acta ${r.codigo_acta} registrada.\n` +
-          `Archivada en GA (Gestión Ambiental) como soporte PSMV/PUEAA.`);
-    location.reload();
-  } else {
-    alert('Error: ' + (r.error || 'Desconocido'));
-  }
-}
-
-async function verificarActa(acta_id) {
-  const conforme = confirm(
-    '¿El trabajo está CONFORME y aprobado?\n\n' +
-    'Aceptar = Conforme → caso pasa a Cerrado\n' +
-    'Cancelar = Requiere corrección'
-  );
-  const r = await fetch(`/pqrs/acta/${acta_id}/verificar`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ conforme })
-  }).then(r => r.json());
-  if (r.ok) location.reload();
-}
-</script>
 {% endblock %}

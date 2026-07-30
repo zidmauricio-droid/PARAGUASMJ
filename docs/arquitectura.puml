@@ -1,0 +1,107 @@
+@startuml PARAGUASMJ_RC5.5
+!theme cerulean-outline
+title PARAGUASMJ RC5.5 — Arquitectura de Componentes\nAUSUACAP · Acueducto Comunitario El Puente
+
+skinparam componentStyle rectangle
+skinparam backgroundColor #FAFAFA
+skinparam component {
+  BackgroundColor #EEF2FF
+  BorderColor #1E3A8A
+  FontColor #1E3A8A
+}
+skinparam database {
+  BackgroundColor #FFF3CD
+  BorderColor #F59E0B
+}
+skinparam package {
+  BackgroundColor #F0FDF4
+  BorderColor #16A34A
+}
+
+' ── Actores ──────────────────────────────────────────────────
+actor "Operador\n(secretaria, aux.)" as operador
+actor "Directivos\n(presidente, tesorera)" as directivo
+actor "Admin\n(técnico)" as admin
+
+' ── Nivel 1: Núcleo (CONGELADO RC5.5) ───────────────────────
+package "Nivel 1 — Núcleo Institucional (CONGELADO)" #EEF2FF {
+  component "autenticacion.py\n+ OTPManager" as auth
+  component "csrf_manager.py\n(AUTORIDAD ÚNICA)" as csrf
+  component "crypto_simple.py\n(ofuscación XOR-SHA)" as crypto
+  component "backup_manager.py\n(WAL-safe + integrity_check)" as backup
+  component "database_manager.py\n(WAL mode, row_factory)" as dbmgr
+  component "document_classifier.py\n(13 reglas TRD, lru_cache)" as clf
+  component "metrics.py\n(@medir_tiempo)" as metrics
+}
+
+' ── Nivel 2: Operación ───────────────────────────────────────
+package "Nivel 2 — Operación (controlado)" #F0FDF4 {
+  component "documentos.py\n(CRUD + firmas + TRD)" as docs
+  component "pqrs.py\n(PQRS + SUI)" as pqrs
+  component "finanzas.py\n(ingresos, egresos, caja)" as fin
+  component "balance_hidrico.py\n(IANC, producción)" as bh
+  component "auditoria.py\n(logs + usuarios)" as aud
+  component "expedientes.py\n(hoja de control AGN)" as exp
+  component "api.py\n(paginación, OTP, firmantes)" as api
+  component "dashboard.py\n(/api/salud)" as dash
+}
+
+' ── Nivel 3: Extensiones (RC6.0+, NO ACTIVAS) ───────────────
+package "Nivel 3 — Extensiones (RC6.0+)" #FEF3C7 {
+  component "indexer.py\n(índice expedientes)" as idx
+  component "clasificador_documental.py\n(fachada + sugerir_expediente)" as clfmod
+  note right of clfmod : ENABLED=True\ndeterminístico
+}
+
+' ── Persistencia ─────────────────────────────────────────────
+database "paraguasmj.db\n(SQLite WAL)\n104 tablas" as db
+database "backups/\n(*.db diario)" as bkdir
+database "uploads/\n(adjuntos, fotos)" as uploads
+database "instance/flask_sessions/\n(sesiones filesystem)" as sessions
+
+' ── Relaciones núcleo ────────────────────────────────────────
+operador --> docs
+directivo --> docs
+directivo --> pqrs
+admin --> aud
+admin --> backup
+
+docs --> csrf : verifica token
+docs --> clf  : clasifica al radicar
+docs --> dbmgr
+pqrs --> dbmgr
+fin  --> dbmgr
+aud  --> dbmgr
+api  --> dbmgr
+
+auth --> crypto : secretos SMTP/WhatsApp
+auth --> csrf
+
+backup --> db   : sqlite3.backup()
+backup --> bkdir
+
+dbmgr --> db
+dbmgr --> sessions : WAL checkpoint c/6h
+
+clf --> clfmod : delega
+idx --> exp
+
+docs --> uploads : adjuntos
+docs --> metrics : @medir_tiempo
+
+' ── Notas ────────────────────────────────────────────────────
+note bottom of db
+  PRAGMA journal_mode=WAL
+  PRAGMA integrity_check (en backup)
+  WAL checkpoint cada 6h
+  baseline_hash: 40c32ceb...
+end note
+
+note bottom of clf
+  13 reglas regex TRD
+  Fallback por área (GA/GC/GF/GE/GL)
+  lru_cache(maxsize=512)
+  100% offline, sin IA
+end note
+
+@enduml

@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Mi Perfil{% endblock %}
 {% block content %}
+<div class="modulo-header modulo-usuarios">
+    <i class="bi bi-person-circle"></i>
+    <span>Mi Perfil</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="row justify-content-center">
     <div class="col-md-7">
         <div class="card shadow-sm border-0">

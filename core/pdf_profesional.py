@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 from core.database_manager import get_db
 
-logger = logging.getLogger("asuacap.pdf")
+logger = logging.getLogger("sigca.pdf")
 
 # Colores institucionales
 C_AZUL    = colors.HexColor("#1E3A8A")
@@ -105,7 +105,7 @@ def _membrete(story, cfg: dict, tipo_doc: str, codigo: str,
 
     styles = getSampleStyleSheet()
     nombre_asoc = cfg.get("nombre_completo",
-        "ASOCIACION DE SUSCRIPTORES DEL ACUEDUCTO COMUNITARIO EL PUENTE - ASUACAP").upper()
+        cfg.get("nombre_asociacion","SIGCA")).upper()
     nit      = cfg.get("nit", "832.001.389-2")
     municipio= cfg.get("municipio","Villeta, Cundinamarca")
     correo   = cfg.get("correo_oficial","aacueductoelpuente@yahoo.com")

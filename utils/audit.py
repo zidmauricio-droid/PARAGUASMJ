@@ -12,7 +12,7 @@ from flask import request, session
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-logger = logging.getLogger("asuacap.audit")
+logger = logging.getLogger("sigca.audit")
 
 
 def log_action(usuario_id=None, nombre_usuario=None,

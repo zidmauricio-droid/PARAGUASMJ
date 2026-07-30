@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}GC-01 Suscriptores — SIGCA{% endblock %}
+{% block content %}
+<div class="modulo-header modulo-comercial">
+  <i class="bi bi-people-fill"></i>
+  <span>GC-01 Suscriptores</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="card border-0 shadow-sm text-center p-3">
+    <div class="fs-3 fw-bold text-success" id="kpi-activos">—</div>
+    <div class="small text-muted">Activos</div>
+  </div></div>
+  <div class="col-6 col-md-3"><div class="card border-0 shadow-sm text-center p-3">
+    <div class="fs-3 fw-bold text-warning" id="kpi-suspendidos">—</div>
+    <div class="small text-muted">Suspendidos</div>
+  </div></div>
+  <div class="col-6 col-md-3"><div class="card border-0 shadow-sm text-center p-3">
+    <div class="fs-3 fw-bold text-danger" id="kpi-cortados">—</div>
+    <div class="small text-muted">Cortados</div>
+  </div></div>
+  <div class="col-6 col-md-3"><div class="card border-0 shadow-sm text-center p-3">
+    <div class="fs-3 fw-bold text-secondary" id="kpi-total">—</div>
+    <div class="small text-muted">Total</div>
+  </div></div>
+</div>
+
+<!-- Filtros -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  <select id="f-estado" class="form-select form-select-sm" style="width:160px;" onchange="cargar()">
+    <option value="">Todos</option>
+    <option value="ACTIVO" selected>Activos</option>
+    <option value="SUSPENDIDO">Suspendidos</option>
+    <option value="CORTADO">Cortados</option>
+    <option value="INACTIVO">Inactivos</option>
+  </select>
+  <input type="text" id="f-q" class="form-control form-control-sm" placeholder="Código o nombre…"
+         style="width:200px;" oninput="cargar()">
+  <button class="btn btn-sm btn-primary ms-auto" onclick="abrirModal()">
+    <i class="bi bi-plus-circle me-1"></i>Nuevo Suscriptor
+  </button>
+</div>
+
+<!-- Tabla -->
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-dark">
+        <tr><th>Código</th><th>Nombre</th><th>Medidor</th><th>Tipo</th>
+            <th>Estrato</th><th class="text-center">Estado</th><th></th></tr>
+      </thead>
+      <tbody id="tbody-sus">
+        <tr><td colspan="7" class="text-center text-muted py-3">Cargando…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal nuevo suscriptor -->
+<div class="modal fade" id="modalSus" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Nuevo Suscriptor</h5>
+        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Código *</label>
+            <input type="text" id="s-codigo" class="form-control" placeholder="SUB-001" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">N° Medidor</label>
+            <input type="text" id="s-medidor" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Tipo</label>
+            <select id="s-tipo" class="form-select">
+              <option value="RESIDENCIAL">Residencial</option>
+              <option value="COMERCIAL">Comercial</option>
+              <option value="INSTITUCIONAL">Institucional</option>
+              <option value="INDUSTRIAL">Industrial</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Estrato</label>
+            <select id="s-estrato" class="form-select">
+              {% for i in range(1,7) %}<option value="{{ i }}">{{ i }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">Aforo m³</label>
+            <input type="number" id="s-aforo" class="form-control" value="0" min="0" step="0.1">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Fecha conexión</label>
+            <input type="date" id="s-fecha" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardar()"><i class="bi bi-floppy me-1"></i>Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function cargar() {
+  const estado = document.getElementById('f-estado').value;
+  const q      = document.getElementById('f-q').value;
+  const d = await fetch(`/suscriptores/api/suscriptores?estado=${estado}&q=${encodeURIComponent(q)}`).then(r=>r.json());
+  if (!d.ok) return;
+  document.getElementById('kpi-activos').textContent    = d.resumen.ACTIVO    || 0;
+  document.getElementById('kpi-suspendidos').textContent = d.resumen.SUSPENDIDO || 0;
+  document.getElementById('kpi-cortados').textContent    = d.resumen.CORTADO   || 0;
+  document.getElementById('kpi-total').textContent       = d.total;
+  const estados = {ACTIVO:'success',SUSPENDIDO:'warning',CORTADO:'danger',INACTIVO:'secondary'};
+  const tbody = document.getElementById('tbody-sus');
+  if (!d.suscriptores.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Sin suscriptores</td></tr>';
+    return;
+  }
+  tbody.innerHTML = d.suscriptores.map(s => `<tr>
+    <td><code>${s.codigo_suscriptor}</code></td>
+    <td>${s.nombre || '—'}</td>
+    <td>${s.numero_medidor || '—'}</td>
+    <td><span class="badge" style="background:var(--border);color:var(--text-primary);">${s.tipo_suscriptor}</span></td>
+    <td class="text-center">${s.estrato}</td>
+    <td class="text-center"><span class="badge bg-${estados[s.estado]||'secondary'}">${s.estado}</span></td>
+    <td><button class="btn btn-xs btn-outline-info" onclick="verDetalle(${s.pk_suscriptor_id})">
+      <i class="bi bi-eye"></i></button></td>
+  </tr>`).join('');
+}
+
+function abrirModal() { new bootstrap.Modal(document.getElementById('modalSus')).show(); }
+
+async function guardar() {
+  const codigo = document.getElementById('s-codigo').value.trim();
+  if (!codigo) { alert('El código es requerido'); return; }
+  const d = await fetch('/suscriptores/api/suscriptores', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      codigo_suscriptor: codigo,
+      numero_medidor: document.getElementById('s-medidor').value,
+      tipo_suscriptor: document.getElementById('s-tipo').value,
+      estrato: parseInt(document.getElementById('s-estrato').value),
+      aforo_m3: parseFloat(document.getElementById('s-aforo').value)||0,
+      fecha_conexion: document.getElementById('s-fecha').value,
+    })
+  }).then(r=>r.json());
+  if (d.ok) {
+    bootstrap.Modal.getInstance(document.getElementById('modalSus'))?.hide();
+    cargar();
+  } else alert('Error: ' + d.error);
+}
+
+async function verDetalle(sid) {
+  const d = await fetch(`/suscriptores/api/suscriptores/${sid}`).then(r=>r.json());
+  if (!d.ok) return;
+  const s = d.suscriptor;
+  alert(`Suscriptor: ${s.codigo_suscriptor}\nNombre: ${s.nombre_completo||'—'}\nEstado: ${s.estado}\nMedidor: ${s.numero_medidor||'—'}\nEstrato: ${s.estrato}`);
+}
+
+document.addEventListener('DOMContentLoaded', cargar);
+</script>
+{% endblock %}

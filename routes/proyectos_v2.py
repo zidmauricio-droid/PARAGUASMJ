@@ -1,5 +1,5 @@
 """
-routes/proyectos_v2.py
+routes/proyectos_v2.py — GA-08 Proyectos (PUEAA · PSMV · PEC · Obras · cualquier proyecto)
 Módulo de proyectos PUEAA/PSMV/Obras — con Gantt, documentos asociados,
 metas con soporte documental, informe de avance Excel.
 PROGRAMA_4 + PROGRAMA_5 integrados.
@@ -27,9 +27,9 @@ from utils.audit import log_action
 from datetime import datetime
 from io import BytesIO
 
-proy2_bp = Blueprint("proyectos2", __name__, url_prefix="/proyectos2")
+proy2_bp = Blueprint("proyectos2", __name__, url_prefix="/proyectos")
 
-logger = logging.getLogger("asuacap.proyectos2")
+logger = logging.getLogger("sigca.proyectos")
 
 
 def with_retry(max_retries: int = 3, base_delay: float = 0.25):
@@ -99,7 +99,7 @@ def api_subir_evidencia(pid):
             VALUES (?,?,?,?,?)
         """, (pid, fn, ruta, request.form.get("descripcion",""), session.get("usuario_id")))
         conn.commit()
-        log_action("UPLOAD_EVIDENCIA","proyectos2",f"Proyecto {pid} — {fn}")
+        log_action(accion="UPLOAD_EVIDENCIA", modulo="proyectos2", descripcion=f"Proyecto {pid} — {fn}")
         return jsonify({"ok": True, "id": cur.lastrowid}), 201
     except Exception as e:
         conn.rollback()
@@ -127,28 +127,6 @@ def _recalcular_avance(conn, proyecto_id: int):
 
 # ── Panel HTML ────────────────────────────────────────────────────────
 
-
-# ── Decorador reintentos ─────────────────────────────────────────
-def with_retry(max_retries: int = 3, base_delay: float = 0.25):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exc = None
-            for attempt in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
-                except sqlite3.OperationalError as e:
-                    last_exc = e
-                    if "database is locked" in str(e).lower() and attempt < max_retries - 1:
-                        time.sleep(base_delay * (2 ** attempt))
-                        continue
-                    break
-                except Exception:
-                    raise
-            raise last_exc
-        return wrapper
-    return decorator
-
 @proy2_bp.route("/")
 @login_requerido
 def panel():
@@ -165,34 +143,59 @@ def api_listar():
     estado = request.args.get("estado", "")
     tipo   = request.args.get("tipo",   "")
     conn   = get_db()
-    sql = """
-        SELECT p.pk_proyecto_id as id,
-               p.codigo, p.nombre, p.descripcion, p.tipo_proyecto,
-               p.estado, p.presupuesto as presupuesto_total,
-               p.valor_ejecutado as costo_real,
-               COALESCE(p.ingresos_totales, 0) as ingresos_totales,
-               p.porcentaje_completado as porcentaje_avance,
-               p.fecha_inicio as fecha_inicio_plan,
-               p.fecha_limite as fecha_fin_plan,
-               p.responsable_id, p.objetivo,
-               (SELECT nombre_completo FROM usuarios
-                WHERE pk_usuario_id=p.responsable_id) as responsable_nombre,
-               (SELECT COUNT(*) FROM tareas_proyecto
-                WHERE proyecto_id=p.pk_proyecto_id) as total_tareas,
-               (SELECT COUNT(*) FROM tareas_proyecto
-                WHERE proyecto_id=p.pk_proyecto_id
-                  AND estado='completada') as tareas_ok
-        FROM proyectos p WHERE 1=1
-    """
-    params = []
-    if estado and estado != "todos":
-        sql += " AND p.estado=?"; params.append(estado)
-    if tipo and tipo != "todos":
-        sql += " AND p.tipo_proyecto=?"; params.append(tipo)
-    sql += " ORDER BY p.pk_proyecto_id DESC"
-    rows = conn.execute(sql, params).fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
+    try:
+        # Detectar si la tabla usa pk_proyecto_id (schema v1) o id (schema v2)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(proyectos)").fetchall()}
+        pk_col = "pk_proyecto_id" if "pk_proyecto_id" in cols else "id"
+        # Columnas opcionales agregadas por migrate
+        has_ingresos  = "ingresos_totales"  in cols
+        has_tipo      = "tipo_proyecto"     in cols
+        has_objetivo  = "objetivo"          in cols
+        pct_col = ("porcentaje_completado" if "porcentaje_completado" in cols
+                   else "porcentaje_avance" if "porcentaje_avance" in cols else None)
+        pct_sql = f"COALESCE(p.{pct_col}, 0)" if pct_col else "0"
+        # Detectar columnas de fecha
+        fi_col = "fecha_inicio" if "fecha_inicio" in cols else ("fecha_inicio_plan" if "fecha_inicio_plan" in cols else None)
+        ff_col = "fecha_limite" if "fecha_limite" in cols else ("fecha_fin_plan" if "fecha_fin_plan" in cols else None)
+        fi_sql = f"p.{fi_col}" if fi_col else "NULL"
+        ff_sql = f"p.{ff_col}" if ff_col else "NULL"
+        # Detectar si tareas_proyecto existe
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        has_tareas = "tareas_proyecto" in tablas
+
+        sql = f"""
+            SELECT p.{pk_col} as id,
+                   p.codigo, p.nombre, p.descripcion,
+                   {'p.tipo_proyecto' if has_tipo else "'otro'"} as tipo_proyecto,
+                   p.estado,
+                   COALESCE(p.presupuesto, 0) as presupuesto_total,
+                   COALESCE(p.valor_ejecutado, 0) as costo_real,
+                   COALESCE({'p.ingresos_totales' if has_ingresos else '0'}, 0) as ingresos_totales,
+                   {pct_sql} as porcentaje_avance,
+                   {fi_sql} as fecha_inicio_plan,
+                   {ff_sql} as fecha_fin_plan,
+                   p.responsable_id,
+                   {'p.objetivo' if has_objetivo else "''"} as objetivo,
+                   (SELECT nombre_completo FROM usuarios
+                    WHERE pk_usuario_id=p.responsable_id) as responsable_nombre,
+                   {'(SELECT COUNT(*) FROM tareas_proyecto WHERE proyecto_id=p.' + pk_col + ')' if has_tareas else '0'} as total_tareas,
+                   {'(SELECT COUNT(*) FROM tareas_proyecto WHERE proyecto_id=p.' + pk_col + " AND estado='completada')" if has_tareas else '0'} as tareas_ok
+            FROM proyectos p WHERE 1=1
+        """
+        params = []
+        if estado and estado != "todos":
+            sql += " AND p.estado=?"; params.append(estado)
+        if tipo and tipo != "todos" and has_tipo:
+            sql += " AND p.tipo_proyecto=?"; params.append(tipo)
+        sql += f" ORDER BY p.{pk_col} DESC"
+        rows = conn.execute(sql, params).fetchall()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        logger.error(f"api_listar proyectos error: {e}", exc_info=True)
+        return jsonify({"error": str(e), "items": []}), 500
+    finally:
+        conn.close()
 
 
 @proy2_bp.route("/api", methods=["POST"])
@@ -396,9 +399,34 @@ def api_actualizar_tarea(tid):
 @proy2_bp.route("/api/tareas/<int:tid>", methods=["DELETE"])
 @login_requerido
 def api_eliminar_tarea(tid):
+    from flask import session
     conn = get_db()
+    tarea = conn.execute("SELECT fk_proyecto_id FROM tareas_proyecto WHERE id=?", (tid,)).fetchone()
+    if not tarea:
+        conn.close()
+        return jsonify({"error": "Tarea no encontrada"}), 404
+    proyecto = conn.execute(
+        "SELECT creado_por FROM proyectos WHERE pk_proyecto_id=?", (tarea["fk_proyecto_id"],)
+    ).fetchone()
+    if session.get("rol") != "admin" and (not proyecto or proyecto["creado_por"] != session.get("nombre_usuario")):
+        conn.close()
+        return jsonify({"error": "Sin permiso para eliminar esta tarea"}), 403
     conn.execute("DELETE FROM tareas_proyecto WHERE id=?", (tid,))
-    conn.commit(); conn.close()
+    conn.commit()
+    try:
+        from utils.audit import log_action
+        from flask import request as _req
+        log_action(
+            accion="TAREA_ELIMINADA",
+            modulo="proyectos",
+            descripcion=(
+                f"Tarea #{tid} eliminada | Proyecto #{tarea['fk_proyecto_id']} "
+                f"| Por: {session.get('nombre_usuario','?')} | IP: {_req.remote_addr}"
+            )
+        )
+    except Exception:
+        pass
+    conn.close()
     return jsonify({"ok": True})
 
 
@@ -870,3 +898,32 @@ def api_buscar_documento():
     rows = conn.execute(sql, params).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+@proy2_bp.route("/api/configuracion/tipos")
+@login_requerido
+def api_tipos_proyecto():
+    """Retorna tipos de proyecto desde la tabla tipos_proyecto (configurable)."""
+    conn = get_db()
+    try:
+        tablas = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if "tipos_proyecto" in tablas:
+            rows = conn.execute(
+                "SELECT codigo, nombre FROM tipos_proyecto WHERE activo=1 ORDER BY orden, nombre"
+            ).fetchall()
+            if rows:
+                return jsonify({"ok": True, "tipos": [dict(r) for r in rows]})
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    # Fallback estático
+    return jsonify({"ok": True, "tipos": [
+        {"codigo": "pueaa", "nombre": "PUEAA - Plan de Uso Eficiente de Agua"},
+        {"codigo": "psmv",  "nombre": "PSMV - Plan de Saneamiento y Manejo de Vertimientos"},
+        {"codigo": "sspd",  "nombre": "SSPD - Superintendencia de Servicios"},
+        {"codigo": "obra",  "nombre": "Obra de infraestructura"},
+        {"codigo": "otro",  "nombre": "Otro tipo de proyecto"},
+    ]})

@@ -1,21 +1,23 @@
 """
 core/otp_manager.py — Gestion de OTP via WhatsApp (CallMeBot) para firmas digitales.
 """
-import random, string, sqlite3, logging, requests
+import secrets, string, sqlite3, logging, requests
 from datetime import datetime, timedelta
+from core.crypto_simple import descifrar
+from utils.audit import log_action
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import Config
 from core.database_manager import get_db, registrar_log
 
-logger = logging.getLogger("asuacap.otp")
+logger = logging.getLogger("sigca.otp")
 
 CARACTERES_OTP = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # sin O,0,I,1
 
 
 def generar_codigo_otp(longitud: int = 6) -> str:
-    """Genera codigo OTP alfanumerico sin caracteres confusos."""
-    return "".join(random.choices(CARACTERES_OTP, k=longitud))
+    """Genera codigo OTP criptograficamente seguro (secrets, no random)."""
+    return "".join(secrets.choice(CARACTERES_OTP) for _ in range(longitud))
 
 
 def enviar_whatsapp(numero: str, mensaje: str, api_key: str) -> tuple[bool, str]:
@@ -48,7 +50,7 @@ class OTPManager:
             conn = get_db()
             r = conn.execute("SELECT valor FROM configuracion WHERE clave='whatsapp_api_key'").fetchone()
             conn.close()
-            return r["valor"] if r else ""
+            return descifrar(r["valor"]) if r else ""
         except Exception:
             return ""
 
@@ -107,6 +109,15 @@ class OTPManager:
                 logger.warning(f"OTP no enviado a {firmante['whatsapp']}: {error}")
 
             registrar_log("INFO","otp","sistema",f"OTP generado para doc {registro_id} firmante {firmante_id}")
+            evento = "OTP_GENERADO" if exito else "OTP_GENERADO_SIN_ENVIO"
+            log_action(
+                accion=evento, modulo="otp",
+                descripcion=(
+                    f"Registro #{registro_id} | Firmante #{firmante_id} ({firmante['cargo']}) "
+                    f"| WhatsApp_ok={exito}"
+                    + (f" | error_wa={error}" if not exito else "")
+                )
+            )
             return {"ok": True, "enviado_whatsapp": exito, "error_wa": error if not exito else ""}
 
         except Exception as e:
@@ -135,7 +146,32 @@ class OTPManager:
                 conn.commit()
                 return {"ok": False, "error": "El codigo OTP ha expirado"}
 
-            if otp["codigo_otp"].upper() != codigo_ingresado.strip().upper():
+            # Rate limit: máx 3 intentos fallidos por OTP
+            intentos = conn.execute(
+                "SELECT intentos_fallidos FROM autorizaciones_otp WHERE pk_auth_id=?",
+                (otp["pk_auth_id"],)
+            ).fetchone()
+            intentos_fallidos = (intentos["intentos_fallidos"] if intentos and "intentos_fallidos" in intentos.keys() else 0) or 0
+            if intentos_fallidos >= 3:
+                conn.execute("UPDATE autorizaciones_otp SET estado='Expirado' WHERE pk_auth_id=?", (otp["pk_auth_id"],))
+                conn.commit()
+                log_action(
+                    accion="OTP_BLOQUEADO", modulo="otp",
+                    descripcion=f"Registro #{registro_id} | Firmante #{firmante_id} | 3 intentos fallidos"
+                )
+                return {"ok": False, "error": "Demasiados intentos fallidos. Solicite un nuevo OTP."}
+
+            # compare_digest previene timing attacks
+            if not secrets.compare_digest(otp["codigo_otp"].upper(), codigo_ingresado.strip().upper()):
+                conn.execute(
+                    "UPDATE autorizaciones_otp SET intentos_fallidos=COALESCE(intentos_fallidos,0)+1 WHERE pk_auth_id=?",
+                    (otp["pk_auth_id"],)
+                )
+                conn.commit()
+                log_action(
+                    accion="OTP_FALLIDO", modulo="otp",
+                    descripcion=f"Registro #{registro_id} | Firmante #{firmante_id} | Intento #{intentos_fallidos+1}"
+                )
                 return {"ok": False, "error": "Codigo incorrecto"}
 
             conn.execute("""
@@ -154,6 +190,13 @@ class OTPManager:
 
             conn.commit()
             registrar_log("INFO","otp","sistema",f"OTP aprobado doc {registro_id} firmante {firmante_id}")
+            log_action(
+                accion="OTP_VALIDADO", modulo="otp",
+                descripcion=(
+                    f"Registro #{registro_id} | Firmante #{firmante_id} | "
+                    f"Aprobacion_completa={aprobacion_completa}"
+                )
+            )
             return {"ok": True, "aprobacion_completa": aprobacion_completa}
 
         except Exception as e:

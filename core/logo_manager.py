@@ -1,5 +1,5 @@
 """
-core/logo_manager.py — Gestor central del logo institucional ASUACAP.
+core/logo_manager.py — Gestor central del logo institucional SIGCA.
 
 El logo se carga UNA SOLA VEZ en Configuración y se usa automáticamente en:
   - Membrete PDF (ReportLab)
@@ -23,7 +23,7 @@ def guardar_logo(archivo_bytes: bytes, nombre_original: str, db_path: str) -> di
         return {"ok": False, "error": f"Solo PNG, JPG o WEBP"}
 
     os.makedirs(LOGO_DIR, exist_ok=True)
-    nombre_final = f"logo_asuacap.{ext}"
+    nombre_final = f"logo_sigca.{ext}"
     ruta         = os.path.join(LOGO_DIR, nombre_final)
     with open(ruta, "wb") as f:
         f.write(archivo_bytes)
@@ -66,8 +66,8 @@ def obtener_logo(db_path: str) -> dict:
         "path":            path,
         "base64":          cfg.get("logo_base64",""),
         "nombre":          cfg.get("logo_nombre",""),
-        "nombre_asoc":     cfg.get("nombre_completo", cfg.get("nombre_asociacion","ASUACAP")),
-        "nombre_corto":    cfg.get("nombre_asociacion","ASUACAP"),
+        "nombre_asoc":     cfg.get("nombre_completo", cfg.get("nombre_asociacion","SIGCA")),
+        "nombre_corto":    cfg.get("nombre_asociacion","SIGCA"),
         "nit":             cfg.get("nit","832.001.389-2"),
         "municipio":       cfg.get("municipio","Villeta, Cundinamarca"),
         "correo":          cfg.get("correo_oficial",""),
@@ -85,7 +85,7 @@ def membrete_html(db_path: str, codigo: str = "", titulo: str = "",
                   version: str = "01", clasificacion: str = "Uso Interno",
                   aprobado_por: str = "", fecha: str = "") -> str:
     """
-    Genera el membrete HTML exacto al del documento ASUACAP compartido:
+    Genera el membrete HTML exacto al del documento institucional compartido:
     ╔══════════════════════════════════════╦═══════╗
     ║  Nombre asociación · NIT · municipio ║  LOGO ║
     ╠══════════════════════════════════════╩═══════╣
@@ -158,7 +158,7 @@ def pie_pagina_html(db_path: str) -> str:
     info = obtener_logo(db_path)
     return f"""<div style="margin-top:24px;border-top:1px solid #cbd5e1;padding-top:6px;
 font-family:Calibri,Arial,sans-serif;font-size:9px;color:#64748b;text-align:center;">
-  {info['correo']} &nbsp;·&nbsp; secretariaasuacap@gamil.com &nbsp;·&nbsp; {info['telefono']}
+  {info['correo']} &nbsp;·&nbsp; {info.get("correo_institucional","")} &nbsp;·&nbsp; {info['telefono']}
 </div>"""
 
 

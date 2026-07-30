@@ -6,7 +6,7 @@ import os, sys, shutil, sqlite3
 
 BASE  = os.path.dirname(os.path.abspath(__file__))
 DBNEW = os.path.join(BASE, "database", "paraguasmj.db")
-DBOLD = os.path.join(BASE, "database", "asuacap_sigd.db")
+DBOLD = os.path.join(BASE, "database", "sigca.db")
 DB    = DBNEW if os.path.exists(DBNEW) else (DBOLD if os.path.exists(DBOLD) else None)
 
 print("=" * 58)

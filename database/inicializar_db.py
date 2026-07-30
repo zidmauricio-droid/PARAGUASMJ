@@ -13,6 +13,20 @@ from werkzeug.security import generate_password_hash
 DB = Config.DB_PATH
 
 SQL_TABLES = [
+# 0 organizaciones
+"""CREATE TABLE IF NOT EXISTS organizaciones (
+    pk_org_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre_completo  TEXT NOT NULL,
+    nombre_corto     TEXT NOT NULL,
+    nit              TEXT,
+    municipio        TEXT DEFAULT 'Municipio',
+    departamento     TEXT DEFAULT 'Cundinamarca',
+    correo           TEXT,
+    telefono         TEXT,
+    activo           INTEGER DEFAULT 1,
+    es_demo          INTEGER DEFAULT 0,
+    fecha_creacion   TEXT DEFAULT CURRENT_TIMESTAMP
+)""",
 # 1 usuarios
 """CREATE TABLE IF NOT EXISTS usuarios (
     pk_usuario_id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -561,15 +575,24 @@ def inicializar_base_datos():
     for idx in INDICES:
         c.execute(idx)
 
-    try:
-        from werkzeug.security import generate_password_hash as gph
-        hp = gph("PARAGUASMJ2026")
-    except ImportError:
-        import hashlib
-        hp = "pbkdf2:sha256:$" + hashlib.sha256(b"PARAGUASMJ2026").hexdigest()
+    # Hash admin — siempre usar generate_password_hash (werkzeug ya importado arriba)
+    hp = generate_password_hash(Config.ADMIN_PASS_DEFAULT)
+    # INSERT OR IGNORE: si ya existe con hash inválido, lo actualiza
+    existing = c.execute(
+        "SELECT password_hash FROM usuarios WHERE nombre_usuario='admin'"
+    ).fetchone()
+    if existing and not existing["password_hash"].startswith("pbkdf2:sha256:"):
+        c.execute("UPDATE usuarios SET password_hash=? WHERE nombre_usuario='admin'", (hp,))
+    else:
+        c.execute(
+            "INSERT OR IGNORE INTO usuarios(nombre_completo,nombre_usuario,password_hash,rol) VALUES(?,?,?,?)",
+            ("Administrador del Sistema","admin",hp,"admin")
+        )
 
-    c.execute("INSERT OR IGNORE INTO usuarios(nombre_completo,nombre_usuario,password_hash,rol) VALUES(?,?,?,?)",
-              ("Administrador del Sistema","admin",hp,"admin"))
+    conn.execute("""
+        INSERT OR IGNORE INTO organizaciones (pk_org_id, nombre_completo, nombre_corto, nit, municipio, departamento)
+        VALUES (1, 'Acueducto Comunitario (configure en Admin → Configuración)', 'ACU', 'NIT pendiente', 'Municipio', 'Departamento')
+    """)
 
     zonas = [(1,"La Volconda","Critica: tuberias 3/8\""),(2,"Payande - Tres Esquinas","Zona residencial dispersa"),
              (3,"Alto de Torres - Bajo","Problemas de presion"),(4,"Caserio El Puente","Centro poblado"),
@@ -582,8 +605,8 @@ def inicializar_base_datos():
              (4,"Tanque Principal","Tanque",5.0120,-74.4680,"Operativo",4)]
     c.executemany("INSERT OR IGNORE INTO gis_infraestructura(pk_infra_id,nombre,tipo,coordenada_lat,coordenada_lon,estado_operativo,zona_id) VALUES(?,?,?,?,?,?,?)", infra)
 
-    firm = [("Jose Humberto Ramirez","Presidente","+573001234567"),
-            ("Ana Martinez Garcia","Tesorera","+573002345678"),
+    firm = [("Representante Legal","Presidente","+57300000000"),
+            ("Firmante 2","Tesorera","+57300000001"),
             ("Maria Lopez Ruiz","Secretaria","+573003456789"),
             ("Luis Gomez Castro","Comite Juridico","+573004567890")]
     c.executemany("INSERT OR IGNORE INTO firmantes(nombre_completo,cargo,whatsapp,activo) VALUES(?,?,?,1)", firm)
@@ -603,16 +626,16 @@ def inicializar_base_datos():
     c.executemany("INSERT OR IGNORE INTO presupuesto_rubros(anio,nombre_rubro,presupuesto_inicial) VALUES(?,?,0)", [(anio,r) for r in rubros])
 
     configs = [
-        ("nombre_asociacion","ASUACAP","Nombre oficial","Institucional","texto",None,1),
-        ("nombre_completo","Asociacion de Suscriptores del Acueducto Comunitario El Puente","Nombre completo","Institucional","texto",None,2),
-        ("nit","8320013892","NIT","Institucional","texto",None,3),
-        ("representante_legal","Jose Humberto Ramirez","Representante","Institucional","texto",None,4),
+        ("nombre_asociacion","Mi Acueducto","Nombre oficial","Institucional","texto",None,1),
+        ("nombre_completo","Nombre completo del acueducto — configure en Admin","Nombre completo","Institucional","texto",None,2),
+        ("nit","000000000-0","NIT","Institucional","texto",None,3),
+        ("representante_legal","Representante Legal","Representante","Institucional","texto",None,4),
         ("cargo_representante","Presidente","Cargo","Institucional","texto",None,5),
-        ("direccion_oficina","Caserio El Puente, Villeta Cundinamarca","Direccion","Institucional","texto",None,6),
-        ("telefono_oficina","3112345678","Telefono","Institucional","texto",None,7),
-        ("correo_oficial","aacueductoelpuente@yahoo.com","Correo","Institucional","texto",None,8),
-        ("codigo_departamento","25","DIVIPOLA Cundinamarca","Institucional","texto",None,9),
-        ("codigo_municipio","258","DIVIPOLA Villeta","Institucional","texto",None,10),
+        ("direccion_oficina","Direccion de la oficina — configure en Admin","Direccion","Institucional","texto",None,6),
+        ("telefono_oficina","3100000000","Telefono","Institucional","texto",None,7),
+        ("correo_oficial","correo@acueducto.org","Correo","Institucional","texto",None,8),
+        ("codigo_departamento","00","DIVIPOLA Departamento","Institucional","texto",None,9),
+        ("codigo_municipio","000","DIVIPOLA Municipio","Institucional","texto",None,10),
         ("ianc_umbral_verde","15","IANC bueno %","Tecnica","numero","balance",1),
         ("ianc_umbral_naranja","25","IANC riesgo %","Tecnica","numero","balance",2),
         ("presion_minima_psi","20","Presion minima PSI","Tecnica","numero",None,3),
@@ -622,7 +645,7 @@ def inicializar_base_datos():
         ("dias_alerta_documentos","4","Dias inicio alertas doc","Tecnica","numero",None,7),
         ("dias_plazo_autorizacion","7","Dias autorizar","Tecnica","numero",None,8),
         ("whatsapp_api_key","","API Key CallMeBot","Notificaciones","texto","comunicaciones",1),
-        ("whatsapp_numero_oficial","573001234567","WhatsApp ASUACAP","Notificaciones","texto","comunicaciones",2),
+        ("whatsapp_numero_oficial","573000000000","WhatsApp Acueducto","Notificaciones","texto","comunicaciones",2),
         ("email_smtp_host","smtp.gmail.com","Servidor SMTP","Notificaciones","texto","comunicaciones",3),
         ("email_smtp_port","587","Puerto SMTP","Notificaciones","texto","comunicaciones",4),
         ("email_usuario","","Correo remitente","Notificaciones","texto","comunicaciones",5),
@@ -783,13 +806,19 @@ def inicializar_base_datos():
         fecha_subida TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(proyecto_id) REFERENCES proyectos(pk_proyecto_id)
     )""")
-    # Índices adicionales para columnas de consulta frecuente
+    # Índices adicionales para columnas de consulta frecuente (#17)
     for _idx in [
         "CREATE INDEX IF NOT EXISTS idx_pqrs_fecha_limite    ON pqrs(fecha_limite)",
         "CREATE INDEX IF NOT EXISTS idx_pqrs_sui_export      ON pqrs(mes_reporte, reportado_sui)",
         "CREATE INDEX IF NOT EXISTS idx_audit_usuario         ON audit_log(usuario)",
         "CREATE INDEX IF NOT EXISTS idx_rc_area_estado        ON registro_central(area, estado)",
         "CREATE INDEX IF NOT EXISTS idx_tp_estado             ON tareas_proyecto(estado, proyecto_id)",
+        # Índices de búsqueda textual en campos frecuentes (#17)
+        "CREATE INDEX IF NOT EXISTS idx_registro_codigo      ON registro_central(codigo_completo)",
+        "CREATE INDEX IF NOT EXISTS idx_registro_fecha_desc  ON registro_central(fecha_radicacion DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_doc_firmantes_doc    ON documento_firmantes(documento_id, estado)",
+        "CREATE INDEX IF NOT EXISTS idx_expedientes_codigo   ON expedientes(codigo_expediente)",
+        "CREATE INDEX IF NOT EXISTS idx_rc_expediente        ON registro_central(fk_expediente_id)",
     ]:
         try: conn.execute(_idx)
         except Exception: pass
@@ -814,7 +843,50 @@ def inicializar_base_datos():
         cargo TEXT NOT NULL DEFAULT 'Presidente',
         firma_id INTEGER, actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP
     )""")
-    conn.execute("INSERT OR IGNORE INTO config_aprobador_formato (id,nombre,cargo) VALUES (1,'José Humberto Ramírez','Representante Legal')")
+    conn.execute("INSERT OR IGNORE INTO config_aprobador_formato (id,nombre,cargo) VALUES (1,'Representante Legal','Representante Legal')")
+
+    # Tabla expedientes (Ley 594/2000)
+    conn.execute("""CREATE TABLE IF NOT EXISTS expedientes (
+        pk_expediente_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+        codigo_expediente TEXT    NOT NULL UNIQUE,
+        nombre            TEXT    NOT NULL,
+        descripcion       TEXT,
+        estado            TEXT    NOT NULL DEFAULT 'Activo'
+                          CHECK(estado IN ('Activo', 'Cerrado', 'Archivado')),
+        fase_archivo      TEXT    NOT NULL DEFAULT 'Gestion'
+                          CHECK(fase_archivo IN ('Gestion', 'Central', 'Historico')),
+        creado_por        TEXT,
+        fecha_creacion    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
+    )""")
+    try:
+        conn.execute("ALTER TABLE registro_central ADD COLUMN fk_expediente_id INTEGER REFERENCES expedientes(pk_expediente_id) ON DELETE SET NULL")
+    except Exception:
+        pass  # columna ya existe
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_expedientes_estado ON expedientes(estado)")
+
+    # baseline_metadata: JSON de trazabilidad arquitectonica RC5.5
+    try:
+        conn.execute(
+            "ALTER TABLE registro_central ADD COLUMN baseline_metadata TEXT"
+            " DEFAULT '{\"baseline_id\":\"PARAGUASMJ-RC5.5-20260607\",\"core_version\":\"RC5.5\",\"extensions_enabled\":[]}'"
+        )
+    except Exception:
+        pass  # columna ya existe
+
+    # Índices financieros para rendimiento en consultas de saldo y auditoría
+    _IDX_FINANCIEROS = [
+        "CREATE INDEX IF NOT EXISTS idx_mov_fecha     ON movimientos_financieros(fecha)",
+        "CREATE INDEX IF NOT EXISTS idx_mov_banco     ON movimientos_financieros(fk_banco_id)",
+        "CREATE INDEX IF NOT EXISTS idx_mov_tipo      ON movimientos_financieros(tipo_mov)",
+        "CREATE INDEX IF NOT EXISTS idx_caja_fecha    ON caja_chica(fecha)",
+        "CREATE INDEX IF NOT EXISTS idx_caja_tipo     ON caja_chica(tipo_mov)",
+    ]
+    for idx_sql in _IDX_FINANCIEROS:
+        try:
+            conn.execute(idx_sql)
+        except Exception:
+            pass
+
     conn.commit()
     conn.close()
     print("  -> 31 tablas + indices + datos semilla listos.")
@@ -1008,6 +1080,21 @@ def inicializar_tablas_extra(conn=None):
     c2 = conn or _sq.connect(DB)
     c2.execute("PRAGMA foreign_keys=ON")
 
+    # ── Firmantes por documento (tabla faltante) ─────────────────────
+    c2.execute("""CREATE TABLE IF NOT EXISTS documento_firmantes (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        documento_id     INTEGER NOT NULL,
+        firmante_id      INTEGER NOT NULL,
+        orden_firma      INTEGER DEFAULT 1,
+        estado           TEXT DEFAULT 'pendiente'
+                         CHECK(estado IN('pendiente','aprobado','rechazado','omitido')),
+        fecha_aprobacion TEXT,
+        observacion      TEXT,
+        UNIQUE(documento_id, firmante_id),
+        FOREIGN KEY(documento_id) REFERENCES registro_central(pk_registro_id) ON DELETE CASCADE,
+        FOREIGN KEY(firmante_id) REFERENCES firmantes(pk_firmante_id)
+    )""")
+
     # ── PROGRAMA_2.doc: Juego de reciclaje comunitario ──────────────
     c2.execute("""CREATE TABLE IF NOT EXISTS juego_config (
         id INTEGER PRIMARY KEY DEFAULT 1,
@@ -1156,6 +1243,15 @@ def inicializar_tablas_extra(conn=None):
         INSERT OR IGNORE INTO configuracion(clave,valor,descripcion,categoria,tipo_dato,modulo,orden)
         VALUES(?,?,?,?,?,?,?)
     """, cfgs_extra)
+
+    # Migrar probabilidad/impacto a TEXT si existen como INTEGER
+    try:
+        cols_r = {r[1]: r[2] for r in c2.execute("PRAGMA table_info(riesgos_proyecto)").fetchall()}
+        if cols_r.get("probabilidad","").upper() not in ("TEXT",""):
+            c2.execute("UPDATE riesgos_proyecto SET probabilidad=CASE CAST(probabilidad AS INTEGER) WHEN 3 THEN 'alta' WHEN 2 THEN 'media' ELSE 'baja' END WHERE probabilidad NOT IN ('alta','media','baja')")
+            c2.execute("UPDATE riesgos_proyecto SET impacto=CASE CAST(impacto AS INTEGER) WHEN 3 THEN 'alto' WHEN 2 THEN 'medio' ELSE 'bajo' END WHERE impacto NOT IN ('alto','medio','bajo')")
+    except Exception:
+        pass
 
     if not conn:
         c2.commit(); c2.close()
@@ -1533,4 +1629,3 @@ def inicializar_tablas_prog3_prog4(conn=None):
     else:
         c2.commit()
     print("  -> Tablas PROGRAMA_3 + PROGRAMA_4 creadas.")
-

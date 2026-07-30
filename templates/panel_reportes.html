@@ -1,7 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Reportes Tecnicos — ASUACAP{% endblock %}
+{% block title %}Reportes Tecnicos — SIGCA{% endblock %}
 {% block content %}
-<h5 class="mb-4"><i class="bi bi-bar-chart me-2 text-primary"></i>Panel de Reportes Tecnicos CAR / SSPD</h5>
+<div class="modulo-header modulo-reportes">
+    <i class="bi bi-bar-chart"></i>
+    <span>Reportes Técnicos — CAR / SSPD / CRA</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+<h5 class="mb-4">Panel de Reportes Tecnicos</h5>
 <div class="row g-3">
     <div class="col-md-6">
         <div class="card shadow-sm border-0">
@@ -10,7 +15,7 @@
             </div>
             <div class="card-body">
                 <p class="text-muted small">Genera el reporte Excel institucional con: Balance Hidrico (CAR/PUEAA), Fallas Georreferenciadas y PQRS.</p>
-                <form method="POST" action="{{ url_for('exportar_excel_trimestral') }}">
+                <form method="POST" action="{{ url_for('reportes_normativos.descargar_trimestral') }}">
                     <div class="row g-2 mb-3">
                         <div class="col-6">
                             <label class="form-label fw-semibold">Ano</label>
@@ -44,7 +49,7 @@
             </div>
             <div class="card-body">
                 <p class="text-muted small">Crea una copia de seguridad de la base de datos. Se mantienen los ultimos 10 respaldos automaticamente.</p>
-                <a href="{{ url_for('crear_backup_manual') }}" class="btn btn-primary fw-bold">
+                <a href="{{ url_for('reportes_normativos.hacer_backup') }}" class="btn btn-reportes fw-bold">
                     <i class="bi bi-shield-check me-1"></i>Crear Backup Ahora
                 </a>
             </div>

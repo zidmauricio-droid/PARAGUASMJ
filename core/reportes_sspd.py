@@ -16,9 +16,9 @@ from config import Config
 from core.database_manager import get_db
 from core.indicadores_ius import calcular_ius_anual
 
-logger = logging.getLogger("asuacap.sspd")
+logger = logging.getLogger("sigca.sspd")
 
-# Estilos corporativos ASUACAP
+# Estilos corporativos
 AZUL   = "1E3A8A"
 VERDE  = "0F6E56"
 GRIS   = "64748B"
@@ -48,6 +48,13 @@ class ReportesSSPD:
 
     def __init__(self):
         self.db_path = Config.DB_PATH
+        try:
+            _conn = sqlite3.connect(self.db_path)
+            _rows = _conn.execute("SELECT clave,valor FROM configuracion WHERE clave IN ('nombre_completo','nombre_asociacion')").fetchall()
+            _conn.close()
+            self._cfg = {r[0]: r[1] for r in _rows}
+        except Exception:
+            self._cfg = {}
 
     def generar_fc15_ius(self, anio: int) -> Workbook:
         """
@@ -64,7 +71,7 @@ class ReportesSSPD:
         # Titulo
         ws["A1"] = "FC15 — ÍNDICE DE USO SOSTENIBLE (IUS)"
         ws["A1"].font = Font(name="Calibri", size=14, bold=True, color=AZUL)
-        ws["A2"] = f"ASUACAP — NIT 832.001.389-2 — Año {anio}"
+        ws["A2"] = f"{self._cfg.get('nombre_asociacion','SIGCA')} — NIT 832.001.389-2 — Año {anio}"
         ws["A2"].font = Font(name="Calibri", size=10, italic=True, color=GRIS)
         ws["A3"] = f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         ws["A3"].font = Font(name="Calibri", size=9, color=GRIS)
@@ -159,7 +166,7 @@ class ReportesSSPD:
 
         # Hoja resumen anual
         ws = wb.create_sheet("Resumen Anual IUS")
-        ws["A1"] = f"ASUACAP — HOJA IUS {anio}"
+        ws["A1"] = f"{self._cfg.get('nombre_asociacion','SIGCA')} — HOJA IUS {anio}"
         ws["A1"].font = Font(name="Calibri", size=14, bold=True, color=AZUL)
 
         ws.append([])
@@ -211,7 +218,7 @@ class ReportesSSPD:
         ws = wb.active
         ws.title = f"Balance T{trimestre} {anio}"
 
-        ws["A1"] = "ASUACAP — BALANCE HÍDRICO MENSUAL — REPORTE CAR/PUEAA"
+        ws["A1"] = f"{self._cfg.get('nombre_asociacion','SIGCA')} — BALANCE HÍDRICO MENSUAL — REPORTE CAR/PUEAA"
         ws["A1"].font = Font(name="Calibri", size=13, bold=True, color=AZUL)
         ws["A2"] = f"Trimestre {trimestre} — Año {anio} | NIT 832.001.389-2 | Villeta, Cundinamarca"
         ws["A2"].font = Font(name="Calibri", size=10, italic=True, color=GRIS)

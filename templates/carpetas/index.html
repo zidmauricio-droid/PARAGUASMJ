@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Gestión de Carpetas — PARAGUASMJ{% endblock %}
+
+{% block extra_css %}
+<style>
+.modulo-card { cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.modulo-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+.modulo-icon { font-size: 2.2rem; }
+.stat-badge { font-size: 11px; padding: 3px 8px; }
+.arbol-item { padding: 4px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+.arbol-item:last-child { border-bottom: none; }
+.progress-disk { height: 8px; border-radius: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="modulo-header modulo-documental">
+    <i class="bi bi-folder-fill"></i>
+    <span>Gestión de Carpetas Documentales</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+<div class="container-fluid mt-3">
+
+  <!-- Encabezado -->
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center rounded mb-3" style="padding:12px 18px;">
+    <h5 class="mb-0"><i class="bi bi-folder2-open me-2"></i>Gestión de Carpetas Documentales</h5>
+    <div class="d-flex gap-2">
+      {% if session.get('rol') == 'admin' %}
+      <button class="btn btn-sm btn-outline-light" onclick="crearEstructura()">
+        <i class="bi bi-folder-plus me-1"></i>Crear Estructura Completa
+      </button>
+      {% endif %}
+      <a href="{{ url_for('carpetas.estadisticas') }}" class="btn btn-sm btn-outline-light">
+        <i class="bi bi-bar-chart me-1"></i>Estadísticas
+      </a>
+    </div>
+  </div>
+
+  <!-- Alerta estado -->
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in msgs %}
+  <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+  {% endwith %}
+
+  <!-- Estadísticas rápidas -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="text-primary fw-bold" style="font-size:1.8rem;">{{ stats.total_carpetas if stats else '—' }}</div>
+        <div class="text-muted small">Carpetas totales</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="text-success fw-bold" style="font-size:1.8rem;">{{ stats.carpetas_vacias if stats else '—' }}</div>
+        <div class="text-muted small">Vacías</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="text-warning fw-bold" style="font-size:1.8rem;">{{ stats.total_archivos if stats else '—' }}</div>
+        <div class="text-muted small">Archivos</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="text-info fw-bold" style="font-size:1.8rem;">
+          {{ "%.1f"|format((stats.tamano_total_mb if stats else 0)) }} MB
+        </div>
+        <div class="text-muted small">Tamaño total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Módulos documentales -->
+  <h6 class="text-muted fw-semibold mb-3"><i class="bi bi-grid me-1"></i>Módulos Documentales</h6>
+  <div class="row g-3 mb-4">
+    {% set modulos_info = [
+      ('PQRS',           'bi-envelope-open',  'danger',   'Peticiones, Quejas y Reclamos'),
+      ('Finanzas',       'bi-currency-dollar','success',  'Contabilidad y movimientos'),
+      ('Proyectos',      'bi-kanban',         'primary',  'Proyectos e inversiones'),
+      ('GIS',            'bi-geo-alt',        'info',     'Cartografía y georreferenciación'),
+      ('Emergencias',    'bi-exclamation-triangle','warning','Incidencias y emergencias'),
+      ('Calidad_Agua',   'bi-droplet',        'info',     'Análisis y calidad del agua'),
+      ('Legal',          'bi-briefcase',      'secondary','Contratos y documentos legales'),
+      ('Suscriptores',   'bi-people',         'primary',  'Registro de suscriptores'),
+      ('Nivel_Quebrada', 'bi-water',          'info',     'Hidrología y mediciones'),
+      ('Backups',        'bi-cloud-arrow-up', 'success',  'Copias de respaldo'),
+      ('Config',         'bi-gear',           'secondary','Configuración del sistema'),
+      ('Comunicaciones', 'bi-chat-dots',      'primary',  'Comunicaciones oficiales'),
+    ] %}
+    {% for nombre, icono, color, desc in modulos_info %}
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm modulo-card h-100"
+           onclick="location.href='{{ url_for('carpetas.explorar', modulo=nombre) }}'">
+        <div class="card-body text-center py-4">
+          <div class="modulo-icon text-{{ color }} mb-2">
+            <i class="bi {{ icono }}"></i>
+          </div>
+          <div class="fw-semibold" style="font-size:14px;">{{ nombre.replace('_',' ') }}</div>
+          <div class="text-muted" style="font-size:11px;">{{ desc }}</div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Acciones de administración -->
+  {% if session.get('rol') == 'admin' %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-light"><i class="bi bi-tools me-2"></i>Administración</div>
+    <div class="card-body">
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('carpetas.auditoria') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-clock-history me-1"></i>Auditoría de Carpetas
+        </a>
+        <a href="{{ url_for('carpetas.verificar_integridad') }}" class="btn btn-outline-info btn-sm">
+          <i class="bi bi-shield-check me-1"></i>Verificar Integridad
+        </a>
+        <button class="btn btn-outline-success btn-sm" onclick="crearNueva()">
+          <i class="bi bi-folder-plus me-1"></i>Nueva Carpeta
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Modal: Nueva carpeta -->
+<div class="modal fade" id="modalNueva" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-folder-plus me-2"></i>Nueva Carpeta</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('carpetas.crear') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Módulo <span class="text-danger">*</span></label>
+            <select name="modulo" class="form-select" required>
+              {% for m in modulos %}
+              <option value="{{ m }}">{{ m.replace('_',' ') }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre de la carpeta <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" class="form-control" required maxlength="100"
+                   placeholder="Ej: 2026-Informes-Trimestrales">
+            <div class="form-text">Sin caracteres especiales. Máx. 100 caracteres.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear Carpeta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirmar estructura completa -->
+<div class="modal fade" id="modalEstructura" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title"><i class="bi bi-folder-symlink me-2"></i>Crear Estructura Completa</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Esta acción creará los <strong>12 módulos documentales</strong> con todas sus subcarpetas predefinidas.</p>
+        <p class="text-muted small">Las carpetas existentes no serán modificadas. La operación es segura y tiene rollback automático.</p>
+      </div>
+      <form method="POST" action="{{ url_for('carpetas.crear_estructura') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-warning fw-bold">Crear Estructura</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function crearNueva() {
+  new bootstrap.Modal(document.getElementById('modalNueva')).show();
+}
+function crearEstructura() {
+  new bootstrap.Modal(document.getElementById('modalEstructura')).show();
+}
+</script>
+{% endblock %}

@@ -1,59 +1,63 @@
 {% extends "base.html" %}
-{% block title %}Proyectos — ASUACAP{% endblock %}
+{% block title %}GA-08 Proyectos — SIGCA{% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.css">
 <style>
 /* ── Cards de proyectos ─── */
-.proy-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;
+.proy-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
   padding:16px;transition:all .2s;cursor:pointer;}
-.proy-card:hover{box-shadow:0 8px 28px rgba(0,0,0,.12);transform:translateY(-3px);}
+.proy-card:hover{box-shadow:0 8px 28px rgba(0,0,0,.25);transform:translateY(-3px);}
 .tipo-badge,.est-badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
-.tipo-pueaa{background:#dbeafe;color:#1e40af;}
-.tipo-obra{background:#d1fae5;color:#065f46;}
-.tipo-psmv{background:#ede9fe;color:#5b21b6;}
-.tipo-mejora{background:#fef3c7;color:#92400e;}
-.tipo-otro{background:#f1f5f9;color:#475569;}
-.est-activo{background:#d1fae5;color:#065f46;}
-.est-planificacion{background:#fef3c7;color:#92400e;}
-.est-pausado{background:#fee2e2;color:#991b1b;}
-.est-completado{background:#dbeafe;color:#1e40af;}
-.est-cancelado{background:#f1f5f9;color:#94a3b8;}
+.tipo-pueaa{background:var(--color-accent);color:var(--text-primary);opacity:.85;}
+.tipo-obra{background:var(--color-success);color:var(--text-primary);opacity:.85;}
+.tipo-psmv{background:var(--color-accent);color:var(--text-primary);}
+.tipo-mejora{background:var(--color-warning);color:var(--text-primary);}
+.tipo-otro{background:var(--border);color:var(--text-secondary);}
+.est-activo{background:var(--color-success);color:var(--text-primary);}
+.est-planificacion{background:var(--color-warning);color:var(--text-primary);}
+.est-pausado{background:var(--color-danger);color:var(--text-primary);}
+.est-completado{background:var(--color-accent);color:var(--text-primary);}
+.est-cancelado{background:var(--border);color:var(--text-secondary);}
 
 /* ── Tabs del modal ─── */
 .tab-pill{border:none;background:transparent;padding:8px 14px;border-radius:8px;
-  font-weight:600;font-size:12px;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap;}
-.tab-pill.active{background:#1E3A8A;color:#fff;}
+  font-weight:600;font-size:12px;color:var(--text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.tab-pill.active{background:var(--color-accent);color:#fff;}
 .tab-pane{display:none;padding-top:12px;}
 .tab-pane.active{display:block;}
 
 /* ── Tabla de docs ─── */
 .doc-chip{display:flex;align-items:center;gap:6px;padding:5px 10px;
-  background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:4px;font-size:12px;}
-.doc-chip a{color:#1E3A8A;font-weight:600;text-decoration:none;}
+  background:var(--bg-main);border:1px solid var(--border);border-radius:8px;margin-bottom:4px;font-size:12px;}
+.doc-chip a{color:var(--color-accent);font-weight:600;text-decoration:none;}
 .doc-chip a:hover{text-decoration:underline;}
 
 /* ── Buscador de docs ─── */
-.doc-search-results{position:absolute;z-index:999;width:100%;background:#fff;
-  border:1px solid #e2e8f0;border-radius:8px;max-height:200px;overflow-y:auto;
-  box-shadow:0 4px 16px rgba(0,0,0,.1);}
-.doc-search-item{padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;}
-.doc-search-item:hover{background:#eff6ff;}
-.doc-search-item strong{display:block;color:#1E3A8A;}
+.doc-search-results{position:absolute;z-index:999;width:100%;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:8px;max-height:200px;overflow-y:auto;
+  box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.doc-search-item{padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);}
+.doc-search-item:hover{background:var(--bg-main);}
+.doc-search-item strong{display:block;color:var(--color-accent);}
 
 /* ── Riesgos ─── */
-.riesgo-alto{border-left:3px solid #ef4444 !important;}
-.riesgo-medio{border-left:3px solid #f59e0b !important;}
-.riesgo-bajo{border-left:3px solid #10b981 !important;}
+.riesgo-alto{border-left:3px solid var(--color-danger) !important;}
+.riesgo-medio{border-left:3px solid var(--color-warning) !important;}
+.riesgo-bajo{border-left:3px solid var(--color-success) !important;}
 
 .gantt-wrap{overflow-x:auto;min-height:180px;padding:8px 0;}
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="modulo-header modulo-proyectos">
+    <i class="bi bi-kanban-fill"></i>
+    <span>GA-08 Proyectos</span>
+    <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h5 class="mb-0">
-    <i class="bi bi-kanban me-2 text-primary"></i>
-    Gestión de Proyectos — PUEAA · PSMV · Obras
+  <h5 class="mb-0" style="color:var(--text-primary);">
+    <i class="bi bi-kanban me-2" style="color:var(--color-accent);"></i>
+    GA-08 Proyectos
   </h5>
   <button class="btn btn-primary" onclick="abrirModalProyecto()">
     <i class="bi bi-plus-circle me-1"></i>Nuevo Proyecto
@@ -177,7 +181,7 @@
 <div class="modal fade" id="modalDetalle" tabindex="-1" style="z-index:1060;">
   <div class="modal-dialog modal-xl modal-fullscreen-lg-down">
     <div class="modal-content">
-      <div class="modal-header" style="background:#1E3A8A;color:#fff;padding:12px 20px;">
+      <div class="modal-header" style="background:var(--color-accent);color:#fff;padding:12px 20px;">
         <div>
           <h5 class="modal-title mb-0" id="det-titulo">Proyecto</h5>
           <small id="det-subtitulo" class="opacity-75"></small>
@@ -186,7 +190,7 @@
       </div>
       <div class="modal-body p-0">
         <!-- Tabs -->
-        <div class="d-flex gap-1 p-2 border-bottom flex-wrap" style="background:#f8fafc;">
+        <div class="d-flex gap-1 p-2 border-bottom flex-wrap" style="background:var(--bg-main);">
           {% for tab in [('resumen','📊 Resumen'),('tareas','✅ Tareas'),
                          ('gantt','📅 Gantt'),('costos','💰 Finanzas'),
                          ('riesgos','⚠️ Riesgos'),('metas','🎯 Metas PUEAA/PSMV'),
@@ -218,7 +222,6 @@
 
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
 <script>
 // ════════════════════════════════════════════════════════════════
 // PARAGUASMJ — Panel de Proyectos v2 (PROG_4 + PROG_5)
@@ -252,7 +255,9 @@ async function cargarProyectos() {
 
     const resp = await fetch('/proyectos2/api?' + params);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const list = await resp.json();
+    const data = await resp.json();
+    const list = Array.isArray(data) ? data : (data.items || []);
+    if (!Array.isArray(data) && data.error) throw new Error(data.error);
 
     if (spinner) spinner.style.display = 'none';
 
@@ -266,7 +271,7 @@ async function cargarProyectos() {
 
     grid.innerHTML = list.map(p => {
       const pct  = parseFloat(p.porcentaje_avance) || 0;
-      const bar  = pct>=80?'#10b981':pct>=50?'#f59e0b':'#3b82f6';
+      const bar  = pct>=80?'var(--color-success)':pct>=50?'var(--color-warning)':'var(--color-accent)';
       const saldo = (parseFloat(p.ingresos_totales)||0) - (parseFloat(p.costo_real)||0);
       const tipo_label = (p.tipo_proyecto || 'otro').toUpperCase();
       const estado_label = p.estado || 'planificacion';
@@ -278,32 +283,32 @@ async function cargarProyectos() {
       return `
       <div class="col-md-6 col-xl-4">
         <div class="proy-card" onclick="verDetalle(${p.id})" style="cursor:pointer;
-          background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);
+          background:var(--bg-card);border:1px solid var(--border);
           border-radius:12px;padding:16px;height:100%;transition:box-shadow .2s;">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
               <div class="fw-bold">${nombre}</div>
-              <code style="font-size:11px;color:#64748b;">${codigo}</code>
+              <code style="font-size:11px;color:var(--text-secondary);">${codigo}</code>
             </div>
             <div class="d-flex flex-column gap-1 align-items-end">
               <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;
-                background:#e0f2fe;color:#0369a1;">${tipo_label}</span>
+                background:var(--color-accent);color:#fff;">${tipo_label}</span>
               <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;
-                background:${estado_label==='ejecucion'?'#dcfce7':'#f1f5f9'};
-                color:${estado_label==='ejecucion'?'#166534':'#475569'};">${estado_label}</span>
+                background:${estado_label==='activo'?'var(--color-success)':'var(--border)'};
+                color:var(--text-primary);">${estado_label}</span>
             </div>
           </div>
           <p class="text-muted small mb-2" style="min-height:28px;overflow:hidden;">${desc}…</p>
           <div class="d-flex justify-content-between small text-muted mb-1">
             <span>Avance</span><span><strong>${pct.toFixed(1)}%</strong></span>
           </div>
-          <div style="background:#e2e8f0;border-radius:99px;height:6px;overflow:hidden;margin-bottom:8px;">
+          <div style="background:var(--border);border-radius:99px;height:6px;overflow:hidden;margin-bottom:8px;">
             <div style="width:${Math.min(pct,100)}%;height:100%;background:${bar};border-radius:99px;
               transition:width .5s;"></div>
           </div>
           <div class="d-flex justify-content-between small text-muted">
             <span>${t_ok}/${t_tot} tareas</span>
-            <span style="color:${saldo>=0?'#10b981':'#ef4444'};">
+            <span style="color:${saldo>=0?'var(--color-success)':'var(--color-danger)'};">
               $${Math.abs(saldo).toLocaleString('es-CO',{maximumFractionDigits:0})}
             </span>
           </div>
@@ -427,19 +432,19 @@ function renderResumen(p) {
         <div class="card-body">
           <div class="row g-3 text-center mb-3">
             <div class="col-4">
-              <div style="font-size:26px;font-weight:800;color:#1E3A8A;">${pct}%</div>
+              <div style="font-size:26px;font-weight:800;color:var(--color-accent);">${pct}%</div>
               <div class="text-muted small">Avance general</div>
-              <div style="background:#e2e8f0;border-radius:99px;height:6px;margin-top:4px;">
-                <div style="width:${pct}%;height:100%;background:#1E3A8A;border-radius:99px;"></div>
+              <div style="background:var(--border);border-radius:99px;height:6px;margin-top:4px;">
+                <div style="width:${pct}%;height:100%;background:var(--color-accent);border-radius:99px;"></div>
               </div>
             </div>
             <div class="col-4">
-              <div style="font-size:16px;font-weight:800;color:#0F6E56;">${fmt(p.costo_real)}</div>
+              <div style="font-size:16px;font-weight:800;color:var(--color-success);">${fmt(p.costo_real)}</div>
               <div class="text-muted small">Ejecutado</div>
               <div class="text-muted" style="font-size:10px;">de ${fmt(p.presupuesto_total)}</div>
             </div>
             <div class="col-4">
-              <div style="font-size:16px;font-weight:800;color:${saldo>=0?'#10b981':'#ef4444'};">${fmt(saldo)}</div>
+              <div style="font-size:16px;font-weight:800;color:${saldo>=0?'var(--color-success)':'var(--color-danger)'};">${fmt(saldo)}</div>
               <div class="text-muted small">Saldo</div>
             </div>
           </div>
@@ -572,7 +577,7 @@ function renderCostos(costos, ingresos, p) {
         </div>
         <div class="table-responsive">
         <table class="table table-sm mb-0">
-          <thead class="table-light"><tr><th>Fecha</th><th>Concepto</th><th class="text-end">Monto</th></tr></thead>
+          <thead class="table-dark"><tr><th>Fecha</th><th>Concepto</th><th class="text-end">Monto</th></tr></thead>
           <tbody>${costos.map(c=>`<tr>
             <td><small>${c.fecha}</small></td>
             <td>${c.concepto}</td>
@@ -593,7 +598,7 @@ function renderCostos(costos, ingresos, p) {
         </div>
         <div class="table-responsive">
         <table class="table table-sm mb-0">
-          <thead class="table-light"><tr><th>Fecha</th><th>Fuente</th><th class="text-end">Monto</th></tr></thead>
+          <thead class="table-dark"><tr><th>Fecha</th><th>Fuente</th><th class="text-end">Monto</th></tr></thead>
           <tbody>${ingresos.map(i=>`<tr>
             <td><small>${i.fecha}</small></td>
             <td>${i.fuente}</td>
@@ -752,7 +757,6 @@ async function verDocsMetaModal(mid) {
   if (!confirm('¿Desea gestionar los documentos soporte de esta meta?\n\n' +
                (docs.map(d=>d.codigo+' — '+d.asunto).join('\n')||'Sin documentos aún') +
                '\n\n(Haga clic OK para abrir el buscador en el panel)')) return;
-  // Abrir como diálogo simple usando prompt
   const codigo = prompt('Código del documento a agregar (ej. GA-OFI-2026-001):','');
   if (!codigo) return;
   const resultados = await fetch(`/proyectos2/api/buscar_documento?q=${encodeURIComponent(codigo)}`).then(r=>r.json());
@@ -796,7 +800,7 @@ function renderDocs(docs) {
   </table></div>`
   :'<div class="text-center text-muted py-5"><i class="bi bi-file-earmark-x" style="font-size:2.5rem;opacity:.3;"></i><div class="mt-2">No hay documentos asociados a este proyecto.</div></div>'}
 
-  <div class="mt-3 p-3 bg-light rounded" style="font-size:12px;color:#64748b;">
+  <div class="mt-3 p-3 rounded" style="font-size:12px;color:var(--text-secondary);background:var(--bg-main);border:1px solid var(--border);">
     <strong>💡 Tip:</strong> También puedes asociar documentos al crear o editar un documento
     desde el módulo <a href="/documentos/nuevo">Documentos → Nuevo</a>, seleccionando este proyecto.
   </div>`;
@@ -839,6 +843,23 @@ async function recargar() {
   cargarProyectos();
 }
 
-document.addEventListener('DOMContentLoaded', cargarProyectos);
+async function cargarTiposProyecto() {
+  try {
+    const data = await api('/api/configuracion/tipos');
+    if (!data.tipos) return;
+    const opts = data.tipos.map(t =>
+      `<option value="${t.codigo}">${t.nombre}</option>`
+    ).join('');
+    const filtro = document.getElementById('f-tipo');
+    if (filtro) filtro.innerHTML = '<option value="">Todos los tipos</option>' + opts;
+    const form = document.getElementById('mp-tipo');
+    if (form) form.innerHTML = opts;
+  } catch(e) { /* usa opciones estáticas ya en el HTML */ }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  cargarTiposProyecto();
+  cargarProyectos();
+});
 </script>
 {% endblock %}

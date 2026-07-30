@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}GF-04 Presupuesto — SIGCA{% endblock %}
+{% block content %}
+<div class="modulo-header modulo-financiero">
+  <i class="bi bi-diagram-3"></i>
+  <span>GF-04 Presupuesto</span>
+  <span class="modulo-user"><i class="bi bi-person-circle me-1"></i>{{ session.nombre_completo }}</span>
+</div>
+
+<div class="row g-3">
+  <!-- Ingresos -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-semibold" style="border-left:3px solid var(--color-success);color:var(--color-success);">
+        <i class="bi bi-arrow-up-circle me-2"></i>Ingresos (1.x)
+      </div>
+      <div class="card-body p-0">
+        <div id="tree-ingresos" class="p-3">
+          <div class="text-center text-muted py-3"><i class="bi bi-hourglass-split me-1"></i>Cargando…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Gastos -->
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-semibold" style="border-left:3px solid var(--color-danger);color:var(--color-danger);">
+        <i class="bi bi-arrow-down-circle me-2"></i>Gastos (2.x)
+      </div>
+      <div class="card-body p-0">
+        <div id="tree-gastos" class="p-3">
+          <div class="text-center text-muted py-3"><i class="bi bi-hourglass-split me-1"></i>Cargando…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function cargarPlanCuentas() {
+  const [ing, gas] = await Promise.all([
+    fetch('/finanzas/api/plan-cuentas?tipo=INGRESO').then(r=>r.json()),
+    fetch('/finanzas/api/plan-cuentas?tipo=GASTO').then(r=>r.json()),
+  ]);
+  renderTree('tree-ingresos', ing.cuentas || [], 'success');
+  renderTree('tree-gastos',   gas.cuentas || [], 'danger');
+}
+
+function renderTree(divId, cuentas, color) {
+  const div = document.getElementById(divId);
+  if (!cuentas.length) { div.innerHTML = '<p class="text-muted text-center">Sin cuentas</p>'; return; }
+  let html = '<ul class="list-unstyled mb-0">';
+  cuentas.forEach(c => {
+    const indent = c.nivel * 16;
+    const bold   = c.nivel <= 1 ? 'fw-bold' : '';
+    const badge  = c.nivel === 0
+      ? `<span class="badge bg-${color} ms-1">${c.codigo}</span>`
+      : c.nivel === 1
+        ? `<code class="text-${color} me-1">${c.codigo}</code>`
+        : `<small class="text-muted me-2" style="margin-left:${indent}px;">${c.codigo}</small>`;
+    html += `<li style="padding-left:${indent}px" class="py-1 border-bottom ${bold}">
+      ${badge}${c.nombre}
+    </li>`;
+  });
+  html += '</ul>';
+  div.innerHTML = html;
+}
+
+document.addEventListener('DOMContentLoaded', cargarPlanCuentas);
+</script>
+{% endblock %}

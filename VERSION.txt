@@ -1,0 +1,14 @@
+v1.2
+Fecha: 2026-06-07
+Cambios v1.2:
+- requirements.txt: >= en lugar de == (evita errores de instalacion)
+- editar.html: error de sintaxis JS corregido + 10 funciones faltantes agregadas
+- INSTALAR.bat: reescrito con todos los hidden-imports PyInstaller + PATH Python
+- INICIAR.bat: espera activa con curl, detecta py/python
+- core/usb_updater.py: nuevo modulo actualizador USB
+- database/inicializar_db.py: tabla documento_firmantes agregada
+- routes/proyectos.py: log_action con args correctos
+- routes/proyectos_v2.py: with_retry duplicado eliminado
+- configurar_github.bat: nuevo script de configuracion inicial
+- actualizar_github.bat: script de actualizacion rapida
+- GITHUB_PUSH_CORREGIDO.bat: script con verificacion de rama

@@ -7,7 +7,7 @@ Fuente: PROGRAMA_1.doc - todos los calculos documentados.
 import logging
 from core.database_manager import get_db
 
-logger = logging.getLogger("asuacap.ius")
+logger = logging.getLogger("sigca.ius")
 
 
 def ianc(producido, facturado):

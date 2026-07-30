@@ -1,0 +1,133 @@
+# ============================================================
+# PARAGUASMJ BASELINE RC5.5
+#
+# Esta version constituye la linea base institucional.
+#
+# Los modulos RC6.0:
+# - NO son obligatorios
+# - NO forman parte de la cadena probatoria principal
+# - NO afectan identidad documental
+# - NO afectan OAIS
+# - NO afectan WORM
+# - NO afectan Verification Registry
+#
+# Pueden incorporarse mediante actualizacion futura con
+# aprobacion formal del comite tecnico institucional.
+#
+# Baseline ID:
+# PARAGUASMJ-RC5.5-20260607
+# ============================================================
+
+baseline:
+  id: "PARAGUASMJ-RC5.5-20260607"
+  version: "RC5.5"
+  fecha_congelacion: "2026-06-07"
+  institucion: "ASUACAP - Asociacion de Suscriptores del Acueducto Comunitario El Puente"
+  municipio: "Villeta, Cundinamarca"
+  responsable: "Jose Humberto Ramirez"
+  cargo: "Presidente"
+
+# ── CAPA 1: Nucleo Congelado (NUNCA modificar) ─────────────────────────────
+capa_1_nucleo_congelado:
+  descripcion: >
+    Componentes que garantizan la trazabilidad documental a largo plazo.
+    Su modificacion invalida la cadena probatoria. Solo pueden cambiarse
+    mediante un nuevo baseline con aprobacion formal.
+  componentes:
+    - uuid_documental
+    - identity_hash
+    - chain_fingerprint
+    - epoch_registry
+    - merkle_root
+    - verification_registry
+    - oais_core
+    - worm
+  algoritmos_criptograficos:
+    - sha256: "NIST FIPS 180-4"
+    - sha3_256: "NIST FIPS 202 (Keccak)"
+    - blake2b: "RFC 7693"
+  garantia_verificabilidad:
+    "1-5 anios":  "Sistema activo + BD SQLite"
+    "5-10 anios": "Verificador HTML standalone (SHA-256 via Web Crypto API)"
+    "10-20 anios": "python -c \"import hashlib; print(hashlib.sha256(open(f,'rb').read()).hexdigest())\""
+    "20+ anios":  "SHA-256 y SHA3-256 son estandares NIST verificables con cualquier herramienta"
+
+# ── CAPA 2: Modulos Operativos (actualizables) ─────────────────────────────
+capa_2_modulos_operativos:
+  descripcion: >
+    Modulos de negocio que pueden actualizarse sin afectar la cadena probatoria.
+    Cada actualizacion debe registrarse en baseline_control.
+  modulos:
+    - expedientes
+    - registro_central
+    - correspondencia
+    - inventarios
+    - reportes
+    - dashboard
+    - exportaciones
+    - pqrs
+    - gis
+    - balance_hidrico
+    - proyectos
+    - finanzas
+    - convenios
+    - emergencias
+    - auditoria
+
+# ── CAPA 3: Extensiones Futuras RC6.0 (deshabilitadas por defecto) ──────────
+capa_3_extensiones_futuras:
+  descripcion: >
+    Capacidades avanzadas no requeridas en RC5.5. Deshabilitadas hasta
+    aprobacion formal. Su activacion NO modifica la cadena probatoria existente.
+  estado_por_defecto: disabled
+  extensiones:
+    multi_tsa:
+      descripcion: "Sellado de tiempo con multiples TSA (RFC 3161)"
+      estado: disabled
+    blockchain_anchor:
+      descripcion: "Anclaje de hashes en blockchain publica"
+      estado: disabled
+    notary_anchor:
+      descripcion: "Notarizacion digital de documentos criticos"
+      estado: disabled
+    hardware_trust:
+      descripcion: "TPM/HSM para firma con hardware certificado"
+      estado: disabled
+    ocsp_crl_preservation:
+      descripcion: "Conservacion de estados de revocacion de certificados"
+      estado: disabled
+    cryptographic_renewal:
+      descripcion: "Renovacion automatica de hashes cuando un algoritmo se depreca"
+      estado: disabled
+    self_verifying_aip:
+      descripcion: "Paquetes AIP auto-verificables sin sistema activo"
+      estado: disabled
+
+# ── Politica de activacion de extensiones ───────────────────────────────────
+future_extensions_policy:
+  default_state: disabled
+  activation_requires:
+    - architecture_review_board
+    - institutional_approval
+    - compatibility_assessment
+    - capability_registry_update
+  guarantee:
+    - no_changes_to_uuid
+    - no_changes_to_identity_hash
+    - no_changes_to_chain_fingerprint
+    - no_changes_to_epoch_registry
+    - no_changes_to_oais_core
+    - no_changes_to_worm
+
+# ── Metadata de documentos (campo JSON en registro_central) ─────────────────
+documento_metadata_schema:
+  descripcion: >
+    Cada documento debe almacenar este JSON en columna 'baseline_metadata'
+    para garantizar trazabilidad arquitectonica a futuro.
+  esquema:
+    baseline_id: "PARAGUASMJ-RC5.5-20260607"
+    core_version: "RC5.5"
+    extensions_enabled: []
+  nota: >
+    Si en 5 anios se activan extensiones, el campo reflejara cuales estaban
+    activas en el momento de creacion del documento, preservando la trazabilidad.
